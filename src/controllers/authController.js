@@ -8,32 +8,68 @@ const { sendEmail } = require('../services/emailService');
 const AuthController = {
     registerUser: async (req, res) => {
         try {
-            const { name, email, password } = req.body;
+            const { email, password } = req.body;
 
-            // Verificar si el usuario ya existe usando Mongoose
-            const existingUser = await UserModel.findOne({ email });
-            
-            if (existingUser) {
-                return res.status(400).json({ message: 'El correo electrónico ya está registrado' });
+            // Validaciones básicas
+            if (!email || !password) {
+                return res.status(400).json({ 
+                    message: 'Email y contraseña son requeridos',
+                    errors: {
+                        email: !email ? 'El email es requerido' : null,
+                        password: !password ? 'La contraseña es requerida' : null
+                    }
+                });
             }
 
-            // Hashear la contraseña
-            const hashedPassword = await bcrypt.hash(password, 10);
+            // Validar formato de email
+            const emailRegex = /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/;
+            if (!emailRegex.test(email)) {
+                return res.status(400).json({
+                    message: 'Formato de email inválido',
+                    errors: {
+                        email: 'Por favor ingresa un email válido'
+                    }
+                });
+            }
 
-            // Crear nuevo usuario usando Mongoose
-            const newUser = new UserModel({
-                name,
+            // Validar contraseña
+            if (password.length < 6) {
+                return res.status(400).json({
+                    message: 'La contraseña es muy corta',
+                    errors: {
+                        password: 'La contraseña debe tener al menos 6 caracteres'
+                    }
+                });
+            }
+
+            const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{6,}$/;
+            if (!passwordRegex.test(password)) {
+                return res.status(400).json({
+                    message: 'La contraseña no cumple con los requisitos',
+                    errors: {
+                        password: 'La contraseña debe contener al menos una letra mayúscula, una minúscula y un número'
+                    }
+                });
+            }
+
+            // Verificar si el usuario ya existe
+            const userExists = await UserModel.findOne({ email });
+            if (userExists) {
+                return res.status(400).json({ message: 'El usuario ya existe' });
+            }
+
+            // Crear nuevo usuario
+            const user = new UserModel({
                 email,
-                password: hashedPassword,
-                role: 'user'
+                password
             });
 
-            // Guardar el usuario en la base de datos
-            await newUser.save();
+            // Guardar usuario
+            await user.save();
 
             res.status(201).json({ message: 'Usuario registrado exitosamente' });
         } catch (error) {
-            console.error('Error registering user:', error);
+            console.warn('Error registering user:', error);
             res.status(500).json({ message: 'Error al registrar usuario' });
         }
     },
@@ -42,17 +78,37 @@ const AuthController = {
         try {
             const { email, password } = req.body;
 
-            // Buscar usuario por email usando Mongoose
+            // Validaciones básicas
+            if (!email || !password) {
+                return res.status(400).json({
+                    message: 'Email y contraseña son requeridos',
+                    errors: {
+                        email: !email ? 'El email es requerido' : null,
+                        password: !password ? 'La contraseña es requerida' : null
+                    }
+                });
+            }
+
+            // Buscar usuario
             const user = await UserModel.findOne({ email });
-            
             if (!user) {
-                return res.status(400).json({ message: 'Credenciales inválidas' });
+                return res.status(400).json({
+                    message: 'Credenciales inválidas',
+                    errors: {
+                        auth: 'Email o contraseña incorrectos'
+                    }
+                });
             }
 
             // Verificar contraseña
             const isMatch = await bcrypt.compare(password, user.password);
             if (!isMatch) {
-                return res.status(400).json({ message: 'Credenciales inválidas' });
+                return res.status(400).json({
+                    message: 'Credenciales inválidas',
+                    errors: {
+                        auth: 'Email o contraseña incorrectos'
+                    }
+                });
             }
 
             // Generar token JWT
@@ -66,10 +122,21 @@ const AuthController = {
                 { expiresIn: '1h' }
             );
 
-            res.json({ token });
+            res.json({
+                message: 'Login exitoso',
+                token,
+                user: {
+                    id: user._id,
+                    email: user.email,
+                    role: user.role
+                }
+            });
         } catch (error) {
             console.error('Error in login:', error);
-            res.status(500).json({ message: 'Error en el servidor' });
+            res.status(500).json({
+                message: 'Error en el servidor',
+                error: process.env.NODE_ENV === 'development' ? error.message : undefined
+            });
         }
     },
 
