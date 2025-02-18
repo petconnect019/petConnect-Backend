@@ -264,6 +264,49 @@ const AuthController = {
             console.error('Error al cambiar la contraseña:', error);
             res.status(500).json({ message: 'Error al cambiar la contraseña' });
         }
+    },
+
+    googleAuthCallback: async (req, res) => {
+        try {
+            const { googleId, email, name, profilePicture } = req.user; // Asumiendo que estos datos vienen del middleware de Google
+
+            // Buscar o crear usuario
+            let user = await UserModel.findOne({ google_id: googleId });
+
+            if (!user) {
+                user = new UserModel({
+                    google_id: googleId,
+                    email,
+                    name,
+                    profile_picture: profilePicture
+                });
+                await user.save();
+            }
+
+            // Generar token JWT
+            const token = jwt.sign(
+                { 
+                    id: user._id,
+                    email: user.email,
+                    role: user.role 
+                },
+                process.env.JWT_SECRET,
+                { expiresIn: '1h' }
+            );
+
+            res.json({
+                message: 'Autenticación exitosa',
+                token,
+                user: {
+                    id: user._id,
+                    email: user.email,
+                    role: user.role
+                }
+            });
+        } catch (error) {
+            console.error('Error en la autenticación con Google:', error);
+            res.status(500).json({ message: 'Error en la autenticación con Google' });
+        }
     }
 };
 

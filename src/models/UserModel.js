@@ -16,7 +16,7 @@ const userSchema = new mongoose.Schema({
     role: { type: String, enum: ['user', 'admin'], default: 'user' },
     password: {
         type: String,
-        required: [true, 'La contraseña es requerida'],
+        required: function() { return !this.google_id; },
         minlength: [6, 'La contraseña debe tener al menos 6 caracteres'],
         validate: {
             validator: function(password) {
@@ -36,7 +36,7 @@ const userSchema = new mongoose.Schema({
 
 // Middleware pre-save para hashear la contraseña
 userSchema.pre('save', async function(next) {
-    if (this.isModified('password')) {
+    if (this.isModified('password') && this.password) {
         const salt = await bcrypt.genSalt(10);
         this.password = await bcrypt.hash(this.password, salt);
     }
