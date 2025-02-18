@@ -16,17 +16,33 @@ router.post('/login', AuthController.loginUser);
 router.post('/request-password-reset', AuthController.requestPasswordReset);
 router.post('/reset-password', AuthController.resetPassword);
 
-// Autenticación con Google
+// Ruta para iniciar la autenticación con Google
 router.get('/google',
-    passport.authenticate('google', { scope: ['profile', 'email'] })
+    passport.authenticate('google', { 
+        scope: ['profile', 'email']
+    })
 );
 
+// Callback URL para Google
 router.get('/google/callback',
-    passport.authenticate('google', { failureRedirect: '/login' }),
+    passport.authenticate('google', { 
+        failureRedirect: 'http://localhost:5173/login',
+        session: true
+    }),
     (req, res) => {
-        // Generar token JWT y redirigir al frontend con el token
-        const token = AuthController.generateToken(req.user);
-        res.redirect(`${process.env.APP_URL}/auth/callback?token=${token}`);
+        // Generar token JWT después de la autenticación exitosa
+        const token = jwt.sign(
+            { 
+                id: req.user._id,
+                email: req.user.email,
+                role: req.user.role 
+            },
+            process.env.JWT_SECRET,
+            { expiresIn: '1h' }
+        );
+
+        // Redirigir al frontend con el token
+        res.redirect(`http://localhost:5173/welcome?token=${token}`);
     }
 );
 

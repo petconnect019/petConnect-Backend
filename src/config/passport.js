@@ -12,23 +12,21 @@ if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
 passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    callbackURL: process.env.GOOGLE_CALLBACK_URL
-}, async (accessToken, refreshToken, profile, done) => {
+    callbackURL: "http://localhost:5000/api/auth/google/callback",
+    passReqToCallback: true
+}, async (req, accessToken, refreshToken, profile, done) => {
     try {
-        // Buscar usuario por Google ID usando Mongoose
+        // Buscar usuario existente
         let user = await UserModel.findOne({ google_id: profile.id });
 
         if (!user) {
-            // Si el usuario no existe, crear uno nuevo
-            user = new UserModel({
+            // Crear nuevo usuario si no existe
+            user = await UserModel.create({
                 google_id: profile.id,
-                name: profile.displayName,
                 email: profile.emails[0].value,
-                profile_picture: profile.photos[0].value,
-                role: 'user'
+                name: profile.displayName,
+                profile_picture: profile.photos[0].value
             });
-
-            await user.save();
         }
 
         return done(null, user);
