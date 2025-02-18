@@ -19,7 +19,8 @@ router.post('/reset-password', AuthController.resetPassword);
 // Ruta para iniciar la autenticación con Google
 router.get('/google',
     passport.authenticate('google', { 
-        scope: ['profile', 'email']
+        scope: ['profile', 'email'],
+        prompt: 'select_account'
     })
 );
 
