@@ -30,19 +30,37 @@ router.get('/google/callback',
         session: true
     }),
     (req, res) => {
-        // Generar token JWT después de la autenticación exitosa
-        const token = jwt.sign(
-            { 
-                id: req.user._id,
-                email: req.user.email,
-                role: req.user.role 
-            },
-            process.env.JWT_SECRET,
-            { expiresIn: '1h' }
-        );
+        try {
+            const token = jwt.sign(
+                { 
+                    id: req.user._id,
+                    email: req.user.email,
+                    role: req.user.role 
+                },
+                process.env.JWT_SECRET,
+                { expiresIn: '1h' }
+            );
 
-        // Redirigir al frontend con el token
-        res.redirect(`http://localhost:5173/welcome?token=${token}`);
+            // Página de redirección con verificación de window.opener
+            res.send(`
+                <html>
+                <body>
+                    <script>
+                        if (window.opener) {
+                            window.opener.postMessage({ token: '${token}' }, 'http://localhost:5173');
+                            window.close();
+                        } else {
+                            // Si no hay window.opener, redirigir directamente
+                            window.location.href = 'http://localhost:5173/welcome?token=' + encodeURIComponent('${token}');
+                        }
+                    </script>
+                </body>
+                </html>
+            `);
+        } catch (error) {
+            console.error('Error en callback de Google:', error);
+            res.redirect('http://localhost:5173/login?error=auth_failed');
+        }
     }
 );
 
