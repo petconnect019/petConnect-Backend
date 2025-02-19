@@ -114,4 +114,8 @@ router.post('/test-email', async (req, res) => {
 // Ruta para cambiar la contraseña
 router.post('/change-password', verifyToken, AuthController.changePassword);
 
+// Agregar nueva ruta para refresh token
+router.post('/refresh', AuthController.refreshToken);
+router.post('/logout', AuthController.logout);
+
 module.exports = router;

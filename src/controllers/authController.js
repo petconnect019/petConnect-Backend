@@ -4,6 +4,7 @@ const UserModel = require('../models/UserModel');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { sendEmail } = require('../services/emailService');
+const tokenService = require('../services/tokenService');
 
 const AuthController = {
     registerUser: async (req, res) => {
@@ -93,10 +94,7 @@ const AuthController = {
             const user = await UserModel.findOne({ email });
             if (!user) {
                 return res.status(400).json({
-                    message: 'Credenciales inválidas',
-                    errors: {
-                        auth: 'Email o contraseña incorrectos'
-                    }
+                    message: 'Credenciales inválidas'
                 });
             }
 
@@ -104,29 +102,28 @@ const AuthController = {
             const isMatch = await bcrypt.compare(password, user.password);
             if (!isMatch) {
                 return res.status(400).json({
-                    message: 'Credenciales inválidas',
-                    errors: {
-                        auth: 'Email o contraseña incorrectos'
-                    }
+                    message: 'Credenciales inválidas'
                 });
             }
 
-            // Generar token JWT
-            const token = jwt.sign(
-                { 
-                    id: user._id,
-                    email: user.email,
-                    role: user.role 
-                },
-                process.env.JWT_SECRET,
-                { expiresIn: '1h' }
-            );
+            // Generar tokens
+            const { accessToken, refreshToken, expiresIn } = await tokenService.generateTokens(user);
+
+            // Configurar cookie para refresh token
+            res.cookie('refreshToken', refreshToken, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'strict',
+                maxAge: 7 * 24 * 60 * 60 * 1000, // 7 días
+                path: '/api/auth/refresh'
+            });
 
             res.json({
                 message: 'Login exitoso',
-                token,
+                accessToken,
                 user: {
                     id: user._id,
+                    name: user.name,
                     email: user.email,
                     role: user.role
                 }
@@ -134,8 +131,7 @@ const AuthController = {
         } catch (error) {
             console.error('Error in login:', error);
             res.status(500).json({
-                message: 'Error en el servidor',
-                error: process.env.NODE_ENV === 'development' ? error.message : undefined
+                message: 'Error en el servidor'
             });
         }
     },
@@ -306,6 +302,73 @@ const AuthController = {
         } catch (error) {
             console.error('Error en la autenticación con Google:', error);
             res.status(500).json({ message: 'Error en la autenticación con Google' });
+        }
+    },
+
+    refreshToken: async (req, res) => {
+        try {
+            const refreshToken = req.cookies.refreshToken;
+
+            if (!refreshToken) {
+                return res.status(401).json({
+                    message: 'Refresh token no proporcionado'
+                });
+            }
+
+            const user = await tokenService.verifyRefreshToken(refreshToken);
+
+            if (!user) {
+                return res.status(401).json({
+                    message: 'Refresh token inválido o expirado'
+                });
+            }
+
+            // Revocar el refresh token actual
+            await tokenService.revokeRefreshToken(refreshToken);
+
+            // Generar nuevos tokens
+            const tokens = await tokenService.generateTokens(user);
+
+            // Configurar nueva cookie
+            res.cookie('refreshToken', tokens.refreshToken, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'strict',
+                maxAge: 7 * 24 * 60 * 60 * 1000,
+                path: '/api/auth/refresh'
+            });
+
+            res.json({
+                accessToken: tokens.accessToken
+            });
+        } catch (error) {
+            console.error('Error refreshing token:', error);
+            res.status(500).json({
+                message: 'Error al renovar el token'
+            });
+        }
+    },
+
+    logout: async (req, res) => {
+        try {
+            const refreshToken = req.cookies.refreshToken;
+
+            if (refreshToken) {
+                await tokenService.revokeRefreshToken(refreshToken);
+            }
+
+            res.clearCookie('refreshToken', {
+                path: '/api/auth/refresh'
+            });
+
+            res.json({
+                message: 'Logout exitoso'
+            });
+        } catch (error) {
+            console.error('Error in logout:', error);
+            res.status(500).json({
+                message: 'Error al cerrar sesión'
+            });
         }
     }
 };
