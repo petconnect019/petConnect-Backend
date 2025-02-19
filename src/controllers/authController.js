@@ -109,12 +109,12 @@ const AuthController = {
             // Generar tokens
             const { accessToken, refreshToken, expiresIn } = await tokenService.generateTokens(user);
 
-            // Configurar cookie para refresh token
+            // Configurar cookie para refresh token (20 días)
             res.cookie('refreshToken', refreshToken, {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === 'production',
                 sameSite: 'strict',
-                maxAge: 7 * 24 * 60 * 60 * 1000, // 7 días
+                maxAge: 20 * 24 * 60 * 60 * 1000, // 20 días en milisegundos
                 path: '/api/auth/refresh'
             });
 
@@ -123,9 +123,14 @@ const AuthController = {
                 accessToken,
                 user: {
                     id: user._id,
-                    name: user.name,
                     email: user.email,
-                    role: user.role
+                    name: user.name,
+                    profile_picture: user.profile_picture,
+                    role: user.role,
+                    is_profile_public: user.is_profile_public,
+                    show_contact: user.show_contact,
+                    city: user.city,
+                    phone: user.phone
                 }
             });
         } catch (error) {
@@ -225,7 +230,13 @@ const AuthController = {
         const payload = {
             id: user._id,
             email: user.email,
-            role: user.role
+            name: user.name,
+            profile_picture: user.profile_picture,
+            role: user.role,
+            is_profile_public: user.is_profile_public,
+            show_contact: user.show_contact,
+            city: user.city,
+            phone: user.phone
         };
 
         return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1h' });
@@ -284,7 +295,13 @@ const AuthController = {
                 { 
                     id: user._id,
                     email: user.email,
-                    role: user.role 
+                    name: user.name,
+                    profile_picture: user.profile_picture,
+                    role: user.role,
+                    is_profile_public: user.is_profile_public,
+                    show_contact: user.show_contact,
+                    city: user.city,
+                    phone: user.phone
                 },
                 process.env.JWT_SECRET,
                 { expiresIn: '1h' }
@@ -296,7 +313,14 @@ const AuthController = {
                 user: {
                     id: user._id,
                     email: user.email,
-                    role: user.role
+                    name: user.name,
+                    profile_picture: user.profile_picture,
+                    role: user.role,
+                    is_profile_public: user.is_profile_public,
+                    show_contact: user.show_contact,
+                    city: user.city,
+                    phone: user.phone
+                
                 }
             });
         } catch (error) {
@@ -334,7 +358,7 @@ const AuthController = {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === 'production',
                 sameSite: 'strict',
-                maxAge: 7 * 24 * 60 * 60 * 1000,
+                maxAge: 20 * 24 * 60 * 60 * 1000, // 20 días en milisegundos
                 path: '/api/auth/refresh'
             });
 

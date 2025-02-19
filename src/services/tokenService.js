@@ -4,12 +4,18 @@ const crypto = require('crypto');
 
 const tokenService = {
     generateTokens: async (user) => {
-        // Generar access token
+        // Generar access token con 15 minutos de expiración
         const accessToken = jwt.sign(
             { 
                 id: user._id,
                 email: user.email,
-                role: user.role 
+                name: user.name,
+                profile_picture: user.profile_picture,
+                role: user.role,
+                is_profile_public: user.is_profile_public,
+                show_contact: user.show_contact,
+                city: user.city,
+                phone: user.phone
             },
             process.env.JWT_SECRET,
             { expiresIn: '15m' } // 15 minutos
@@ -18,7 +24,7 @@ const tokenService = {
         // Generar refresh token
         const refreshToken = crypto.randomBytes(40).toString('hex');
         const expiresIn = new Date();
-        expiresIn.setDate(expiresIn.getDate() + 20); 
+        expiresIn.setDate(expiresIn.getDate() + 20); // 20 días
 
         // Guardar refresh token en la base de datos
         await RefreshTokenModel.create({
