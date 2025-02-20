@@ -15,6 +15,7 @@ router.delete('/admin/users/:id', isAdmin, UserController.deleteUser);
 router.get('/profile', UserController.getProfile);
 router.put('/profile', upload.single('profile_picture'), UserController.updateProfile);
 router.put('/privacy', UserController.updatePrivacy);
+router.put('/profile/picture', upload.single('profile_picture'), UserController.updateProfilePicture);
 
 // Ruta pública (debe ir al final para evitar conflictos con otras rutas)
 router.get('/:id', UserController.getUserById);

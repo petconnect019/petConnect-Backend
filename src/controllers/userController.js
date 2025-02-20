@@ -145,6 +145,30 @@ const UserController = {
             console.error('Error al obtener usuario:', error);
             res.status(500).json({ message: 'Error al obtener usuario' });
         }
+    },
+
+    updateProfilePicture: async (req, res) => {
+        try {
+            if (!req.file) {
+                return res.status(400).json({ message: 'No se ha subido ninguna imagen' });
+            }
+
+            // Subir imagen a Cloudinary
+            const result = await uploadToCloudinary(req.file.path);
+
+            // Actualizar el usuario con la nueva URL de la imagen
+            await UserModel.findByIdAndUpdate(req.user.id, {
+                profile_picture: result.secure_url
+            });
+
+            res.status(200).json({
+                message: 'Foto de perfil actualizada con éxito',
+                profile_picture: result.secure_url
+            });
+        } catch (error) {
+            console.error('Error al actualizar foto de perfil:', error);
+            res.status(500).json({ message: 'Error al actualizar foto de perfil' });
+        }
     }
 };
 

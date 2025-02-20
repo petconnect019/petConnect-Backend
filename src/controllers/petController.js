@@ -1,43 +1,38 @@
 const mongoose = require('mongoose');
 const PetModel = require('../models/PetModel');
-const { uploadToCloudinary } = require('../utils/cloudinary');
+const { uploadToCloudinary, getOptimizedUrl, downloadFromCloudinary, getDownloadUrl } = require('../utils/cloudinary');
 
 const PetController = {
     createPet: async (req, res) => {
         try {
-            const { name, species, breed, age, description, status } = req.body;
-            const owner = req.user.id;
-
-            let photos = [];
-            if (req.files) {
-                for (const file of req.files) {
-                    const result = await uploadToCloudinary(file.path);
-                    photos.push(result.secure_url);
-                }
+            if (!req.files || req.files.length === 0) {
+                return res.status(400).json({ message: 'Se requiere al menos una foto' });
             }
 
-            const pet = new PetModel({
-                name,
-                species,
-                breed,
-                age,
-                description,
-                photos,
-                owner,
-                status,
-                location: {
-                    city: req.body.city,
-                    address: req.body.address,
-                    coordinates: {
-                        latitude: req.body.latitude,
-                        longitude: req.body.longitude
-                    }
-                }
+            if (req.files.length > 5) {
+                return res.status(400).json({ message: 'Máximo 5 fotos permitidas' });
+            }
+
+            // Subir todas las imágenes a Cloudinary con optimización
+            const uploadPromises = req.files.map(file => uploadToCloudinary(file.path));
+            const uploadResults = await Promise.all(uploadPromises);
+
+            // Obtener las URLs optimizadas de las imágenes
+            const photos = uploadResults.map(result => result.secure_url);
+
+            // Crear la mascota con las fotos
+            const newPet = new PetModel({
+                ...req.body,
+                photos, // usar directamente las URLs
+                owner: req.user.id
             });
 
-            await pet.save();
-            console.log('Mascota creada:', pet);
-            res.status(201).json(pet);
+            await newPet.save();
+
+            res.status(201).json({
+                message: 'Mascota creada exitosamente',
+                pet: newPet
+            });
         } catch (error) {
             console.error('Error al crear mascota:', error);
             res.status(500).json({ message: 'Error al crear mascota' });
@@ -142,6 +137,20 @@ const PetController = {
 
         } catch (error) {
             res.status(500).json({ message: 'Error al actualizar la mascota', error: error.message });
+        }
+    },
+
+    downloadPetPhoto: async (req, res) => {
+        try {
+            const { photoId } = req.params;
+            
+            // Obtener URL de descarga directa
+            const downloadUrl = getDownloadUrl(photoId);
+            res.json({ downloadUrl });
+            
+        } catch (error) {
+            console.error('Error al descargar foto:', error);
+            res.status(500).json({ message: 'Error al descargar foto' });
         }
     }
 };

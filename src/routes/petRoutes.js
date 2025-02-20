@@ -19,4 +19,7 @@ router.delete('/:id', PetController.deletePet);
 // Rutas específicas
 router.get('/user/pets', PetController.getPetsByOwner);
 
+// Ruta para descargar foto
+router.get('/download/:photoId', PetController.downloadPetPhoto);
+
 module.exports = router;
