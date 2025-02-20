@@ -34,7 +34,9 @@ router.get('/google/callback',
         try {
             const token = jwt.sign(
                 { 
+
                     id: req.user._id,
+                    name : req.user.name,
                     email: req.user.email,
                     role: req.user.role 
                 },
@@ -81,11 +83,11 @@ router.get('/validate', (req, res) => {
     }
 });
 
-// Ruta de prueba de email
+// Ruta de prueba de email solo usar en postman
 router.post('/test-email', async (req, res) => {
     try {
         const testEmail = {
-            to: 'connectpet3@gmail.com', // Usa el mismo correo para pruebas
+            to: 'connectpet3@gmail.com',
             subject: 'Prueba de Correo PetConnect',
             html: `
                 <h1>Prueba de Correo PetConnect</h1>
