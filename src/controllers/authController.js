@@ -275,57 +275,41 @@ const AuthController = {
 
     googleAuthCallback: async (req, res) => {
         try {
-            const { googleId, email, name, profilePicture } = req.user; // Asumiendo que estos datos vienen del middleware de Google
+            const user = req.user;
+            
+            // Generar tokens usando el servicio unificado
+            const { accessToken, refreshToken, expiresIn } = await tokenService.generateTokens(user);
 
-            // Buscar o crear usuario
-            let user = await UserModel.findOne({ google_id: googleId });
-
-            if (!user) {
-                user = new UserModel({
-                    google_id: googleId,
-                    email,
-                    name,
-                    profile_picture: profilePicture
-                });
-                await user.save();
-            }
-
-            // Generar token JWT
-            const token = jwt.sign(
-                { 
-                    id: user._id,
-                    email: user.email,
-                    name: user.name,
-                    profile_picture: user.profile_picture,
-                    role: user.role,
-                    is_profile_public: user.is_profile_public,
-                    show_contact: user.show_contact,
-                    city: user.city,
-                    phone: user.phone
-                },
-                process.env.JWT_SECRET,
-                { expiresIn: '1h' }
-            );
-
-            res.json({
-                message: 'Autenticación exitosa',
-                token,
-                user: {
-                    id: user._id,
-                    email: user.email,
-                    name: user.name,
-                    profile_picture: user.profile_picture,
-                    role: user.role,
-                    is_profile_public: user.is_profile_public,
-                    show_contact: user.show_contact,
-                    city: user.city,
-                    phone: user.phone
-                
-                }
+            // Configurar cookie para refresh token
+            res.cookie('refreshToken', refreshToken, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'strict',
+                maxAge: 20 * 24 * 60 * 60 * 1000,
+                path: '/api/auth/refresh'
             });
+
+            // Enviar respuesta al frontend
+            res.send(`
+                <html>
+                <body>
+                    <script>
+                        if (window.opener) {
+                            window.opener.postMessage({ 
+                                token: '${accessToken}',
+                                user: ${JSON.stringify(user)}
+                            }, '${process.env.FRONTEND_URL}');
+                            window.close();
+                        } else {
+                            window.location.href = '${process.env.FRONTEND_URL}/Home?token=${accessToken}';
+                        }
+                    </script>
+                </body>
+                </html>
+            `);
         } catch (error) {
-            console.error('Error en la autenticación con Google:', error);
-            res.status(500).json({ message: 'Error en la autenticación con Google' });
+            console.error('Error en callback de Google:', error);
+            res.redirect(`${process.env.FRONTEND_URL}/login?error=auth_failed`);
         }
     },
 
