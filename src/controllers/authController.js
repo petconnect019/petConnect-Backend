@@ -301,9 +301,10 @@ const AuthController = {
                             }, '${process.env.FRONTEND_URL}');
                             window.close();
                         } else {
-                            window.location.href = '${process.env.FRONTEND_URL}/Home?token=${accessToken}';
+                            window.location.href = '${process.env.FRONTEND_URL}/Welcome';
                         }
                     </script>
+                    
                 </body>
                 </html>
             `);
@@ -342,7 +343,7 @@ const AuthController = {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === 'production',
                 sameSite: 'strict',
-                maxAge: 20 * 24 * 60 * 60 * 1000, // 20 días en milisegundos
+                maxAge: 20 * 24 * 60 * 60 * 1000, 
                 path: '/api/auth/refresh'
             });
 
