@@ -13,6 +13,8 @@ router.post('/register', AuthController.registerUser);
 router.post('/login', AuthController.loginUser);
 router.post('/refresh', AuthController.refreshToken);
 router.post('/logout', AuthController.logout);
+router.post('/request-password-reset', AuthController.requestPasswordReset);
+router.post('/reset-password', AuthController.resetPassword);
 
 // Rutas de Google OAuth
 router.get('/google',
@@ -24,14 +26,12 @@ router.get('/google',
 
 router.get('/google/callback',
     passport.authenticate('google', { failureRedirect: '/login' }),
-    AuthController.googleAuthCallback // Usar el controlador unificado
+    AuthController.googleAuthCallback
 );
 
 // Rutas protegidas
 router.use(verifyToken);
 router.post('/change-password', AuthController.changePassword);
-router.post('/request-password-reset', AuthController.requestPasswordReset);
-router.post('/reset-password', AuthController.resetPassword);
 
 // Ruta para validar el token
 router.get('/validate', (req, res) => {

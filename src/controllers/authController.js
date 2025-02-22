@@ -145,31 +145,43 @@ const AuthController = {
         try {
             const { email } = req.body;
 
-            // Buscar usuario por email usando Mongoose
+            if (!email) {
+                return res.status(400).json({ 
+                    message: 'El email es requerido' 
+                });
+            }
+
+            // Buscar usuario por email
             const user = await UserModel.findOne({ email });
 
             if (!user) {
-                return res.status(404).json({ message: 'Usuario no encontrado' });
+                // Por seguridad, no revelamos si el email existe o no
+                return res.status(200).json({ 
+                    message: 'Si el email existe, recibirás instrucciones para restablecer tu contraseña' 
+                });
             }
 
-            // Generar token de restablecimiento
+            // Generar token único
             const resetToken = crypto.randomBytes(32).toString('hex');
-            const resetTokenExpiration = Date.now() + 3600000; // 1 hora
+            const resetTokenExpiration = new Date(Date.now() + 3600000); // 1 hora
 
-            // Actualizar usuario con el token usando Mongoose
+            // Actualizar usuario con el token
             await UserModel.findByIdAndUpdate(user._id, {
                 reset_token: resetToken,
                 reset_token_expiration: resetTokenExpiration
             });
 
+            // Crear URL de restablecimiento
+            const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
+
             // Enviar email
-            const resetUrl = `${process.env.APP_URL}/reset-password?token=${resetToken}`;
             const emailContent = `
                 <h1>Restablecimiento de Contraseña</h1>
                 <p>Has solicitado restablecer tu contraseña.</p>
                 <p>Haz clic en el siguiente enlace para continuar:</p>
                 <a href="${resetUrl}">Restablecer Contraseña</a>
                 <p>Este enlace expirará en 1 hora.</p>
+                <p>Si no solicitaste restablecer tu contraseña, ignora este mensaje.</p>
             `;
 
             await sendEmail({
@@ -178,9 +190,11 @@ const AuthController = {
                 html: emailContent
             });
 
+            // Por seguridad, siempre devolvemos el mismo mensaje
             res.status(200).json({ 
-                message: 'Instrucciones enviadas al correo electrónico' 
+                message: 'Mensje Enviado' 
             });
+
         } catch (error) {
             console.error('Error al solicitar restablecimiento:', error);
             res.status(500).json({ 
@@ -193,7 +207,27 @@ const AuthController = {
         try {
             const { resetToken, newPassword } = req.body;
 
-            // Buscar usuario con token válido usando Mongoose
+            if (!resetToken || !newPassword) {
+                return res.status(400).json({ 
+                    message: 'Token y nueva contraseña son requeridos' 
+                });
+            }
+
+            // Validar contraseña
+            if (newPassword.length < 6) {
+                return res.status(400).json({
+                    message: 'La contraseña debe tener al menos 6 caracteres'
+                });
+            }
+
+            const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{6,}$/;
+            if (!passwordRegex.test(newPassword)) {
+                return res.status(400).json({
+                    message: 'La contraseña debe contener al menos una letra mayúscula, una minúscula y un número'
+                });
+            }
+
+            // Buscar usuario con token válido
             const user = await UserModel.findOne({
                 reset_token: resetToken,
                 reset_token_expiration: { $gt: Date.now() }
@@ -205,10 +239,8 @@ const AuthController = {
                 });
             }
 
-            // Hashear nueva contraseña
+            // Actualizar contraseña y limpiar token
             const hashedPassword = await bcrypt.hash(newPassword, 10);
-
-            // Actualizar usuario usando Mongoose
             await UserModel.findByIdAndUpdate(user._id, {
                 password: hashedPassword,
                 reset_token: null,
@@ -218,6 +250,7 @@ const AuthController = {
             res.status(200).json({ 
                 message: 'Contraseña restablecida con éxito' 
             });
+
         } catch (error) {
             console.error('Error al restablecer contraseña:', error);
             res.status(500).json({ 
@@ -343,7 +376,7 @@ const AuthController = {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === 'production',
                 sameSite: 'strict',
-                maxAge: 20 * 24 * 60 * 60 * 1000, 
+                maxAge: 20 * 24 * 60 * 60 * 1000, // 20 días en milisegundos
                 path: '/api/auth/refresh'
             });
 
