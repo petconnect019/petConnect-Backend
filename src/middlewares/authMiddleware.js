@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const UserModel = require('../models/UserModel');
+const tokenService = require('../services/tokenService');
 
 const verifyToken = (req, res, next) => {
     try {
@@ -9,7 +10,11 @@ const verifyToken = (req, res, next) => {
             return res.status(401).json({ message: 'Token no proporcionado' });
         }
 
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const decoded = tokenService.verifyAccessToken(token);
+        if (!decoded) {
+            return res.status(401).json({ message: 'Token inválido' });
+        }
+
         req.user = decoded;
         next();
     } catch (error) {
