@@ -322,22 +322,31 @@ const AuthController = {
                 path: '/api/auth/refresh'
             });
 
+            // Preparar el objeto de respuesta con google auth
+            const responseData = {
+                message: 'Login exitoso',
+                accessToken,
+                user: {
+                    id: user._id,
+                    email: user.email,
+                    role: user.role,
+                    is_profile_public: user.is_profile_public,
+                    show_contact: user.show_contact
+                }
+            };
+
             // Enviar respuesta al frontend
             res.send(`
                 <html>
                 <body>
                     <script>
                         if (window.opener) {
-                            window.opener.postMessage({ 
-                                token: '${accessToken}',
-                                user: ${JSON.stringify(user)}
-                            }, '${process.env.FRONTEND_URL}');
+                            window.opener.postMessage(${JSON.stringify(responseData)}, '${process.env.FRONTEND_URL}');
                             window.close();
                         } else {
                             window.location.href = '${process.env.FRONTEND_URL}/Welcome';
                         }
                     </script>
-                    
                 </body>
                 </html>
             `);
