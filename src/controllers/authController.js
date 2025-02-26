@@ -4,160 +4,141 @@ const UserModel = require('../models/UserModel');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { sendEmail } = require('../services/emailService');
+const { handleAuthenticationSuccess, clearSession } = require('../config/session');
 const tokenService = require('../services/tokenService');
+
+// Validaciones comunes
+const validateEmail = (email) => {
+    if (!email) return { isValid: false, error: 'El email es requerido' };
+    const emailRegex = /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/;
+    return emailRegex.test(email) 
+        ? { isValid: true }
+        : { isValid: false, error: 'Formato de email inválido' };
+};
+
+const validatePassword = (password) => {
+    if (!password) return { isValid: false, error: 'La contraseña es requerida' };
+    return password.length >= 6
+        ? { isValid: true }
+        : { isValid: false, error: 'La contraseña debe tener al menos 6 caracteres' };
+};
 
 const AuthController = {
     registerUser: async (req, res) => {
         try {
+            console.log('Iniciando registro de usuario');
             const { email, password } = req.body;
 
-            // Validaciones básicas
-            if (!email || !password) {
-                return res.status(400).json({ 
-                    message: 'Email y contraseña son requeridos',
-                    errors: {
-                        email: !email ? 'El email es requerido' : null,
-                        password: !password ? 'La contraseña es requerida' : null
-                    }
-                });
-            }
-
-            // Validar formato de email
-            const emailRegex = /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/;
-            if (!emailRegex.test(email)) {
+            // Validar email
+            const emailValidation = validateEmail(email);
+            if (!emailValidation.isValid) {
                 return res.status(400).json({
-                    message: 'Formato de email inválido',
-                    errors: {
-                        email: 'Por favor ingresa un email válido'
-                    }
+                    ok: false,
+                    message: emailValidation.error,
+                    errors: { email: emailValidation.error }
                 });
             }
 
             // Validar contraseña
-            if (password.length < 6) {
+            const passwordValidation = validatePassword(password);
+            if (!passwordValidation.isValid) {
                 return res.status(400).json({
-                    message: 'La contraseña es muy corta',
-                    errors: {
-                        password: 'La contraseña debe tener al menos 6 caracteres'
-                    }
-                });
-            }
-
-            const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{6,}$/;
-            if (!passwordRegex.test(password)) {
-                return res.status(400).json({
-                    message: 'La contraseña no cumple con los requisitos',
-                    errors: {
-                        password: 'La contraseña debe contener al menos una letra mayúscula, una minúscula y un número'
-                    }
+                    ok: false,
+                    message: passwordValidation.error,
+                    errors: { password: passwordValidation.error }
                 });
             }
 
             // Verificar si el usuario ya existe
             const userExists = await UserModel.findOne({ email });
             if (userExists) {
-                return res.status(400).json({ message: 'El usuario ya existe' });
+                return res.status(400).json({ 
+                    ok: false,
+                    message: 'El usuario ya existe' 
+                });
             }
 
             // Crear nuevo usuario
             const user = new UserModel({
                 email,
-                password
+                password,
+                name: email.split('@')[0],
+                role: 'user',
+                is_profile_public: true,
+                show_contact: true
             });
 
-            // Guardar usuario
             await user.save();
+            console.log('Usuario guardado exitosamente:', user._id);
 
-            const { accessToken, refreshToken, expiresIn } = await tokenService.generateTokens(user);
+            // Manejar autenticación
+            const { accessToken, userResponse } = await handleAuthenticationSuccess(req, res, user);
 
-            // Configurar cookie para refresh token
-            res.cookie('refreshToken', refreshToken, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'strict',
-                maxAge: 20 * 24 * 60 * 60 * 1000, // 20 días en milisegundos
-                path: '/api/auth/refresh'
-            });
-
-            // respuesta 
-            res.status(201).json({
-                message: 'Login exitoso',
+            return res.status(201).json({
+                ok: true,
+                message: 'Usuario registrado exitosamente',
                 accessToken,
-                user: {
-                    id: user._id,
-                    email: user.email,
-                    role: user.role,
-                    is_profile_public: user.is_profile_public,
-                    show_contact: user.show_contact
-                }
+                user: userResponse
             });
+
         } catch (error) {
-            console.warn('Error registering user:', error);
-            res.status(500).json({ message: 'Error al registrar usuario' });
+            console.error('Error en registro:', error);
+            return res.status(500).json({ 
+                ok: false,
+                message: 'Error al registrar usuario',
+                errors: { server: 'Error interno del servidor' }
+            });
         }
     },
 
     loginUser: async (req, res) => {
         try {
+            console.log('Iniciando proceso de login');
             const { email, password } = req.body;
 
-            // Validaciones básicas
-            if (!email || !password) {
+            // Validar email
+            const emailValidation = validateEmail(email);
+            if (!emailValidation.isValid) {
                 return res.status(400).json({
-                    message: 'Email y contraseña son requeridos',
-                    errors: {
-                        email: !email ? 'El email es requerido' : null,
-                        password: !password ? 'La contraseña es requerida' : null
-                    }
+                    ok: false,
+                    message: emailValidation.error,
+                    errors: { email: emailValidation.error }
                 });
             }
 
-            // Buscar usuario
+            // Validar contraseña
+            const passwordValidation = validatePassword(password);
+            if (!passwordValidation.isValid) {
+                return res.status(400).json({
+                    ok: false,
+                    message: passwordValidation.error,
+                    errors: { password: passwordValidation.error }
+                });
+            }
+
+            // Buscar usuario y verificar credenciales
             const user = await UserModel.findOne({ email });
-            if (!user) {
+            if (!user || !(await bcrypt.compare(password, user.password))) {
                 return res.status(400).json({
+                    ok: false,
                     message: 'Credenciales inválidas'
                 });
             }
 
-            // Verificar contraseña
-            const isMatch = await bcrypt.compare(password, user.password);
-            if (!isMatch) {
-                return res.status(400).json({
-                    message: 'Credenciales inválidas'
-                });
-            }
+            // Manejar autenticación
+            const { accessToken, userResponse } = await handleAuthenticationSuccess(req, res, user);
 
-            // Generar tokens
-            const { accessToken, refreshToken, expiresIn } = await tokenService.generateTokens(user);
-
-            // Configurar cookie para refresh token (20 días)
-            res.cookie('refreshToken', refreshToken, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'strict',
-                maxAge: 20 * 24 * 60 * 60 * 1000, // 20 días en milisegundos
-                path: '/api/auth/refresh'
-            });
-
-            res.json({
+            return res.status(200).json({
+                ok: true,
                 message: 'Login exitoso',
                 accessToken,
-                user: {
-                    id: user._id,
-                    email: user.email,
-                    name: user.name,
-                    profile_picture: user.profile_picture,
-                    role: user.role,
-                    is_profile_public: user.is_profile_public,
-                    show_contact: user.show_contact,
-                    city: user.city,
-                    phone: user.phone
-                }
+                user: userResponse
             });
+
         } catch (error) {
-            console.error('Error in login:', error);
-            res.status(500).json({
+            console.error('Error en login:', error);
+            return res.status(500).json({
+                ok: false,
                 message: 'Error en el servidor'
             });
         }
@@ -167,59 +148,53 @@ const AuthController = {
         try {
             const { email } = req.body;
 
-            if (!email) {
-                return res.status(400).json({ 
-                    message: 'El email es requerido' 
+            // Validar email
+            const emailValidation = validateEmail(email);
+            if (!emailValidation.isValid) {
+                return res.status(400).json({
+                    ok: false,
+                    message: emailValidation.error
                 });
             }
 
-            // Buscar usuario por email
             const user = await UserModel.findOne({ email });
-
             if (!user) {
-                // Por seguridad, no revelamos si el email existe o no
                 return res.status(200).json({ 
                     message: 'Si el email existe, recibirás instrucciones para restablecer tu contraseña' 
                 });
             }
 
-            // Generar token único
             const resetToken = crypto.randomBytes(32).toString('hex');
             const resetTokenExpiration = new Date(Date.now() + 3600000); // 1 hora
 
-            // Actualizar usuario con el token
             await UserModel.findByIdAndUpdate(user._id, {
                 reset_token: resetToken,
                 reset_token_expiration: resetTokenExpiration
             });
 
-            // Crear URL de restablecimiento
             const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
-
-            // Enviar email
-            const emailContent = `
-                <h1>Restablecimiento de Contraseña</h1>
-                <p>Has solicitado restablecer tu contraseña.</p>
-                <p>Haz clic en el siguiente enlace para continuar:</p>
-                <a href="${resetUrl}">Restablecer Contraseña</a>
-                <p>Este enlace expirará en 1 hora.</p>
-                <p>Si no solicitaste restablecer tu contraseña, ignora este mensaje.</p>
-            `;
-
             await sendEmail({
                 to: email,
                 subject: 'Restablecimiento de Contraseña',
-                html: emailContent
+                html: `
+                    <h1>Restablecimiento de Contraseña</h1>
+                    <p>Has solicitado restablecer tu contraseña.</p>
+                    <p>Haz clic en el siguiente enlace para continuar:</p>
+                    <a href="${resetUrl}">Restablecer Contraseña</a>
+                    <p>Este enlace expirará en 1 hora.</p>
+                    <p>Si no solicitaste restablecer tu contraseña, ignora este mensaje.</p>
+                `
             });
 
-            // Por seguridad, siempre devolvemos el mismo mensaje
             res.status(200).json({ 
-                message: 'Mensje Enviado' 
+                ok: true,
+                message: 'Email enviado exitosamente' 
             });
 
         } catch (error) {
             console.error('Error al solicitar restablecimiento:', error);
             res.status(500).json({ 
+                ok: false,
                 message: 'Error al procesar la solicitud' 
             });
         }
@@ -313,34 +288,15 @@ const AuthController = {
 
     googleAuthCallback: async (req, res) => {
         try {
-            const user = req.user;
-            
-            // Generar tokens usando el servicio unificado
-            const { accessToken, refreshToken, expiresIn } = await tokenService.generateTokens(user);
+            const { accessToken, userResponse } = await handleAuthenticationSuccess(req, res, req.user);
 
-            // Configurar cookie para refresh token
-            res.cookie('refreshToken', refreshToken, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'strict',
-                maxAge: 20 * 24 * 60 * 60 * 1000,
-                path: '/api/auth/refresh'
-            });
-
-            // Preparar el objeto de respuesta con google auth
             const responseData = {
-                message: 'Login exitoso',
+                ok: true,
+                message: 'Login con Google exitoso',
                 accessToken,
-                user: {
-                    id: user._id,
-                    email: user.email,
-                    role: user.role,
-                    is_profile_public: user.is_profile_public,
-                    show_contact: user.show_contact
-                }
+                user: userResponse
             };
 
-            // Enviar respuesta al frontend
             res.send(`
                 <html>
                 <body>
@@ -349,7 +305,7 @@ const AuthController = {
                             window.opener.postMessage(${JSON.stringify(responseData)}, '${process.env.FRONTEND_URL}');
                             window.close();
                         } else {
-                            window.location.href = '${process.env.FRONTEND_URL}/Welcome';
+                            window.location.href = '${process.env.FRONTEND_URL}/home';
                         }
                     </script>
                 </body>
@@ -407,22 +363,15 @@ const AuthController = {
 
     logout: async (req, res) => {
         try {
-            const refreshToken = req.cookies.refreshToken;
-
-            if (refreshToken) {
-                await tokenService.revokeRefreshToken(refreshToken);
-            }
-
-            res.clearCookie('refreshToken', {
-                path: '/api/auth/refresh'
-            });
-
-            res.json({
-                message: 'Logout exitoso'
+            const success = await clearSession(req, res);
+            return res.status(success ? 200 : 500).json({
+                ok: success,
+                message: success ? 'Sesión cerrada exitosamente' : 'Error al cerrar sesión'
             });
         } catch (error) {
-            console.error('Error in logout:', error);
-            res.status(500).json({
+            console.error('Error en logout:', error);
+            return res.status(500).json({
+                ok: false,
                 message: 'Error al cerrar sesión'
             });
         }
