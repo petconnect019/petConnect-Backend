@@ -68,7 +68,29 @@ const AuthController = {
             // Guardar usuario
             await user.save();
 
-            res.status(201).json({ message: 'Usuario registrado exitosamente' });
+            const { accessToken, refreshToken, expiresIn } = await tokenService.generateTokens(user);
+
+            // Configurar cookie para refresh token
+            res.cookie('refreshToken', refreshToken, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'strict',
+                maxAge: 20 * 24 * 60 * 60 * 1000, // 20 días en milisegundos
+                path: '/api/auth/refresh'
+            });
+
+            // respuesta 
+            res.status(201).json({
+                message: 'Login exitoso',
+                accessToken,
+                user: {
+                    id: user._id,
+                    email: user.email,
+                    role: user.role,
+                    is_profile_public: user.is_profile_public,
+                    show_contact: user.show_contact
+                }
+            });
         } catch (error) {
             console.warn('Error registering user:', error);
             res.status(500).json({ message: 'Error al registrar usuario' });
@@ -258,23 +280,6 @@ const AuthController = {
             });
         }
     },
-
-    generateToken: (user) => {
-        const payload = {
-            id: user._id,
-            email: user.email,
-            name: user.name,
-            profile_picture: user.profile_picture,
-            role: user.role,
-            is_profile_public: user.is_profile_public,
-            show_contact: user.show_contact,
-            city: user.city,
-            phone: user.phone
-        };
-
-        return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1h' });
-    },
-
     changePassword: async (req, res) => {
         try {
             const userId = req.user.id; // Asumiendo que el middleware de autenticación añade el ID del usuario al objeto req
