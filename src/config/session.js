@@ -39,7 +39,7 @@ const handleAuthenticationSuccess = async (req, res, user) => {
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
             maxAge: 20 * 24 * 60 * 60 * 1000, // 20 días
-            path: '/api/auth/refresh',
+            path: '/', // Ruta de la cookie visible para todas las rutas
             domain: 'localhost'
         };
 
@@ -51,7 +51,7 @@ const handleAuthenticationSuccess = async (req, res, user) => {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
-            maxAge: 24 * 60 * 60 * 1000 // 1 día
+            maxAge: 24 * 60 * 60 * 1000,// 1 día
         });
 
         // Preparar objeto de usuario para la respuesta
