@@ -144,10 +144,11 @@ const AuthController = {
         }
     },
 
+
     requestPasswordReset: async (req, res) => {
         try {
             const { email } = req.body;
-
+    
             // Validar email
             const emailValidation = validateEmail(email);
             if (!emailValidation.isValid) {
@@ -156,22 +157,30 @@ const AuthController = {
                     message: emailValidation.error
                 });
             }
-
+    
             const user = await UserModel.findOne({ email });
             if (!user) {
                 return res.status(200).json({ 
                     message: 'Si el email existe, recibirás instrucciones para restablecer tu contraseña' 
                 });
             }
-
+    
             const resetToken = crypto.randomBytes(32).toString('hex');
-            const resetTokenExpiration = new Date(Date.now() + 3600000); // 1 hora
 
+            // Crear fecha actual en Colombia (UTC-5)
+            const colombiaTime = new Date();
+            // Ajustar a la zona horaria de Colombia
+            colombiaTime.setHours(colombiaTime.getHours() - 5);
+            // Agregar 5 minutos para la expiración
+            const resetTokenExpiration = new Date(colombiaTime.getTime() + 5 * 60 * 1000);
+
+          
+    
             await UserModel.findByIdAndUpdate(user._id, {
                 reset_token: resetToken,
                 reset_token_expiration: resetTokenExpiration
             });
-
+    
             const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
             await sendEmail({
                 to: email,
@@ -181,16 +190,16 @@ const AuthController = {
                     <p>Has solicitado restablecer tu contraseña.</p>
                     <p>Haz clic en el siguiente enlace para continuar:</p>
                     <a href="${resetUrl}">Restablecer Contraseña</a>
-                    <p>Este enlace expirará en 1 hora.</p>
+                    <p>Este enlace expirará en 5 minutos.</p>
                     <p>Si no solicitaste restablecer tu contraseña, ignora este mensaje.</p>
                 `
             });
-
+    
             res.status(200).json({ 
                 ok: true,
-                message: 'Email enviado exitosamente' 
+                message: 'Email enviado exitosamente',
             });
-
+    
         } catch (error) {
             console.error('Error al solicitar restablecimiento:', error);
             res.status(500).json({ 
@@ -199,6 +208,8 @@ const AuthController = {
             });
         }
     },
+    
+    
 
     resetPassword: async (req, res) => {
         try {
@@ -224,10 +235,13 @@ const AuthController = {
                 });
             }
 
+            // Ajustar la hora actual a Colombia 
+            const colombiaTime = new Date(new Date().getTime() - (5 * 60 * 60 * 1000));
+
             // Buscar usuario con token válido
             const user = await UserModel.findOne({
                 reset_token: resetToken,
-                reset_token_expiration: { $gt: Date.now() }
+                reset_token_expiration: { $gt: colombiaTime }
             });
 
             if (!user) {

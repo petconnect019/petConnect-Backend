@@ -18,7 +18,7 @@ const tokenService = {
                 phone: user.phone
             },
             process.env.JWT_SECRET,
-            { expiresIn: '15m' } // 15 minutos
+            { expiresIn: '15m' } 
         );
 
         // Generar refresh token

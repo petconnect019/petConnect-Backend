@@ -100,8 +100,8 @@ const isAuthenticated = (req, res, next) => {
 const clearSession = async (req, res) => {
     try {
         await req.session.destroy();
-        res.clearCookie('connect.sid');
-        res.clearCookie('refreshToken', { path: '/api/auth/refresh' });
+        res.clearCookie('connect.sid', {path: '/'});
+        res.clearCookie('refreshToken', { path: '/' });
         return true;
     } catch (error) {
         console.error('Error al limpiar sesión:', error);
