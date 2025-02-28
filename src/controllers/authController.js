@@ -319,7 +319,7 @@ const AuthController = {
                             window.opener.postMessage(${JSON.stringify(responseData)}, '${process.env.FRONTEND_URL}');
                             window.close();
                         } else {
-                            window.location.href = '${process.env.FRONTEND_URL}/home';
+                            window.location.href = '${process.env.FRONTEND_URL}/step-pet';
                         }
                     </script>
                 </body>
