@@ -5,37 +5,47 @@ const { uploadToCloudinary, getOptimizedUrl, downloadFromCloudinary, getDownload
 const PetController = {
     createPet: async (req, res) => {
         try {
-            if (!req.files || req.files.length === 0) {
-                return res.status(400).json({ message: 'Se requiere al menos una foto' });
+            const userId = req.user.id;
+            const { name, gender, species, breed, age, description } = req.body;
+
+            // Validar datos básicos requeridos
+            if (!name || !gender) {
+                return res.status(400).json({
+                    ok: false,
+                    message: 'El nombre y género de la mascota son obligatorios'
+                });
             }
 
-            if (req.files.length > 5) {
-                return res.status(400).json({ message: 'Máximo 5 fotos permitidas' });
+            // Crear objeto con datos básicos
+            const petData = {
+                owner: userId,
+                name,
+                gender,
+            };
+
+            // Si hay fotos, procesarlas
+            if (req.files && req.files.length > 0) {
+                const uploadPromises = req.files.map(file => uploadToCloudinary(file.path));
+                const uploadResults = await Promise.all(uploadPromises);
+                petData.photos = uploadResults.map(result => result.secure_url);
             }
 
-            // Subir todas las imágenes a Cloudinary con optimización
-            const uploadPromises = req.files.map(file => uploadToCloudinary(file.path));
-            const uploadResults = await Promise.all(uploadPromises);
-
-            // Obtener las URLs optimizadas de las imágenes
-            const photos = uploadResults.map(result => result.secure_url);
-
-            // Crear la mascota con las fotos
-            const newPet = new PetModel({
-                ...req.body,
-                photos, // usar directamente las URLs
-                owner: req.user.id
-            });
-
-            await newPet.save();
+            // Crear la mascota
+            const pet = new PetModel(petData);
+            await pet.save();
 
             res.status(201).json({
+                ok: true,
                 message: 'Mascota creada exitosamente',
-                pet: newPet
+                pet
             });
+
         } catch (error) {
             console.error('Error al crear mascota:', error);
-            res.status(500).json({ message: 'Error al crear mascota' });
+            res.status(500).json({
+                ok: false,
+                message: 'Error al crear la mascota'
+            });
         }
     },
 
@@ -43,11 +53,16 @@ const PetController = {
         try {
             const pets = await PetModel.find()
                 .populate('owner', 'name email profile_picture');
-            console.log('Mascotas obtenidas:', pets);
-            res.status(200).json(pets);
+            res.status(200).json({
+                ok: true,
+                pets
+            });
         } catch (error) {
             console.error('Error al obtener mascotas:', error);
-            res.status(500).json({ message: 'Error al obtener mascotas' });
+            res.status(500).json({
+                ok: false,
+                message: 'Error al obtener mascotas'
+            });
         }
     },
 
@@ -57,86 +72,202 @@ const PetController = {
                 .populate('owner', 'name email profile_picture');
 
             if (!pet) {
-                return res.status(404).json({ message: 'Mascota no encontrada' });
+                return res.status(404).json({
+                    ok: false,
+                    message: 'Mascota no encontrada'
+                });
             }
 
-            console.log('Mascota obtenida:', pet);
-            res.status(200).json(pet);
+            res.status(200).json({
+                ok: true,
+                pet
+            });
         } catch (error) {
             console.error('Error al obtener mascota:', error);
-            res.status(500).json({ message: 'Error al obtener mascota' });
-        }
-    },
-
-    deletePet: async (req, res) => {
-        try {
-            const pet = await PetModel.findByIdAndDelete(req.params.id);
-
-            if (!pet) {
-                return res.status(404).json({ message: 'Mascota no encontrada' });
-            }
-
-            console.log('Mascota eliminada:', pet);
-            res.status(200).json({ message: 'Mascota eliminada exitosamente' });
-        } catch (error) {
-            console.error('Error al eliminar mascota:', error);
-            res.status(500).json({ message: 'Error al eliminar mascota' });
-        }
-    },
-
-    getPetsByOwner: async (req, res) => {
-        try {
-            const ownerId = req.user.id; // Asegúrate de que el middleware de autenticación añade el ID del usuario al objeto req
-            const pets = await PetModel.find({ owner: ownerId })
-                .populate('owner', 'name email profile_picture');
-
-            if (!pets || pets.length === 0) {
-                return res.status(404).json({ message: 'No se encontraron mascotas para este usuario' });
-            }
-
-            res.status(200).json(pets);
-        } catch (error) {
-            console.error('Error al obtener mascotas del usuario:', error);
-            res.status(500).json({ message: 'Error al obtener mascotas del usuario' });
+            res.status(500).json({
+                ok: false,
+                message: 'Error al obtener mascota'
+            });
         }
     },
 
     updatePet: async (req, res) => {
         try {
             const petId = req.params.id;
-            const userId = req.user.id; // Asumiendo que el middleware de autenticación añade el ID del usuario al objeto req
+            const userId = req.user.id;
 
             // Verificar si el ID es válido
             if (!mongoose.Types.ObjectId.isValid(petId)) {
-                return res.status(400).json({ message: 'ID de mascota no válido' });
+                return res.status(400).json({
+                    ok: false,
+                    message: 'ID de mascota no válido'
+                });
             }
 
             // Buscar la mascota y verificar que el usuario es el dueño
-            const pet = await PetModel.findById(petId);
+            const pet = await PetModel.findOne({ _id: petId, owner: userId });
             if (!pet) {
-                return res.status(404).json({ message: 'Mascota no encontrada' });
+                return res.status(404).json({
+                    ok: false,
+                    message: 'Mascota no encontrada o no autorizado'
+                });
             }
 
-            if (pet.owner.toString() !== userId) {
-                return res.status(403).json({ message: 'No autorizado para actualizar esta mascota' });
-            }
+            // Actualizar datos básicos
+            const updateData = { ...req.body };
+            delete updateData.photos; // Eliminar fotos del objeto de actualización
 
-            // Filtrar datos vacíos
-            const updateData = {};
-            Object.entries(req.body).forEach(([key, value]) => {
-                if (value !== undefined && value !== '') {
-                    updateData[key] = value;
-                }
-            });
+            // Si hay nuevas fotos, procesarlas
+            if (req.files && req.files.length > 0) {
+                const uploadPromises = req.files.map(file => uploadToCloudinary(file.path));
+                const uploadResults = await Promise.all(uploadPromises);
+                const newPhotos = uploadResults.map(result => result.secure_url);
+                updateData.photos = [...pet.photos, ...newPhotos];
+            }
 
             // Actualizar la mascota
-            const updatedPet = await PetModel.findByIdAndUpdate(petId, { $set: updateData }, { new: true, runValidators: true })
-                .populate('owner', 'name email profile_picture');
+            const updatedPet = await PetModel.findByIdAndUpdate(
+                petId,
+                updateData,
+                { new: true }
+            ).populate('owner', 'name email profile_picture');
 
-            res.status(200).json(updatedPet);
+            res.status(200).json({
+                ok: true,
+                message: 'Mascota actualizada exitosamente',
+                pet: updatedPet
+            });
 
         } catch (error) {
-            res.status(500).json({ message: 'Error al actualizar la mascota', error: error.message });
+            console.error('Error al actualizar mascota:', error);
+            res.status(500).json({
+                ok: false,
+                message: 'Error al actualizar la mascota'
+            });
+        }
+    },
+
+    deletePet: async (req, res) => {
+        try {
+            const petId = req.params.id;
+            const userId = req.user.id;
+
+            const pet = await PetModel.findOneAndDelete({ _id: petId, owner: userId });
+
+            if (!pet) {
+                return res.status(404).json({
+                    ok: false,
+                    message: 'Mascota no encontrada o no autorizado'
+                });
+            }
+
+            res.status(200).json({
+                ok: true,
+                message: 'Mascota eliminada exitosamente'
+            });
+        } catch (error) {
+            console.error('Error al eliminar mascota:', error);
+            res.status(500).json({
+                ok: false,
+                message: 'Error al eliminar la mascota'
+            });
+        }
+    },
+
+    getPetsByOwner: async (req, res) => {
+        try {
+            const userId = req.user.id;
+            const pets = await PetModel.find({ owner: userId })
+                .populate('owner', 'name email profile_picture');
+
+            res.status(200).json({
+                ok: true,
+                pets
+            });
+        } catch (error) {
+            console.error('Error al obtener mascotas del usuario:', error);
+            res.status(500).json({
+                ok: false,
+                message: 'Error al obtener mascotas del usuario'
+            });
+        }
+    },
+
+    addPetPhotos: async (req, res) => {
+        try {
+            const petId = req.params.id;
+            const userId = req.user.id;
+
+            // Verificar si la mascota existe y pertenece al usuario
+            const pet = await PetModel.findOne({ _id: petId, owner: userId });
+            if (!pet) {
+                return res.status(404).json({
+                    ok: false,
+                    message: 'Mascota no encontrada o no autorizado'
+                });
+            }
+
+            // Procesar y subir las nuevas fotos
+            if (req.files && req.files.length > 0) {
+                const uploadPromises = req.files.map(file => uploadToCloudinary(file.path));
+                const uploadResults = await Promise.all(uploadPromises);
+                const newPhotos = uploadResults.map(result => result.secure_url);
+
+                // Añadir las nuevas fotos al array existente
+                pet.photos = [...pet.photos, ...newPhotos];
+                await pet.save();
+
+                return res.status(200).json({
+                    ok: true,
+                    message: 'Fotos añadidas exitosamente',
+                    photos: pet.photos
+                });
+            }
+
+            return res.status(400).json({
+                ok: false,
+                message: 'No se proporcionaron fotos'
+            });
+
+        } catch (error) {
+            console.error('Error al añadir fotos:', error);
+            res.status(500).json({
+                ok: false,
+                message: 'Error al procesar las fotos'
+            });
+        }
+    },
+
+    deletePetPhoto: async (req, res) => {
+        try {
+            const { id, photoId } = req.params;
+            const userId = req.user.id;
+
+            // Verificar si la mascota existe y pertenece al usuario
+            const pet = await PetModel.findOne({ _id: id, owner: userId });
+            if (!pet) {
+                return res.status(404).json({
+                    ok: false,
+                    message: 'Mascota no encontrada o no autorizado'
+                });
+            }
+
+            // Eliminar la foto del array
+            pet.photos = pet.photos.filter(photo => !photo.includes(photoId));
+            await pet.save();
+
+            res.status(200).json({
+                ok: true,
+                message: 'Foto eliminada exitosamente',
+                photos: pet.photos
+            });
+
+        } catch (error) {
+            console.error('Error al eliminar foto:', error);
+            res.status(500).json({
+                ok: false,
+                message: 'Error al eliminar la foto'
+            });
         }
     },
 
@@ -146,11 +277,102 @@ const PetController = {
             
             // Obtener URL de descarga directa
             const downloadUrl = getDownloadUrl(photoId);
-            res.json({ downloadUrl });
+            res.json({
+                ok: true,
+                downloadUrl
+            });
             
         } catch (error) {
             console.error('Error al descargar foto:', error);
-            res.status(500).json({ message: 'Error al descargar foto' });
+            res.status(500).json({
+                ok: false,
+                message: 'Error al descargar foto'
+            });
+        }
+    },
+
+    updatePetStatus: async (req, res) => {
+        try {
+            const { id } = req.params;
+            const { status } = req.body;
+            const userId = req.user.id;
+
+            // Verificar si el estado es válido
+            const validStatuses = ['available', 'adopted', 'lost', 'found'];
+            if (!validStatuses.includes(status)) {
+                return res.status(400).json({
+                    ok: false,
+                    message: 'Estado no válido'
+                });
+            }
+
+            // Actualizar el estado de la mascota
+            const pet = await PetModel.findOneAndUpdate(
+                { _id: id, owner: userId },
+                { status },
+                { new: true }
+            );
+
+            if (!pet) {
+                return res.status(404).json({
+                    ok: false,
+                    message: 'Mascota no encontrada o no autorizado'
+                });
+            }
+
+            res.status(200).json({
+                ok: true,
+                message: 'Estado actualizado exitosamente',
+                pet
+            });
+
+        } catch (error) {
+            console.error('Error al actualizar estado:', error);
+            res.status(500).json({
+                ok: false,
+                message: 'Error al actualizar el estado'
+            });
+        }
+    },
+
+    updatePetLocation: async (req, res) => {
+        try {
+            const { id } = req.params;
+            const { city, address, coordinates } = req.body;
+            const userId = req.user.id;
+
+            // Actualizar la ubicación de la mascota
+            const pet = await PetModel.findOneAndUpdate(
+                { _id: id, owner: userId },
+                { 
+                    location: {
+                        city,
+                        address,
+                        coordinates
+                    }
+                },
+                { new: true }
+            );
+
+            if (!pet) {
+                return res.status(404).json({
+                    ok: false,
+                    message: 'Mascota no encontrada o no autorizado'
+                });
+            }
+
+            res.status(200).json({
+                ok: true,
+                message: 'Ubicación actualizada exitosamente',
+                pet
+            });
+
+        } catch (error) {
+            console.error('Error al actualizar ubicación:', error);
+            res.status(500).json({
+                ok: false,
+                message: 'Error al actualizar la ubicación'
+            });
         }
     }
 };

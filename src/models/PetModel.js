@@ -1,47 +1,52 @@
 const mongoose = require('mongoose');
 
-
 const petSchema = new mongoose.Schema({
-    name: { 
-        type: String, 
-        required: true,
-        trim: true,
-        minlength: 2,
-        maxlength: 50 
-    },
-    species: { 
-        type: String, 
-        required: true,
-        enum: ['dog', 'cat', 'bird', 'other']
-    },
-    breed: { 
-        type: String,
-        trim: true,
-        maxlength: 50 
-    },
-    age: { 
-        type: Number, 
-        min: 0,
-        max: 50 
-    },
-    description: { 
-        type: String,
-        trim: true,
-        maxlength: 500 
-    },
-    photos: [{ 
-        type: String, 
-        match: [/^https?:\/\/.+\.(jpg|jpeg|png|gif)$/i, 'Formato de imagen inválido']
-    }],
-    owner: { 
-        type: mongoose.Schema.Types.ObjectId, 
+    owner: {
+        type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
         required: true
     },
-    status: {
+    name: {
         type: String,
-        enum: ['available', 'adopted', 'lost', 'found'],
-        default: 'available'
+        required: true,
+        trim: true
+    },
+    gender: {
+        type: String,
+        default: 'No especificado',
+        enum: ['Macho', 'Hembra']
+    },
+    species: {
+        type: String,
+        default: 'No especificado'
+    },
+    breed: {
+        type: String,
+        default: 'No especificado'
+    },
+    age: {
+        type: String,
+        default: 'No especificado'
+    },
+    description: {
+        type: String,
+        default: ''
+    },
+    photos: [{
+        type: String
+    }],
+    is_lost: {
+        type: Boolean,
+        default: false
+    },
+    created_at: {
+        type: Date,
+        default: Date.now
+    },
+    estatus: {
+        type: String,
+        enum: ['disponible', 'adoptado', 'perdido', 'encontrado'],
+        default: 'disponible'
     },
     location: {
         city: { type: String, trim: true, maxlength: 100 },

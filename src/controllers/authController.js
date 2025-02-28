@@ -6,6 +6,7 @@ const jwt = require('jsonwebtoken');
 const { sendEmail } = require('../services/emailService');
 const { handleAuthenticationSuccess, clearSession } = require('../config/session');
 const tokenService = require('../services/tokenService');
+const PetModel = require('../models/PetModel');
 
 // Validaciones comunes
 const validateEmail = (email) => {
@@ -74,11 +75,15 @@ const AuthController = {
             // Manejar autenticación
             const { accessToken, userResponse } = await handleAuthenticationSuccess(req, res, user);
 
+            // Usuario nuevo, no tiene mascotas
+            const hasPets = false;
+
             return res.status(201).json({
                 ok: true,
                 message: 'Usuario registrado exitosamente',
                 accessToken,
-                user: userResponse
+                user: userResponse,
+                hasPets
             });
 
         } catch (error) {
@@ -125,6 +130,9 @@ const AuthController = {
                 });
             }
 
+            // Verificar si el usuario tiene mascotas
+            const hasPets = await PetModel.exists({ owner: user._id });
+
             // Manejar autenticación
             const { accessToken, userResponse } = await handleAuthenticationSuccess(req, res, user);
 
@@ -132,7 +140,8 @@ const AuthController = {
                 ok: true,
                 message: 'Login exitoso',
                 accessToken,
-                user: userResponse
+                user: userResponse,
+                hasPets
             });
 
         } catch (error) {
@@ -304,11 +313,15 @@ const AuthController = {
         try {
             const { accessToken, userResponse } = await handleAuthenticationSuccess(req, res, req.user);
 
+            // Verificar si el usuario tiene mascotas
+            const hasPets = await PetModel.exists({ owner: req.user._id });
+
             const responseData = {
                 ok: true,
                 message: 'Login con Google exitoso',
                 accessToken,
-                user: userResponse
+                user: userResponse,
+                hasPets
             };
 
             res.send(`
@@ -319,7 +332,7 @@ const AuthController = {
                             window.opener.postMessage(${JSON.stringify(responseData)}, '${process.env.FRONTEND_URL}');
                             window.close();
                         } else {
-                            window.location.href = '${process.env.FRONTEND_URL}/step-pet';
+                            window.location.href = '${process.env.FRONTEND_URL}${hasPets ? '/home' : '/step-pet'}';
                         }
                     </script>
                 </body>
