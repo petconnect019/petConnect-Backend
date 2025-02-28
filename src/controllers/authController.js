@@ -75,15 +75,17 @@ const AuthController = {
             // Manejar autenticación
             const { accessToken, userResponse } = await handleAuthenticationSuccess(req, res, user);
 
-            // Usuario nuevo, no tiene mascotas
+            // Usuario nuevo, no tiene mascotas y es nuevo
             const hasPets = false;
+            const isNewUser = true;
 
             return res.status(201).json({
                 ok: true,
                 message: 'Usuario registrado exitosamente',
                 accessToken,
                 user: userResponse,
-                hasPets
+                hasPets,
+                isNewUser
             });
 
         } catch (error) {
@@ -136,12 +138,16 @@ const AuthController = {
             // Manejar autenticación
             const { accessToken, userResponse } = await handleAuthenticationSuccess(req, res, user);
 
+            // No es un usuario nuevo ya que está haciendo login
+            const isNewUser = false;
+
             return res.status(200).json({
                 ok: true,
                 message: 'Login exitoso',
                 accessToken,
                 user: userResponse,
-                hasPets
+                hasPets,
+                isNewUser
             });
 
         } catch (error) {
@@ -316,12 +322,17 @@ const AuthController = {
             // Verificar si el usuario tiene mascotas
             const hasPets = await PetModel.exists({ owner: req.user._id });
 
+            // Verificar si es un usuario nuevo 
+            const isNewUser = req.user.createdAt && 
+                            (new Date() - new Date(req.user.createdAt)) < 1000; // menos de 1 segundo
+
             const responseData = {
                 ok: true,
                 message: 'Login con Google exitoso',
                 accessToken,
                 user: userResponse,
-                hasPets
+                hasPets,
+                isNewUser
             };
 
             res.send(`
@@ -332,7 +343,7 @@ const AuthController = {
                             window.opener.postMessage(${JSON.stringify(responseData)}, '${process.env.FRONTEND_URL}');
                             window.close();
                         } else {
-                            window.location.href = '${process.env.FRONTEND_URL}${hasPets ? '/home' : '/step-pet'}';
+                            window.location.href = '${process.env.FRONTEND_URL}${isNewUser || !hasPets ? '/step-pet' : '/home'}';
                         }
                     </script>
                 </body>

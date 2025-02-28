@@ -10,21 +10,12 @@ const userSchema = new mongoose.Schema({
         unique: true,
         trim: true,
         lowercase: true,
-        match: [/^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/, 'Por favor ingresa un email válido']
     },
     profile_picture: { type: String },
     role: { type: String, enum: ['user', 'admin'], default: 'user' },
     password: {
         type: String,
-        required: function() { return !this.google_id; },
-        minlength: [6, 'La contraseña debe tener al menos 6 caracteres'],
-        validate: {
-            validator: function(password) {
-                // Al menos una letra mayúscula, una minúscula y un número
-                return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{6,}$/.test(password);
-            },
-            message: 'La contraseña debe contener al menos una letra mayúscula, una minúscula y un número'
-        }
+        required: function() { return !this.google_id; }
     },
     is_profile_public: { type: Boolean, default: false },
     show_contact: { type: Boolean, default: false },
