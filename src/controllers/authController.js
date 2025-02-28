@@ -75,8 +75,9 @@ const AuthController = {
             // Manejar autenticación
             const { accessToken, userResponse } = await handleAuthenticationSuccess(req, res, user);
 
-            // Usuario nuevo, no tiene mascotas y es nuevo
-            const hasPets = false;
+            // Usuario nuevo
+            // Verificar si el usuario tiene mascotas
+            const hasPets = await PetModel.exists({ owner: user._id });
             const isNewUser = true;
 
             return res.status(201).json({
