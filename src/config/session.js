@@ -27,11 +27,10 @@ const handleAuthenticationSuccess = async (req, res, user) => {
         req.session.userId = user._id;
         req.session.userEmail = user.email;
         await req.session.save();
-        console.log('Sesión inicializada:', req.session);
+       
 
         // Generar tokens
         const { accessToken, refreshToken, expiresIn } = await tokenService.generateTokens(user);
-        console.log('Tokens generados exitosamente');
 
         // Configurar cookie para refresh token
         const cookieOptions = {
@@ -43,7 +42,7 @@ const handleAuthenticationSuccess = async (req, res, user) => {
             domain: 'localhost'
         };
 
-        console.log('Configurando cookie con opciones:', cookieOptions);
+        
         res.cookie('refreshToken', refreshToken, cookieOptions);
 
         // Configurar cookie de sesión
@@ -72,15 +71,12 @@ const handleAuthenticationSuccess = async (req, res, user) => {
             userResponse
         };
     } catch (error) {
-        console.error('Error en handleAuthenticationSuccess:', error);
         throw error;
     }
 };
 
 // Middleware para logging de sesión
 const sessionLogger = (req, res, next) => {
-    console.log('Cookies recibidas:', req.cookies);
-    console.log('Session:', req.session);
     next();
 };
 
@@ -104,7 +100,6 @@ const clearSession = async (req, res) => {
         res.clearCookie('refreshToken', { path: '/' });
         return true;
     } catch (error) {
-        console.error('Error al limpiar sesión:', error);
         return false;
     }
 };
