@@ -29,12 +29,12 @@ const PetController = {
             const petData = {
                 owner: userId,
                 name,
-                color,
-                gender,
-                species,
-                breed,
+                color: color || 'No especificado',
+                gender: gender || 'No especificado',
+                species: species || 'No especificado',
+                breed: breed || 'No especificado',
                 birthDate: new Date(birthDate),
-                description
+                description: description || ''
             };
     
             // Crear la mascota sin imagen
@@ -48,38 +48,38 @@ const PetController = {
                     pet.profile_picture = result.secure_url;
                     await pet.save();
                 } catch (uploadError) {
-                    console.error('Error al subir la imagen:', uploadError);
-                    return res.status(500).json({
-                        ok: false,
-                        message: 'Mascota creada, pero hubo un error al subir la imagen'
+                    const petObj = pet.toObject();
+                    petObj.age = pet.calculatedAge;
+                    delete petObj.id;
+                    delete petObj.calculatedAge;
+
+                    return res.status(201).json({
+                        ok: true,
+                        message: 'Mascota creada, pero hubo un error al subir la imagen',
+                        pet: petObj
                     });
                 }
             }
     
-            // Obtener la mascota con la edad calculada y limpiar datos innecesarios
-            const petWithAge = await PetModel.findById(pet._id)
-                .select('-__v -createdAt -updatedAt');
+            // Obtener la mascota con todos sus datos y limpiar la respuesta
+            const petResponse = pet.toObject();
+            petResponse.age = pet.calculatedAge;
+            
+            // Eliminar campos no deseados
+            delete petResponse.id;
+            delete petResponse.calculatedAge;
     
-            // Crear objeto de respuesta limpio
-            const responseData = {
-                ...petWithAge.toJSON(),
-                age: petWithAge.calculatedAge
-            };
-    
-            // Eliminar campos innecesarios
-            delete responseData.id;
-    
-            res.status(201).json({
+            return res.status(201).json({
                 ok: true,
                 message: 'Mascota creada exitosamente',
-                pet: responseData
+                pet: petResponse
             });
     
         } catch (error) {
-            console.error('Error al crear la mascota:', error);
-            res.status(500).json({
+            return res.status(500).json({
                 ok: false,
-                message: 'Error al crear la mascota'
+                message: 'Error al crear la mascota',
+                error: error.message
             });
         }
     },
