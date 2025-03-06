@@ -18,7 +18,7 @@ const petSchema = new mongoose.Schema({
     },
     species: {
         type: String,
-        enum: ['Gato', 'Perro', 'No especificado'],
+        enum: ['cat', 'dog','No especificado'],
         default: 'No especificado'
     },
     color:{
