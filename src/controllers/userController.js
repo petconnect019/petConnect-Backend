@@ -1,5 +1,5 @@
 const UserModel = require('../models/UserModel');
-const { uploadToCloudinary } = require('../utils/cloudinary');
+const { uploadToCloudinary, deleteFromCloudinary } = require('../utils/cloudinary');
 
 const UserController = {
     createUser: async (req, res) => {
@@ -7,7 +7,7 @@ const UserController = {
             const { google_id, name, email, profile_picture, role } = req.body;
 
             // Verificar si el usuario ya existe
-            let user = await UserModel.findOne({ 
+            let user = await UserModel.findOne({
                 $or: [
                     { google_id: google_id },
                     { email: email }
@@ -28,7 +28,7 @@ const UserController = {
             });
 
             await user.save();
-            
+
             res.status(201).json({ message: 'User created successfully', userId: user._id });
         } catch (error) {
             console.error('Error creating user:', error);
@@ -50,7 +50,7 @@ const UserController = {
         try {
             const userId = req.user.id;
             const user = await UserModel.findById(userId).select('-password');
-            
+
             if (!user) {
                 return res.status(404).json({ message: 'Usuario no encontrado' });
             }
@@ -150,24 +150,32 @@ const UserController = {
     updateProfilePicture: async (req, res) => {
         try {
             if (!req.file) {
-                return res.status(400).json({ message: 'No se ha subido ninguna imagen' });
+                return res.status(400).json({ message: 'No se ha proporcionado ninguna imagen' });
             }
-
-            // Subir imagen a Cloudinary
-            const result = await uploadToCloudinary(req.file.path);
-
-            // Actualizar el usuario con la nueva URL de la imagen
+            const oldProfilePicture = user.profile_picture;
+            const result = await uploadToCloudinary(req.file.path);   // Subir imagen a Cloudinary
             await UserModel.findByIdAndUpdate(req.user.id, {
-                profile_picture: result.secure_url
+                profile_picture: result.secure_url   // Actualizar el usuario con la nueva URL de la imagen
             });
 
+            if (oldProfilePicture) {
+                try {
+                    await deleteFromCloudinary(oldProfilePicture);
+                } catch (deleteError) {
+                    console.log('error al eliminar la foto anterior', deleteError);
+                }
+            }
             res.status(200).json({
                 message: 'Foto de perfil actualizada con éxito',
                 profile_picture: result.secure_url
             });
-        } catch (error) {
-            console.error('Error al actualizar foto de perfil:', error);
-            res.status(500).json({ message: 'Error al actualizar foto de perfil' });
+        } catch (cloudinaryError) {
+            console.error('Error al actualizar foto de perfil:', cloudinaryError);
+            return res.status({
+                ok: false,
+                message: ' Error al subir la imagen.',
+                error: cloudinaryError.message
+            });
         }
     }
 };

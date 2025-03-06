@@ -21,6 +21,11 @@ const petSchema = new mongoose.Schema({
         enum: ['Gato', 'Perro', 'No especificado'],
         default: 'No especificado'
     },
+    color:{
+        type: String ,
+        defaul: 'No especificado',
+        required: [true, 'el color es requerido']
+    },
     breed: {
         type: String,
         default: 'No especificado'

@@ -6,7 +6,7 @@ const PetController = {
     createPet: async (req, res) => {
         try {
             const userId = req.user.id;
-            const { name, gender, species, breed, birthDate, description } = req.body;
+            const { name, gender, species, breed,color, birthDate, description } = req.body;
 
             // Validar datos básicos requeridos
             if (!name || !birthDate) {
@@ -29,6 +29,7 @@ const PetController = {
             const petData = {
                 owner: userId,
                 name,
+                color,
                 gender,
                 species,
                 breed,
