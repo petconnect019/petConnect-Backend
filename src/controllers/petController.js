@@ -6,8 +6,8 @@ const PetController = {
     createPet: async (req, res) => {
         try {
             const userId = req.user.id;
-            const { name, gender, species, breed,color, birthDate, description } = req.body;
-
+            const { name, gender, species, breed, color, birthDate, description } = req.body;
+    
             // Validar datos básicos requeridos
             if (!name || !birthDate) {
                 return res.status(400).json({
@@ -15,7 +15,7 @@ const PetController = {
                     message: 'El nombre y la fecha de nacimiento son obligatorios'
                 });
             }
-
+    
             // Validar formato de fecha
             const isValidDate = !isNaN(new Date(birthDate).getTime());
             if (!isValidDate) {
@@ -24,7 +24,7 @@ const PetController = {
                     message: 'Formato de fecha inválido'
                 });
             }
-
+    
             // Crear objeto con datos básicos
             const petData = {
                 owner: userId,
@@ -36,43 +36,54 @@ const PetController = {
                 birthDate: new Date(birthDate),
                 description
             };
-
-            // Si hay una foto, procesarla
-            if (req.file) {
-                const result = await uploadToCloudinary(req.file.path);
-                petData.profile_picture = result.secure_url;
-            }
-
-            // Crear la mascota
+    
+            // Crear la mascota sin imagen
             const pet = new PetModel(petData);
             await pet.save();
-
+    
+            // Si hay una foto, procesarla después de guardar
+            if (req.file) {
+                try {
+                    const result = await uploadToCloudinary(req.file.path);
+                    pet.profile_picture = result.secure_url;
+                    await pet.save();
+                } catch (uploadError) {
+                    console.error('Error al subir la imagen:', uploadError);
+                    return res.status(500).json({
+                        ok: false,
+                        message: 'Mascota creada, pero hubo un error al subir la imagen'
+                    });
+                }
+            }
+    
             // Obtener la mascota con la edad calculada y limpiar datos innecesarios
             const petWithAge = await PetModel.findById(pet._id)
                 .select('-__v -createdAt -updatedAt');
-
+    
             // Crear objeto de respuesta limpio
             const responseData = {
                 ...petWithAge.toObject(),
                 age: petWithAge.calculatedAge
             };
-
+    
             // Eliminar campos innecesarios
             delete responseData.id;
-
+    
             res.status(201).json({
                 ok: true,
                 message: 'Mascota creada exitosamente',
                 pet: responseData
             });
-
+    
         } catch (error) {
+            console.error('Error al crear la mascota:', error);
             res.status(500).json({
                 ok: false,
                 message: 'Error al crear la mascota'
             });
         }
     },
+    
 
     getAllPets: async (req, res) => {
         try {
