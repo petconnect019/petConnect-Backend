@@ -62,7 +62,7 @@ const PetController = {
     
             // Crear objeto de respuesta limpio
             const responseData = {
-                ...petWithAge.toObject(),
+                ...petWithAge.toJSON(),
                 age: petWithAge.calculatedAge
             };
     
