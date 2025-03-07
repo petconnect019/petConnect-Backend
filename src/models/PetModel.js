@@ -24,7 +24,7 @@ const petSchema = new mongoose.Schema({
     color:{
         type: String ,
         defaul: 'No especificado',
-        required: [true, 'el color es requerido']
+      
     },
     breed: {
         type: String,
@@ -32,7 +32,7 @@ const petSchema = new mongoose.Schema({
     },
     birthDate: {
         type: Date,
-       // required: [true, 'La fecha de nacimiento es requerida']
+      
     },
     description: {
         type: String,

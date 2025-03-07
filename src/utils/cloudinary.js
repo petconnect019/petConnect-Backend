@@ -138,7 +138,7 @@ const downloadFromCloudinary = async (publicId) => {
 const getDownloadUrl = (publicId) => {
     return cloudinary.url(publicId, {
         flags: 'attachment',
-        format: 'jpg' // o el formato que prefieras
+        fetch_format: 'auto' 
     });
 };
 
