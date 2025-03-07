@@ -15,7 +15,10 @@ const UserController = {
             });
 
             if (user) {
-                return res.status(400).json({ message: 'User already exists' });
+                return res.status(400).json({ 
+                    ok: false,
+                    message: 'El usuario ya existe' 
+                });
             }
 
             // Crear el usuario
@@ -29,20 +32,34 @@ const UserController = {
 
             await user.save();
 
-            res.status(201).json({ message: 'User created successfully', userId: user._id });
+            res.status(201).json({ 
+                ok: true,
+                message: 'Usuario creado exitosamente', 
+                userId: user._id 
+            });
         } catch (error) {
-            console.error('Error creating user:', error);
-            res.status(500).json({ error: 'Internal server error' });
+            console.error('Error al crear usuario:', error);
+            res.status(500).json({ 
+                ok: false,
+                message: 'Error al crear usuario',
+                error: error.message 
+            });
         }
     },
 
     getAllUsers: async (req, res) => {
         try {
             const users = await UserModel.find({}, '-password');
-            res.status(200).json(users);
+            res.status(200).json({
+                ok: true,
+                users
+            });
         } catch (error) {
-            console.error('Error al obtener usuarios:', error);
-            res.status(500).json({ message: 'Error al obtener usuarios' });
+            res.status(500).json({
+                ok: false,
+                message: 'Error al obtener usuarios',
+                error: error.message
+            });
         }
     },
 
@@ -52,29 +69,58 @@ const UserController = {
             const user = await UserModel.findById(userId).select('-password');
 
             if (!user) {
-                return res.status(404).json({ message: 'Usuario no encontrado' });
+                return res.status(404).json({
+                    ok: false,
+                    message: 'Usuario no encontrado'
+                });
             }
 
-            res.status(200).json(user);
+            res.status(200).json({
+                ok: true,
+                user
+            });
         } catch (error) {
-            console.error('Error al obtener perfil:', error);
-            res.status(500).json({ message: 'Error al obtener perfil' });
+            res.status(500).json({
+                ok: false,
+                message: 'Error al obtener perfil',
+                error: error.message
+            });
         }
     },
 
     deleteUser: async (req, res) => {
         try {
             const userId = req.params.id;
-            const user = await UserModel.findByIdAndDelete(userId);
+            const user = await UserModel.findById(userId);
 
             if (!user) {
-                return res.status(404).json({ message: 'Usuario no encontrado' });
+                return res.status(404).json({
+                    ok: false,
+                    message: 'Usuario no encontrado'
+                });
             }
 
-            res.status(200).json({ message: 'Usuario eliminado exitosamente' });
+            // Eliminar foto de perfil de Cloudinary si existe
+            if (user.profile_picture) {
+                try {
+                    await deleteFromCloudinary(user.profile_picture);
+                } catch (deleteError) {
+                    console.error('Error al eliminar imagen de Cloudinary:', deleteError);
+                }
+            }
+
+            await UserModel.findByIdAndDelete(userId);
+
+            res.status(200).json({
+                ok: true,
+                message: 'Usuario eliminado exitosamente'
+            });
         } catch (error) {
-            console.error('Error al eliminar usuario:', error);
-            res.status(500).json({ message: 'Error al eliminar usuario' });
+            res.status(500).json({
+                ok: false,
+                message: 'Error al eliminar usuario',
+                error: error.message
+            });
         }
     },
 
@@ -84,9 +130,23 @@ const UserController = {
             const { name, city, phone } = req.body;
             let updateData = { name, city, phone };
 
+            // Si hay una nueva foto de perfil
             if (req.file) {
-                const result = await uploadToCloudinary(req.file.path);
-                updateData.profile_picture = result.secure_url;
+                try {
+                    const user = await UserModel.findById(userId);
+                    if (user.profile_picture) {
+                        await deleteFromCloudinary(user.profile_picture);
+                    }
+                    
+                    const result = await uploadToCloudinary(req.file.path);
+                    updateData.profile_picture = result.secure_url;
+                } catch (uploadError) {
+                    console.error('Error al procesar la imagen:', uploadError);
+                    return res.status(500).json({
+                        ok: false,
+                        message: 'Error al procesar la imagen del perfil'
+                    });
+                }
             }
 
             const user = await UserModel.findByIdAndUpdate(
@@ -96,13 +156,23 @@ const UserController = {
             );
 
             if (!user) {
-                return res.status(404).json({ message: 'Usuario no encontrado' });
+                return res.status(404).json({
+                    ok: false,
+                    message: 'Usuario no encontrado'
+                });
             }
 
-            res.status(200).json(user);
+            res.status(200).json({
+                ok: true,
+                message: 'Perfil actualizado exitosamente',
+                user
+            });
         } catch (error) {
-            console.error('Error al actualizar perfil:', error);
-            res.status(500).json({ message: 'Error al actualizar perfil' });
+            res.status(500).json({
+                ok: false,
+                message: 'Error al actualizar perfil',
+                error: error.message
+            });
         }
     },
 
@@ -121,13 +191,23 @@ const UserController = {
             );
 
             if (!user) {
-                return res.status(404).json({ message: 'Usuario no encontrado' });
+                return res.status(404).json({
+                    ok: false,
+                    message: 'Usuario no encontrado'
+                });
             }
 
-            res.status(200).json(user);
+            res.status(200).json({
+                ok: true,
+                message: 'Configuración de privacidad actualizada',
+                user
+            });
         } catch (error) {
-            console.error('Error al actualizar privacidad:', error);
-            res.status(500).json({ message: 'Error al actualizar privacidad' });
+            res.status(500).json({
+                ok: false,
+                message: 'Error al actualizar privacidad',
+                error: error.message
+            });
         }
     },
 
@@ -137,44 +217,76 @@ const UserController = {
             const user = await UserModel.findById(userId).select('-password');
 
             if (!user) {
-                return res.status(404).json({ message: 'Usuario no encontrado' });
+                return res.status(404).json({
+                    ok: false,
+                    message: 'Usuario no encontrado'
+                });
             }
 
-            res.status(200).json(user);
+            res.status(200).json({
+                ok: true,
+                user
+            });
         } catch (error) {
-            console.error('Error al obtener usuario:', error);
-            res.status(500).json({ message: 'Error al obtener usuario' });
+            res.status(500).json({
+                ok: false,
+                message: 'Error al obtener usuario',
+                error: error.message
+            });
         }
     },
 
     updateProfilePicture: async (req, res) => {
         try {
-            if (!req.file) {
-                return res.status(400).json({ message: 'No se ha proporcionado ninguna imagen' });
-            }
-            const oldProfilePicture = user.profile_picture;
-            const result = await uploadToCloudinary(req.file.path);   // Subir imagen a Cloudinary
-            await UserModel.findByIdAndUpdate(req.user.id, {
-                profile_picture: result.secure_url   // Actualizar el usuario con la nueva URL de la imagen
-            });
+            const userId = req.user.id;
 
-            if (oldProfilePicture) {
-                try {
-                    await deleteFromCloudinary(oldProfilePicture);
-                } catch (deleteError) {
-                    console.log('error al eliminar la foto anterior', deleteError);
-                }
+            if (!req.file) {
+                return res.status(400).json({
+                    ok: false,
+                    message: 'No se ha proporcionado ninguna imagen'
+                });
             }
-            res.status(200).json({
-                message: 'Foto de perfil actualizada con éxito',
-                profile_picture: result.secure_url
-            });
-        } catch (cloudinaryError) {
-            console.error('Error al actualizar foto de perfil:', cloudinaryError);
-            return res.status({
+
+            const user = await UserModel.findById(userId);
+            if (!user) {
+                return res.status(404).json({
+                    ok: false,
+                    message: 'Usuario no encontrado'
+                });
+            }
+
+            try {
+                // Eliminar foto anterior si existe
+                if (user.profile_picture) {
+                    await deleteFromCloudinary(user.profile_picture);
+                }
+
+                // Subir nueva foto
+                const result = await uploadToCloudinary(req.file.path);
+                
+                // Actualizar usuario
+                user.profile_picture = result.secure_url;
+                await user.save();
+
+                res.status(200).json({
+                    ok: true,
+                    message: 'Foto de perfil actualizada exitosamente',
+                    profile_picture: result.secure_url
+                });
+            } catch (cloudinaryError) {
+                console.error('Error con Cloudinary:', cloudinaryError);
+                res.status(500).json({
+                    ok: false,
+                    message: 'Error al procesar la imagen',
+                    error: cloudinaryError.message
+                });
+            }
+        } catch (error) {
+            console.error('Error general:', error);
+            res.status(500).json({
                 ok: false,
-                message: ' Error al subir la imagen.',
-                error: cloudinaryError.message
+                message: 'Error al actualizar la foto de perfil',
+                error: error.message
             });
         }
     }
