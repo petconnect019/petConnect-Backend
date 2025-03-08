@@ -2,10 +2,7 @@ const express = require('express');
 const passport = require("passport");
 const jwt = require('jsonwebtoken');
 const router = express.Router();
-const bcrypt = require('bcrypt');
-const UserModel = require('../models/UserModel'); 
 const AuthController = require('../controllers/authController');
-const { sendEmail } = require('../services/emailService');
 const { verifyToken } = require('../middlewares/authMiddleware');
 
 // Rutas públicas de autenticación
