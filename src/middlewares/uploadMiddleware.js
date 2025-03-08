@@ -1,6 +1,4 @@
 const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
 const UserModel = require('../models/UserModel');
 const PetModel = require('../models/PetModel');
 
@@ -11,22 +9,8 @@ const LIMITS = {
     MAX_FILES: 5                        // Máximo 5 archivos por solicitud
 };
 
-// Crear el directorio si no existe
-const uploadDir = path.join(__dirname, '../../uploads');
-if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-// Configurar almacenamiento
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, uploadDir);
-    },
-    filename: function (req, file, cb) {
-        const uniqueFilename = `${Date.now()}-${Math.round(Math.random() * 1E9)}${path.extname(file.originalname)}`;
-        cb(null, uniqueFilename);
-    }
-});
+// Configurar almacenamiento en memoria
+const storage = multer.memoryStorage();
 
 // Validar tipo de archivo
 const validateFileType = (file) => {
@@ -54,7 +38,7 @@ const calculateUserStorageSize = async (userId) => {
 
         // Sumar tamaño de foto de perfil del usuario
         if (user?.profile_picture) {
-            totalSize += LIMITS.FILE_SIZE;
+            totalSize += LIMITS.FILE_SIZE; // Estimación conservadora
         }
 
         // Sumar tamaño de fotos de mascotas
@@ -62,9 +46,7 @@ const calculateUserStorageSize = async (userId) => {
             if (pet.profile_picture) {
                 totalSize += LIMITS.FILE_SIZE;
             }
-            if (pet.photos) {
-                totalSize += pet.photos.length * LIMITS.FILE_SIZE;
-            }
+            totalSize += (pet.photos?.length || 0) * LIMITS.FILE_SIZE;
         });
 
         return totalSize;
@@ -136,27 +118,9 @@ const handleUploadError = (err, req, res, next) => {
     next();
 };
 
-// Limpiar archivos temporales
-const cleanupUpload = (req, res, next) => {
-    if (req.file) {
-        fs.unlink(req.file.path, (err) => {
-            if (err) console.error('Error al eliminar archivo temporal:', err);
-        });
-    }
-    if (req.files) {
-        req.files.forEach(file => {
-            fs.unlink(file.path, (err) => {
-                if (err) console.error('Error al eliminar archivo temporal:', err);
-            });
-        });
-    }
-    next();
-};
-
 module.exports = {
     upload,
     handleUploadError,
     checkStorageLimit,
-    cleanupUpload,
     LIMITS
 }; 

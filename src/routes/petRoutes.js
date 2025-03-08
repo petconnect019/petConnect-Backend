@@ -5,65 +5,62 @@ const { verifyToken } = require('../middlewares/authMiddleware');
 const { 
     upload, 
     handleUploadError, 
-    checkStorageLimit, 
-    cleanupUpload 
+    checkStorageLimit
 } = require('../middlewares/uploadMiddleware');
 
 // Rutas públicas (no requieren autenticación)
+router.get('/download/:photoId', PetController.downloadPetPhoto); // Descargar una foto
+router.get('/user/pets', verifyToken, PetController.getPetsByOwner); // Obtener mascotas del usuario autenticado
 router.get('/', PetController.getAllPets); // Ver todas las mascotas
-router.get('/:id', PetController.getPetById); // Ver detalles de una mascota específica
 router.get('/:id/profile-picture', PetController.getProfilePicture);
+router.get('/:id/profile-picture/download', PetController.downloadProfilePicture);
+router.get('/:id/photos/download', PetController.downloadAllPhotos);
+router.get('/:id', PetController.getPetById); // Ver detalles de una mascota específica
 
 // Middleware de autenticación para rutas protegidas
 router.use(verifyToken);
 
 // Rutas protegidas (requieren autenticación)
+// Crear nueva mascota
 router.post('/', 
     checkStorageLimit,
     upload.single('photo'),
     handleUploadError,
-    PetController.createPet,
-    cleanupUpload
-); // Crear nueva mascota
+    PetController.createPet
+); 
+
+// Actualizar mascota existente
 router.put('/:id', 
     checkStorageLimit,
     upload.array('photos', 5),
     handleUploadError,
-    PetController.updatePet,
-    cleanupUpload
-); // Actualizar mascota existente
+    PetController.updatePet
+); 
 router.delete('/:id', PetController.deletePet); // Eliminar mascota
-
-// Rutas específicas del usuario
-router.get('/user/pets', PetController.getPetsByOwner); // Obtener mascotas del usuario autenticado
 
 // Rutas para manejo de fotos de perfil
 router.put('/:id/profile-picture',
     checkStorageLimit,
     upload.single('photo'),
     handleUploadError,
-    PetController.updatePetProfilePicture,
-    cleanupUpload
+    PetController.updatePetProfilePicture
 );
+
+// Eliminar foto de perfil
 router.delete('/:id/profile-picture', PetController.removeProfilePicture);
 
 // Rutas para manejo de fotos adicionales
+// Añadir fotos a una mascota
 router.post('/:id/photos',
     checkStorageLimit,
     upload.array('photos', 5),
     handleUploadError,
-    PetController.addPetPhotos,
-    cleanupUpload
-); // Añadir fotos a una mascota
+    PetController.addPetPhotos
+); 
 router.delete('/:id/photos/:photoId', PetController.deletePetPhoto); // Eliminar una foto específica
-router.get('/download/:photoId', PetController.downloadPetPhoto); // Descargar una foto
 
 // Rutas para estados especiales de mascotas
 router.put('/:id/status', PetController.updatePetStatus); // Actualizar estado (perdido, encontrado, etc.)
 router.put('/:id/location', PetController.updatePetLocation); // Actualizar ubicación
-
-// Rutas para descargar fotos
-router.get('/:id/profile-picture/download', PetController.downloadProfilePicture);
-router.get('/:id/photos/download', PetController.downloadAllPhotos);
 
 module.exports = router;

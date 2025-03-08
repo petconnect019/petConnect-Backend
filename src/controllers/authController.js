@@ -7,31 +7,18 @@ const { sendEmail } = require('../services/emailService');
 const { handleAuthenticationSuccess, clearSession } = require('../config/session');
 const tokenService = require('../services/tokenService');
 const PetModel = require('../models/PetModel');
+const AuthData = require('../data/authData');
 
-// Validaciones comunes
-const validateEmail = (email) => {
-    if (!email) return { isValid: false, error: 'El email es requerido' };
-    const emailRegex = /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/;
-    return emailRegex.test(email) 
-        ? { isValid: true }
-        : { isValid: false, error: 'Formato de email inválido' };
-};
-
-const validatePassword = (password) => {
-    if (!password) return { isValid: false, error: 'La contraseña es requerida' };
-    return password.length >= 6
-        ? { isValid: true }
-        : { isValid: false, error: 'La contraseña debe tener al menos 6 caracteres' };
-};
 
 const AuthController = {
     registerUser: async (req, res) => {
         try {
-            console.log('Iniciando registro de usuario');
-            const { email, password } = req.body;
+            const { email, password, name } = req.body;
 
-            // Validar email
-            const emailValidation = validateEmail(email);
+            // Validar datos de entrada
+            const emailValidation = AuthData.validateEmail(email);
+            const passwordValidation = AuthData.validatePassword(password);
+            
             if (!emailValidation.isValid) {
                 return res.status(400).json({
                     ok: false,
@@ -39,9 +26,7 @@ const AuthController = {
                     errors: { email: emailValidation.error }
                 });
             }
-
-            // Validar contraseña
-            const passwordValidation = validatePassword(password);
+            
             if (!passwordValidation.isValid) {
                 return res.status(400).json({
                     ok: false,
@@ -49,46 +34,28 @@ const AuthController = {
                     errors: { password: passwordValidation.error }
                 });
             }
-
-            // Verificar si el usuario ya existe
-            const userExists = await UserModel.findOne({ email });
-            if (userExists) {
-                return res.status(400).json({ 
-                    ok: false,
-                    message: 'El usuario ya existe' 
+            const userData = { email, password, name };
+            
+            try {
+                const { user, isNewUser } = await AuthData.registerUser(userData);
+                const { accessToken, userResponse } = await handleAuthenticationSuccess(req, res, user);
+                
+                return res.status(201).json({
+                    ok: true,
+                    message: 'Usuario registrado exitosamente',
+                    accessToken,
+                    user: userResponse,
+                    isNewUser
                 });
+            } catch (error) {
+                if (error.message === 'El usuario ya existe') {
+                    return res.status(400).json({ 
+                        ok: false,
+                        message: 'El usuario ya existe' 
+                    });
+                }
+                throw error;
             }
-
-            // Crear nuevo usuario
-            const user = new UserModel({
-                email,
-                password,
-                name: email.split('@')[0],
-                role: 'user',
-                is_profile_public: true,
-                show_contact: true
-            });
-
-            await user.save();
-            console.log('Usuario guardado exitosamente:', user._id);
-
-            // Manejar autenticación
-            const { accessToken, userResponse } = await handleAuthenticationSuccess(req, res, user);
-
-            // Usuario nuevo
-            // Verificar si el usuario tiene mascotas
-            const hasPets = await PetModel.exists({ owner: user._id });
-            const isNewUser = true;
-
-            return res.status(201).json({
-                ok: true,
-                message: 'Usuario registrado exitosamente',
-                accessToken,
-                user: userResponse,
-                hasPets,
-                isNewUser
-            });
-
         } catch (error) {
             console.error('Error en registro:', error);
             return res.status(500).json({ 
@@ -101,21 +68,17 @@ const AuthController = {
 
     loginUser: async (req, res) => {
         try {
-            console.log('Iniciando proceso de login');
             const { email, password } = req.body;
-
-            // Validar email
-            const emailValidation = validateEmail(email);
+            const emailValidation = AuthData.validateEmail(email);
+            const passwordValidation = AuthData.validatePassword(password);
+            
             if (!emailValidation.isValid) {
                 return res.status(400).json({
                     ok: false,
                     message: emailValidation.error,
                     errors: { email: emailValidation.error }
                 });
-            }
-
-            // Validar contraseña
-            const passwordValidation = validatePassword(password);
+            }            
             if (!passwordValidation.isValid) {
                 return res.status(400).json({
                     ok: false,
@@ -123,34 +86,26 @@ const AuthController = {
                     errors: { password: passwordValidation.error }
                 });
             }
+            try {
+                const { user, hasPets, isNewUser } = await AuthData.loginUser(email, password);
+                const { accessToken } = await handleAuthenticationSuccess(req, res, user);
 
-            // Buscar usuario y verificar credenciales
-            const user = await UserModel.findOne({ email });
-            if (!user || !(await bcrypt.compare(password, user.password))) {
-                return res.status(400).json({
-                    ok: false,
-                    message: 'Credenciales inválidas'
+                return res.status(200).json({
+                    ok: true,
+                    accessToken,
+                    user,
+                    hasPets,
+                    isNewUser
                 });
+            } catch (error) {
+                if (error.message === 'Credenciales inválidas') {
+                    return res.status(400).json({
+                        ok: false,
+                        message: 'Credenciales inválidas'
+                    });
+                }
+                throw error;
             }
-
-            // Verificar si el usuario tiene mascotas
-            const hasPets = await PetModel.exists({ owner: user._id });
-
-            // Manejar autenticación
-            const { accessToken, userResponse } = await handleAuthenticationSuccess(req, res, user);
-
-            // No es un usuario nuevo ya que está haciendo login
-            const isNewUser = false;
-
-            return res.status(200).json({
-                ok: true,
-                message: 'Login exitoso',
-                accessToken,
-                user: userResponse,
-                hasPets,
-                isNewUser
-            });
-
         } catch (error) {
             console.error('Error en login:', error);
             return res.status(500).json({
@@ -160,13 +115,12 @@ const AuthController = {
         }
     },
 
-
     requestPasswordReset: async (req, res) => {
         try {
             const { email } = req.body;
     
             // Validar email
-            const emailValidation = validateEmail(email);
+            const emailValidation = AuthData.validateEmail(email);
             if (!emailValidation.isValid) {
                 return res.status(400).json({
                     ok: false,
@@ -174,32 +128,18 @@ const AuthController = {
                 });
             }
     
-            const user = await UserModel.findOne({ email });
-            if (!user) {
+            const resetData = await AuthData.requestPasswordReset(email);
+            
+            // Si no hay datos de restablecimiento, el usuario no existe, pero no lo revelamos
+            if (!resetData) {
                 return res.status(200).json({ 
                     message: 'Si el email existe, recibirás instrucciones para restablecer tu contraseña' 
                 });
             }
     
-            const resetToken = crypto.randomBytes(32).toString('hex');
-
-            // Crear fecha actual en Colombia (UTC-5)
-            const colombiaTime = new Date();
-            // Ajustar a la zona horaria de Colombia
-            colombiaTime.setHours(colombiaTime.getHours() - 5);
-            // Agregar 5 minutos para la expiración
-            const resetTokenExpiration = new Date(colombiaTime.getTime() + 5 * 60 * 1000);
-
-          
-    
-            await UserModel.findByIdAndUpdate(user._id, {
-                reset_token: resetToken,
-                reset_token_expiration: resetTokenExpiration
-            });
-    
-            const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
+            const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetData.resetToken}`;
             await sendEmail({
-                to: email,
+                to: resetData.email,
                 subject: 'Restablecimiento de Contraseña',
                 html: `
                     <h1>Restablecimiento de Contraseña</h1>
@@ -215,7 +155,6 @@ const AuthController = {
                 ok: true,
                 message: 'Email enviado exitosamente',
             });
-    
         } catch (error) {
             console.error('Error al solicitar restablecimiento:', error);
             res.status(500).json({ 
@@ -225,8 +164,6 @@ const AuthController = {
         }
     },
     
-    
-
     resetPassword: async (req, res) => {
         try {
             const { resetToken, newPassword } = req.body;
@@ -251,33 +188,20 @@ const AuthController = {
                 });
             }
 
-            // Ajustar la hora actual a Colombia 
-            const colombiaTime = new Date(new Date().getTime() - (5 * 60 * 60 * 1000));
-
-            // Buscar usuario con token válido
-            const user = await UserModel.findOne({
-                reset_token: resetToken,
-                reset_token_expiration: { $gt: colombiaTime }
-            });
-
-            if (!user) {
-                return res.status(400).json({ 
-                    message: 'Token inválido o expirado' 
+            try {
+                await AuthData.resetPassword(resetToken, newPassword);
+                
+                res.status(200).json({ 
+                    message: 'Contraseña restablecida con éxito' 
                 });
+            } catch (error) {
+                if (error.message === 'Token inválido o expirado') {
+                    return res.status(400).json({ 
+                        message: 'Token inválido o expirado' 
+                    });
+                }
+                throw error;
             }
-
-            // Actualizar contraseña y limpiar token
-            const hashedPassword = await bcrypt.hash(newPassword, 10);
-            await UserModel.findByIdAndUpdate(user._id, {
-                password: hashedPassword,
-                reset_token: null,
-                reset_token_expiration: null
-            });
-
-            res.status(200).json({ 
-                message: 'Contraseña restablecida con éxito' 
-            });
-
         } catch (error) {
             console.error('Error al restablecer contraseña:', error);
             res.status(500).json({ 
@@ -285,47 +209,50 @@ const AuthController = {
             });
         }
     },
+    
     changePassword: async (req, res) => {
         try {
-            const userId = req.user.id; // Asumiendo que el middleware de autenticación añade el ID del usuario al objeto req
+            const userId = req.user.id;
             const { currentPassword, newPassword } = req.body;
 
-            // Verificar que el usuario existe
-            const user = await UserModel.findById(userId);
-            if (!user) {
-                return res.status(404).json({ message: 'Usuario no encontrado' });
+            try {
+                await AuthData.changePassword(userId, currentPassword, newPassword);
+                
+                res.status(200).json({ 
+                    message: 'Contraseña actualizada exitosamente' 
+                });
+            } catch (error) {
+                if (error.message === 'Usuario no encontrado') {
+                    return res.status(404).json({ 
+                        message: 'Usuario no encontrado' 
+                    });
+                }
+                if (error.message === 'Contraseña actual incorrecta') {
+                    return res.status(400).json({ 
+                        message: 'Contraseña actual incorrecta' 
+                    });
+                }
+                throw error;
             }
-
-            // Verificar la contraseña actual
-            const isMatch = await bcrypt.compare(currentPassword, user.password);
-            if (!isMatch) {
-                return res.status(400).json({ message: 'Contraseña actual incorrecta' });
-            }
-
-            // Hashear la nueva contraseña
-            const hashedPassword = await bcrypt.hash(newPassword, 10);
-
-            // Actualizar la contraseña
-            user.password = hashedPassword;
-            await user.save();
-
-            res.status(200).json({ message: 'Contraseña actualizada exitosamente' });
         } catch (error) {
             console.error('Error al cambiar la contraseña:', error);
-            res.status(500).json({ message: 'Error al cambiar la contraseña' });
+            res.status(500).json({ 
+                message: 'Error al cambiar la contraseña' 
+            });
         }
     },
 
     googleAuthCallback: async (req, res) => {
         try {
-            const { accessToken, userResponse } = await handleAuthenticationSuccess(req, res, req.user);
+            const { accessToken } = await handleAuthenticationSuccess(req, res, req.user);
 
-            // Verificar si el usuario tiene mascotas
-            const hasPets = await PetModel.exists({ owner: req.user._id });
-
-            // Verificar si es un usuario nuevo 
-            const isNewUser = req.user.createdAt && 
-                            (new Date() - new Date(req.user.createdAt)) < 1000; // menos de 1 segundo
+            // Verificar si el usuario tiene mascotas y si es nuevo
+            const { hasPets,userResponse, isNewUser } = await AuthData.findOrCreateGoogleUser({
+                id: req.user.google_id,
+                emails: [{ value: req.user.email }],
+                displayName: req.user.name,
+                photos: [{ value: req.user.profile_picture }]
+            });
 
             const responseData = {
                 ok: true,

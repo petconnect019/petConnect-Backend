@@ -39,7 +39,7 @@ if (process.env.NODE_ENV === 'development') {
 // Rutas API
 app.use('/api', routes);
 
-// Ruta de estado del servidor
+// Ruta de estado del servidor prueba el backend en el navegador (localhost:5000)
 app.get('/', (_, res) => res.send('🚀 PetConnect Backend funcionando!'));
 
 // Inicialización del servidor

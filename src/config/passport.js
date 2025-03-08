@@ -5,7 +5,7 @@ require('dotenv').config();
 
 // Verificar que las variables de entorno estén definidas
 if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
-    console.error('Error: Google OAuth credentials are not configured');
+    console.error('Error: Google OAuth credentials no estan configuradas');
     process.exit(1);
 }
 

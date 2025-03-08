@@ -5,8 +5,7 @@ const { verifyToken, isAdmin } = require('../middlewares/authMiddleware');
 const { 
     upload, 
     handleUploadError, 
-    checkStorageLimit, 
-    cleanupUpload 
+    checkStorageLimit
 } = require('../middlewares/uploadMiddleware');
 
 // Rutas protegidas (requieren autenticación)
@@ -22,16 +21,14 @@ router.put('/profile',
     checkStorageLimit,
     upload.single('profile_picture'),
     handleUploadError,
-    UserController.updateProfile,
-    cleanupUpload
+    UserController.updateProfile
 );
 router.put('/privacy', UserController.updatePrivacy);
 router.put('/profile/picture', 
     checkStorageLimit,
     upload.single('profile_picture'),
     handleUploadError,
-    UserController.updateProfilePicture,
-    cleanupUpload
+    UserController.updateProfilePicture
 );
 
 // Ruta pública (debe ir al final para evitar conflictos con otras rutas)

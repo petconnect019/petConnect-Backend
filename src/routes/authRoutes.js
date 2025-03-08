@@ -8,11 +8,13 @@ const AuthController = require('../controllers/authController');
 const { sendEmail } = require('../services/emailService');
 const { verifyToken } = require('../middlewares/authMiddleware');
 
-// Rutas públicas
-router.post('/register', AuthController.registerUser);
+// Rutas públicas de autenticación
 router.post('/login', AuthController.loginUser);
-router.post('/refresh', AuthController.refreshToken);
 router.post('/logout', AuthController.logout);
+router.post('/register', AuthController.registerUser);
+router.post('/refresh', AuthController.refreshToken);
+
+// Rutas públicas de gestión de contraseñas
 router.post('/request-password-reset', AuthController.requestPasswordReset);
 router.post('/reset-password', AuthController.resetPassword);
 
@@ -29,11 +31,13 @@ router.get('/google/callback',
     AuthController.googleAuthCallback
 );
 
-// Rutas protegidas
+// Middleware para rutas protegidas
 router.use(verifyToken);
-router.post('/change-password', AuthController.changePassword);
 
-// Ruta para validar el token
+// Rutas protegidas que usan verificación de token:
+// - /change-password
+// - /validate
+router.post('/change-password', AuthController.changePassword);
 router.get('/validate', (req, res) => {
     const token = req.header('Authorization')?.replace('Bearer ', '');
 
