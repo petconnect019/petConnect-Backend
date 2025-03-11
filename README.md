@@ -121,19 +121,42 @@ src/
 - `POST /api/auth/login` - Inicio de sesión
 - `POST /api/auth/logout` - Cerrar sesión
 - `GET /api/auth/google` - Autenticación con Google
+- `GET /api/auth/google/callback` - Callback para autenticación con Google
+- `POST /api/auth/refresh-token` - Renovar token de acceso
 - `POST /api/auth/request-password-reset` - Solicitar reset de contraseña
+- `POST /api/auth/reset-password` - Restablecer contraseña
+- `GET /api/auth/verify-email/:token` - Verificar email
+- `POST /api/auth/resend-verification` - Reenviar email de verificación
 
 ### Usuarios
-- `GET /api/users/profile` - Obtener perfil
-- `PUT /api/users/profile` - Actualizar perfil
+- `GET /api/users/profile` - Obtener perfil propio
+- `PUT /api/users/profile` - Actualizar perfil propio
+- `PUT /api/users/password` - Cambiar contraseña
 - `PUT /api/users/privacy` - Actualizar configuración de privacidad
+- `POST /api/users/avatar` - Subir avatar
+- `DELETE /api/users/avatar` - Eliminar avatar
+- `GET /api/users/:id` - Obtener perfil de otro usuario (público)
+- `GET /api/users/:id/pets` - Obtener mascotas de un usuario (público)
+
+### Admin (Usuarios)
+- `GET /api/admin/users` - Listar todos los usuarios
+- `GET /api/admin/users/:id` - Obtener detalles de un usuario
+- `PUT /api/admin/users/:id` - Actualizar usuario
+- `DELETE /api/admin/users/:id` - Eliminar usuario
+- `PUT /api/admin/users/:id/role` - Cambiar rol de usuario
+- `GET /api/admin/stats/users` - Estadísticas de usuarios
 
 ### Mascotas
 - `POST /api/pets` - Crear mascota
-- `GET /api/pets` - Listar mascotas
+- `GET /api/pets` - Listar mascotas propias
 - `GET /api/pets/:id` - Obtener mascota
 - `PUT /api/pets/:id` - Actualizar mascota
 - `DELETE /api/pets/:id` - Eliminar mascota
+- `POST /api/pets/:id/photos` - Añadir fotos a mascota
+- `DELETE /api/pets/:id/photos/:photoId` - Eliminar foto de mascota
+- `PUT /api/pets/:id/photos/:photoId/main` - Establecer foto principal
+- `GET /api/pets/public` - Buscar mascotas públicas
+- `GET /api/pets/public/:id` - Ver perfil público de mascota
 
 ### Códigos QR
 - `POST /api/qr/generate` - Generar código QR (admin)
@@ -143,24 +166,61 @@ src/
 - `GET /api/qr/user` - Obtener QRs del usuario
 - `GET /api/qr` - Obtener todos los QRs (admin)
 - `DELETE /api/qr/:qrId` - Desactivar un QR
+- `GET /api/qr/:qrId/history` - Ver historial de escaneos de un QR
+- `GET /api/qr/stats` - Estadísticas de QRs (admin)
 
 ### Órdenes
 - `POST /api/orders` - Crear una orden de compra
 - `POST /api/orders/:orderId/confirm` - Confirmar pago de orden
 - `GET /api/orders/user` - Obtener órdenes del usuario
 - `GET /api/orders/:orderId` - Obtener detalles de una orden
+- `POST /api/orders/:orderId/cancel` - Cancelar una orden
+- `GET /api/orders/:orderId/invoice` - Descargar factura de una orden
+- `GET /api/orders` - Listar todas las órdenes (admin)
+- `PUT /api/orders/:orderId/status` - Actualizar estado de una orden (admin)
+- `GET /api/orders/stats` - Estadísticas de órdenes (admin)
 
 ### Mensajes
 - `POST /api/messages/send` - Enviar mensaje al dueño de una mascota
 - `GET /api/messages/user` - Obtener mensajes recibidos
+- `GET /api/messages/sent` - Obtener mensajes enviados
+- `GET /api/messages/:messageId` - Obtener un mensaje específico
 - `PATCH /api/messages/:messageId/read` - Marcar mensaje como leído
+- `DELETE /api/messages/:messageId` - Eliminar un mensaje
+- `POST /api/messages/:messageId/reply` - Responder a un mensaje
+- `GET /api/messages/unread-count` - Obtener cantidad de mensajes no leídos
+
+### Notificaciones
+- `GET /api/notifications` - Obtener notificaciones del usuario
+- `PATCH /api/notifications/:notificationId/read` - Marcar notificación como leída
+- `PATCH /api/notifications/read-all` - Marcar todas las notificaciones como leídas
+- `DELETE /api/notifications/:notificationId` - Eliminar una notificación
+- `GET /api/notifications/settings` - Obtener configuración de notificaciones
+- `PUT /api/notifications/settings` - Actualizar configuración de notificaciones
+
+### Reportes
+- `POST /api/reports/pet/:petId` - Reportar una mascota
+- `POST /api/reports/user/:userId` - Reportar un usuario
+- `GET /api/reports` - Listar reportes (admin)
+- `PUT /api/reports/:reportId/status` - Actualizar estado de un reporte (admin)
+- `DELETE /api/reports/:reportId` - Eliminar un reporte (admin)
 
 ### Rutas de Prueba
 - `POST /api/test/order` - Crear orden de prueba
+- `POST /api/test/order/:orderId/confirm` - Confirmar orden de prueba
+- `GET /api/test/orders` - Obtener órdenes de prueba
 - `POST /api/test/pet` - Crear mascota de prueba
+- `GET /api/test/pets` - Obtener mascotas de prueba
 - `POST /api/test/qr` - Generar QR de prueba
 - `POST /api/test/qr/link` - Vincular QR de prueba
 - `GET /api/test/qr/:qrId` - Escanear QR de prueba
+- `GET /api/test/qrs` - Obtener QRs de prueba
+
+### Archivos y Medios
+- `POST /api/uploads/image` - Subir imagen
+- `POST /api/uploads/multiple` - Subir múltiples archivos
+- `GET /api/uploads/:fileId` - Obtener archivo
+- `DELETE /api/uploads/:fileId` - Eliminar archivo
 
 ## 💾 Límites y Restricciones
 
@@ -168,6 +228,10 @@ src/
 - Límite de almacenamiento por usuario: 50MB
 - Máximo 5 fotos por mascota
 - Formatos de imagen permitidos: JPEG, PNG, GIF, WEBP
+- Límite de 10 solicitudes por minuto para endpoints públicos
+- Límite de 100 solicitudes por minuto para usuarios autenticados
+- Máximo 20 mascotas por usuario
+- Máximo 50 mensajes por día
 
 ## 🔒 Seguridad
 
@@ -177,6 +241,10 @@ src/
 - Validación de datos de entrada
 - Límites de tasa en las solicitudes
 - Sanitización de datos
+- Encabezados de seguridad HTTP
+- Protección contra ataques de fuerza bruta
+- Bloqueo de cuentas después de múltiples intentos fallidos
+- Logs de seguridad para auditoría
 
 ## 🏗️ Arquitectura del Sistema
 
@@ -215,5 +283,26 @@ Al iniciar la aplicación por primera vez, se crea automáticamente una cuenta d
 ## 🧪 Pruebas
 
 Para probar el sistema sin necesidad de configurar pagos reales, se han implementado rutas de prueba en `/api/test/` que permiten simular todo el flujo del sistema.
+
+## 📊 Monitoreo y Logs
+
+El sistema incluye monitoreo de rendimiento y logs detallados para:
+- Errores del servidor
+- Actividad de usuarios
+- Transacciones de pago
+- Escaneos de QR
+- Intentos de acceso no autorizados
+
+## 🌐 Despliegue
+
+Instrucciones para desplegar en diferentes entornos:
+
+### Producción
+```bash
+npm run build
+npm start
+```
+
+
 
 
