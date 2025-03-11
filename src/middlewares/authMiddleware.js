@@ -2,7 +2,7 @@ const jwt = require('jsonwebtoken');
 const UserModel = require('../models/UserModel');
 const tokenService = require('../services/tokenService');
 
-const verifyToken = (req, res, next) => {
+const verifyToken = async (req, res, next) => {
     try {
         const token = req.headers.authorization?.split(' ')[1];
         
@@ -10,11 +10,7 @@ const verifyToken = (req, res, next) => {
             return res.status(401).json({ message: 'Token no proporcionado' });
         }
 
-        const decoded = tokenService.verifyAccessToken(token);
-        if (!decoded) {
-            return res.status(401).json({ message: 'Token inválido' });
-        }
-
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
         req.user = decoded;
         next();
     } catch (error) {
@@ -39,7 +35,28 @@ const isAdmin = async (req, res, next) => {
     }
 };
 
+/**
+ * Middleware para autenticación opcional
+ */
+const optionalAuth = async (req, res, next) => {
+    try {
+        const token = req.headers.authorization?.split(' ')[1];
+        
+        if (!token) {
+            return next();
+        }
+        
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        req.user = decoded;
+        next();
+    } catch (error) {
+        // Si hay error en el token, continuar sin autenticar
+        next();
+    }
+};
+
 module.exports = {
     verifyToken,
-    isAdmin
+    isAdmin,
+    optionalAuth
 }; 

@@ -2,37 +2,55 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 
 const userSchema = new mongoose.Schema({
-    google_id: { type: String, unique: true, sparse: true },
-    name: { type: String },
+    google_id: {
+         type: String, 
+         unique: true, 
+         sparse: true 
+        },
+    name: {
+         type: String,
+         required: true
+        },
     email: {
         type: String,
-        required: [true, 'El email es requerido'],
         unique: true,
         trim: true,
         lowercase: true,
     },
-    profile_picture: { type: String },
-    role: { type: String, enum: ['user', 'admin'], default: 'user' },
+    profile_picture: {
+         type: String 
+        },
+    role: {
+        type: String,
+        enum: ['user', 'admin'],
+        default: 'user',
+    },
     password: {
         type: String,
-        required: function() { return !this.google_id; }
+        select: false
     },
-    is_profile_public: { type: Boolean, default: false },
-    show_contact: { type: Boolean, default: false },
-    reset_token: { type: String },
-    reset_token_expiration: { type: Date },
-    city: { type: String },
-    phone: { type: String }
-}, { timestamps: true });
-
-// Middleware pre-save para hashear la contraseña
-userSchema.pre('save', async function(next) {
-    if (this.isModified('password') && this.password) {
-        const salt = await bcrypt.genSalt(10);
-        this.password = await bcrypt.hash(this.password, salt);
+    is_profile_public: {
+         type: Boolean, 
+         default: false 
+        },
+    show_contact: { 
+        type: Boolean, 
+        default: false
+     },
+    reset_token:
+     {
+        type: String
+      },
+    reset_token_expiration: {
+         type: Date 
+        },
+    city: { 
+        type: String 
+    },
+    phone: { 
+        type: String 
     }
-    next();
-});
+}, { timestamps: true });
 
 const UserModel = mongoose.model('User', userSchema);
 

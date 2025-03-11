@@ -4,12 +4,18 @@ const router = express.Router();
 const authRoutes = require('./authRoutes');
 const userRoutes = require('./userRoutes');
 const petRoutes = require('./petRoutes');
-const adminRoutes = require('./adminRoutes');
+const qrRoutes = require('./qrRoutes');
+const orderRoutes = require('./orderRoutes');
+const messageRoutes = require('./messageRoutes');
+const testRoutes = require('./testRoutes');
 
-// Rutas principales
+// Configuración de rutas
 router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
 router.use('/pets', petRoutes);
-router.use('/admin', adminRoutes);
+router.use('/qr', qrRoutes);
+router.use('/orders', orderRoutes);
+router.use('/messages', messageRoutes);
+router.use('/test', testRoutes);
 
 module.exports = router; 

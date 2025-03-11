@@ -6,6 +6,7 @@ const passport = require('passport');
 const cookieParser = require('cookie-parser');
 const { connectDB } = require('./config/db');
 const { sessionConfig, sessionLogger } = require('./config/session');
+const { setupAdminAccount } = require('./services/setupService');
 require('./config/passport');
 const routes = require('./routes');
 
@@ -46,8 +47,9 @@ app.get('/', (_, res) => res.send('🚀 PetConnect Backend funcionando!'));
 const startServer = async () => {
     try {
         await connectDB();
+        await setupAdminAccount();
         app.listen(PORT, () => {
-            console.log(`✅ Servidor corriendo en http://localhost:${PORT}`);
+            console.log(`✅ Servidor corriendo en el puerto http://localhost:${PORT}`);
         });
     } catch (error) {
         console.error('❌ Error al iniciar el servidor:', error);

@@ -1,0 +1,15 @@
+const express = require('express');
+const router = express.Router();
+const OrderController = require('../controllers/orderController');
+const { verifyToken } = require('../middlewares/authMiddleware');
+
+// Todas las rutas requieren autenticación
+router.use(verifyToken);
+
+// Rutas de órdenes
+router.post('/', OrderController.createOrder);
+router.post('/confirm-payment', OrderController.confirmPayment);
+router.get('/', OrderController.getUserOrders);
+router.get('/:orderId', OrderController.getOrderById);
+
+module.exports = router; 

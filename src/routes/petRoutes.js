@@ -63,4 +63,12 @@ router.delete('/:id/photos/:photoId', PetController.deletePetPhoto); // Eliminar
 router.put('/:id/status', PetController.updatePetStatus); // Actualizar estado (perdido, encontrado, etc.)
 router.put('/:id/location', PetController.updatePetLocation); // Actualizar ubicación
 
+// Crear mascota con QR
+router.post('/with-qr', 
+    checkStorageLimit,
+    upload.single('photo'),
+    handleUploadError,
+    PetController.createPetWithQR
+);
+
 module.exports = router;

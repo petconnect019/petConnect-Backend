@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const PetModel = require('../models/PetModel');
 const { uploadToCloudinary, getOptimizedUrl, downloadFromCloudinary, getDownloadUrl, deleteFromCloudinary } = require('../utils/cloudinary');
 const PetData = require('../data/petData');
+const QRData = require('../data/qrData');
 
 const PetController = {
     createPet: async (req, res) => {
@@ -42,7 +43,7 @@ const PetController = {
             const mimeType = req.file ? req.file.mimetype : null;
             
             const pet = await PetData.createPet(petData, photoBuffer, mimeType);
-    
+
             res.status(201).json({
                 ok: true,
                 message: 'Mascota creada exitosamente',
@@ -58,7 +59,7 @@ const PetController = {
             });
         }
     },
-    
+
     getAllPets: async (req, res) => {
         try {
             const { page = 1, limit = 10, species, gender, status, city } = req.query;
@@ -84,7 +85,7 @@ const PetController = {
         try {
             const petId = req.params.id;
             const pet = await PetData.getPetById(petId);
-            
+
             if (!pet) {
                 return res.status(404).json({
                     ok: false,
@@ -187,7 +188,7 @@ const PetController = {
             
             // Verificar que la mascota existe y pertenece al usuario
             const pet = await PetData.getPetById(petId);
-            
+
             if (!pet) {
                 return res.status(404).json({
                     ok: false,
@@ -250,7 +251,7 @@ const PetController = {
                     message: 'Mascota no encontrada'
                 });
             }
-            
+
             if (pet.owner.toString() !== userId) {
                 return res.status(403).json({
                     ok: false,
@@ -565,6 +566,66 @@ const PetController = {
             res.status(500).json({
                 ok: false,
                 message: 'Error al descargar las fotos',
+                error: error.message
+            });
+        }
+    },
+
+    /**
+     * Crea una mascota y la vincula a un código QR
+     */
+    createPetWithQR: async (req, res) => {
+        try {
+            const userId = req.user.id;
+            const { name, gender, species, breed, color, birthDate, description, qrId } = req.body;
+
+            // Validaciones básicas
+            if (!name || !birthDate) {
+                return res.status(400).json({
+                    ok: false,
+                    message: 'El nombre y la fecha de nacimiento son obligatorios'
+                });
+            }
+
+            const petData = {
+                owner: userId,
+                name,
+                gender: gender || 'No especificado',
+                species: species || 'No especificado',
+                breed: breed || 'No especificado',
+                color: color || 'No especificado',
+                birthDate: new Date(birthDate),
+                description: description || ''
+            };
+
+            const photoBuffer = req.file ? req.file.buffer : null;
+            const mimeType = req.file ? req.file.mimetype : null;
+            
+            // Crear la mascota
+            const pet = await PetData.createPet(petData, photoBuffer, mimeType);
+
+            // Si se proporcionó un qrId, vincular la mascota al código QR
+            if (qrId) {
+                try {
+                    await QRData.linkQRToPet(qrId, pet._id);
+                } catch (qrError) {
+                    console.error('Error al vincular QR:', qrError);
+                    // No fallamos la creación de la mascota si hay un error con el QR
+                }
+            }
+
+            res.status(201).json({
+                ok: true,
+                message: 'Mascota creada exitosamente',
+                pet: pet.toObject(),
+                qrLinked: !!qrId
+            });
+
+        } catch (error) {
+            console.error('Error al crear mascota:', error);
+            res.status(500).json({
+                ok: false,
+                message: 'Error al crear la mascota',
                 error: error.message
             });
         }

@@ -61,11 +61,22 @@ const AuthData = {
     loginUser: async (email, password) => {
         try {
             // Buscar usuario y verificar credenciales
-            const user = await UserModel.findOne({ email });
+            const user = await UserModel.findOne({ email }).select('+password +role');
+            
             if (!user) {
                 throw new Error('Credenciales inválidas');
             }
+
+            // Verificar que tanto la contraseña como el hash existen
+            if (!password || !user.password) {
+                console.log('Contraseña o hash faltante:', { 
+                    hasPassword: !!password, 
+                    hasHashedPassword: !!user.password 
+                });
+                throw new Error('Credenciales inválidas');
+            }
             
+            // Comparar contraseñas
             const isMatch = await bcrypt.compare(password, user.password);
             if (!isMatch) {
                 throw new Error('Credenciales inválidas');
@@ -74,12 +85,17 @@ const AuthData = {
             // Verificar si el usuario tiene mascotas
             const hasPets = await PetModel.exists({ owner: user._id });
 
+            // Limpiar la contraseña del objeto usuario antes de devolverlo
+            const userObject = user.toObject();
+            delete userObject.password;
+
             return {
-                user,
+                user: userObject,
                 hasPets,
                 isNewUser: false
             };
         } catch (error) {
+            console.error('Error en loginUser:', error);
             throw error;
         }
     },
@@ -116,7 +132,7 @@ const AuthData = {
             throw error;
         }
     },
-
+    
     /**
      * Restablece la contraseña de un usuario
      */
