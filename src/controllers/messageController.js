@@ -1,5 +1,4 @@
-const MessageModel = require('../models/MessageModel');
-const PetModel = require('../models/PetModel');
+const messageData = require('../data/messageData');
 
 const messageController = {
     // Enviar mensaje al dueño de una mascota
@@ -7,20 +6,8 @@ const messageController = {
         try {
             const { petId, subject, content, contactInfo, location } = req.body;
             
-            // Verificar si la mascota existe
-            const pet = await PetModel.findById(petId);
-            
-            if (!pet) {
-                return res.status(404).json({
-                    success: false,
-                    message: 'Mascota no encontrada'
-                });
-            }
-            
-            // Crear el mensaje
-            const message = await MessageModel.create({
+            await messageData.sendMessageToOwner({
                 sender: req.user ? req.user.id : null,
-                receiver: pet.owner,
                 petId,
                 subject,
                 content,
@@ -34,6 +21,14 @@ const messageController = {
             });
         } catch (error) {
             console.error('Error al enviar mensaje:', error);
+            
+            if (error.message === 'Mascota no encontrada') {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Mascota no encontrada'
+                });
+            }
+            
             res.status(500).json({
                 success: false,
                 message: 'Error al enviar el mensaje',
@@ -46,9 +41,7 @@ const messageController = {
     getUserMessages: async (req, res) => {
         try {
             const userId = req.user.id;
-            const messages = await MessageModel.find({ receiver: userId })
-                .populate('petId', 'name species breed')
-                .sort({ createdAt: -1 });
+            const messages = await messageData.getUserMessages(userId);
             
             res.json({
                 success: true,
@@ -68,31 +61,9 @@ const messageController = {
     markMessageAsRead: async (req, res) => {
         try {
             const { messageId } = req.params;
+            const userId = req.user.id;
             
-            // Verificar si el mensaje existe
-            const message = await MessageModel.findById(messageId);
-            
-            if (!message) {
-                return res.status(404).json({
-                    success: false,
-                    message: 'Mensaje no encontrado'
-                });
-            }
-            
-            // Verificar si el usuario tiene permiso para marcar este mensaje
-            if (message.receiver.toString() !== req.user.id) {
-                return res.status(403).json({
-                    success: false,
-                    message: 'No tienes permiso para marcar este mensaje'
-                });
-            }
-            
-            // Actualizar el mensaje
-            const updatedMessage = await MessageModel.findByIdAndUpdate(
-                messageId,
-                { isRead: true },
-                { new: true }
-            );
+            await messageData.markMessageAsRead(messageId, userId);
             
             res.json({
                 success: true,
@@ -100,6 +71,21 @@ const messageController = {
             });
         } catch (error) {
             console.error('Error al marcar mensaje como leído:', error);
+            
+            if (error.message === 'Mensaje no encontrado') {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Mensaje no encontrado'
+                });
+            }
+            
+            if (error.message === 'No tienes permiso para marcar este mensaje') {
+                return res.status(403).json({
+                    success: false,
+                    message: 'No tienes permiso para marcar este mensaje'
+                });
+            }
+            
             res.status(500).json({
                 success: false,
                 message: 'Error al marcar el mensaje como leído',

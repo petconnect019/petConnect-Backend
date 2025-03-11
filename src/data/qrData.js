@@ -1,147 +1,201 @@
 const QRModel = require('../models/QRModel');
 const PetModel = require('../models/PetModel');
-const QRCode = require('qrcode');
 const crypto = require('crypto');
+const QRCode = require('qrcode');
 
-const QRData = {
+const qrData = {
     /**
-     * Genera un nuevo código QR sin vincular a una mascota
+     * Generar un código QR
+     * @param {string} userId - ID del usuario
+     * @returns {Promise<Object>} - El QR generado
      */
-    generateQR: async () => {
-        try {
-            // Generar un ID único para el QR
-            const qrId = crypto.randomBytes(16).toString('hex');
+    generateQR: async (userId) => {
+        const qrId = crypto.randomBytes(8).toString('hex');
+        const baseUrl = process.env.BASE_URL || 'http://localhost:5000';
+        const qrUrl = `${baseUrl}/api/qr/scan/${qrId}`;
+        const qrImage = await QRCode.toDataURL(qrUrl);
+        
+        const qr = await QRModel.create({
+            qrId,
+            userId,
+            isLinked: false,
+            isActive: true,
+            qrImage
+        });
+        
+        return qr;
+    },
+    
+    /**
+     * Generar múltiples códigos QR
+     * @param {string} userId - ID del usuario
+     * @param {number} count - Cantidad de QRs a generar
+     * @returns {Promise<Array>} - Lista de QRs generados
+     */
+    generateMultipleQRs: async (userId, count) => {
+        const qrCodes = [];
+        
+        for (let i = 0; i < count; i++) {
+            const qrId = crypto.randomBytes(8).toString('hex');
+            const baseUrl = process.env.BASE_URL || 'http://localhost:5000';
+            const qrUrl = `${baseUrl}/api/qr/scan/${qrId}`;
+            const qrImage = await QRCode.toDataURL(qrUrl);
             
-            // Crear el registro en la base de datos
-            const qrRecord = new QRModel({ qrId });
-            await qrRecord.save();
-            
-            // Generar la URL para el código QR
-            const qrURL = `${process.env.FRONTEND_URL}/scan/${qrId}`;
-            
-            // Generar el código QR como una imagen en base64
-            const qrImage = await QRCode.toDataURL(qrURL);
-            
-            return {
+            const qr = await QRModel.create({
                 qrId,
-                qrImage,
-                qrURL
-            };
-        } catch (error) {
-            throw error;
+                userId,
+                isLinked: false,
+                isActive: true,
+                qrImage
+            });
+            
+            qrCodes.push(qr);
         }
+        
+        return qrCodes;
     },
     
     /**
-     * Genera múltiples códigos QR
+     * Obtener información de un QR escaneado
+     * @param {string} qrId - ID del QR
+     * @returns {Promise<Object>} - Información del QR y la mascota vinculada (si existe)
      */
-    generateMultipleQRs: async (count) => {
-        try {
-            const qrCodes = [];
-            
-            for (let i = 0; i < count; i++) {
-                const qrCode = await QRData.generateQR();
-                qrCodes.push(qrCode);
-            }
-            
-            return qrCodes;
-        } catch (error) {
-            throw error;
+    scanQR: async (qrId) => {
+        // Buscar el QR
+        const qr = await QRModel.findOne({ qrId, isActive: true });
+        
+        if (!qr) {
+            throw new Error('QR no encontrado o inactivo');
         }
-    },
-    
-    /**
-     * Verifica si un código QR está vinculado a una mascota
-     */
-    checkQRStatus: async (qrId) => {
-        try {
-            const qrRecord = await QRModel.findOne({ qrId }).populate('petId');
-            
-            if (!qrRecord) {
-                throw new Error('Código QR no válido');
-            }
-            
+        
+        // Verificar si el QR está vinculado a una mascota
+        if (!qr.isLinked || !qr.petId) {
             return {
-                qrId: qrRecord.qrId,
-                isLinked: !!qrRecord.petId,
-                pet: qrRecord.petId
+                qrId: qr.qrId,
+                isLinked: false,
+                message: 'Este QR no está vinculado a ninguna mascota'
             };
-        } catch (error) {
-            throw error;
         }
+        
+        // Obtener información de la mascota
+        const pet = await PetModel.findById(qr.petId).populate('owner', 'name email');
+        
+        if (!pet) {
+            throw new Error('Mascota no encontrada');
+        }
+        
+        // Devolver información pública de la mascota
+        return {
+            qrId: qr.qrId,
+            isLinked: true,
+            isActive: qr.isActive,
+            pet: {
+                _id: pet._id,
+                name: pet.name,
+                species: pet.species,
+                breed: pet.breed,
+                age: pet.age,
+                color: pet.color,
+                description: pet.description,
+                owner: {
+                    _id: pet.owner._id,
+                    name: pet.owner.name
+                }
+            }
+        };
     },
     
     /**
-     * Vincula un código QR a una mascota
+     * Vincular un QR a una mascota
+     * @param {string} qrId - ID del QR
+     * @param {string} petId - ID de la mascota
+     * @param {string} userId - ID del usuario
+     * @param {string} userRole - Rol del usuario
+     * @returns {Promise<Object>} - El QR actualizado
      */
-    linkQRToPet: async (qrId, petId) => {
-        try {
-            // Verificar que el QR existe y no está vinculado
-            const qrRecord = await QRModel.findOne({ qrId });
-            
-            if (!qrRecord) {
-                throw new Error('Código QR no válido');
-            }
-            
-            if (qrRecord.petId) {
-                throw new Error('Este código QR ya está vinculado a una mascota');
-            }
-            
-            // Verificar que la mascota existe
-            const pet = await PetModel.findById(petId);
-            
-            if (!pet) {
-                throw new Error('Mascota no encontrada');
-            }
-            
-            // Vincular el QR a la mascota
-            qrRecord.petId = petId;
-            await qrRecord.save();
-            
-            return {
-                qrId: qrRecord.qrId,
-                petId: pet._id,
-                petName: pet.name
-            };
-        } catch (error) {
-            throw error;
+    linkQRToPet: async (qrId, petId, userId, userRole) => {
+        // Verificar si el QR existe
+        const qr = await QRModel.findOne({ qrId, isActive: true });
+        
+        if (!qr) {
+            throw new Error('QR no encontrado o inactivo');
         }
+        
+        // Verificar si el QR ya está vinculado
+        if (qr.isLinked) {
+            throw new Error('Este QR ya está vinculado a una mascota');
+        }
+        
+        // Verificar si la mascota existe
+        const pet = await PetModel.findById(petId);
+        
+        if (!pet) {
+            throw new Error('Mascota no encontrada');
+        }
+        
+        // Verificar si el usuario es dueño de la mascota
+        if (pet.owner.toString() !== userId && userRole !== 'admin') {
+            throw new Error('No tienes permiso para vincular este QR a esta mascota');
+        }
+        
+        // Actualizar el QR
+        const updatedQR = await QRModel.findOneAndUpdate(
+            { qrId },
+            { petId, isLinked: true },
+            { new: true }
+        );
+        
+        return updatedQR;
     },
     
     /**
-     * Obtiene todos los códigos QR
+     * Obtener todos los QRs
+     * @returns {Promise<Array>} - Lista de todos los QRs
      */
     getAllQRs: async () => {
-        try {
-            const qrRecords = await QRModel.find().populate('petId');
-            return qrRecords;
-        } catch (error) {
-            throw error;
-        }
+        const qrs = await QRModel.find().populate('petId', 'name species breed');
+        return qrs;
     },
     
     /**
-     * Desactiva un código QR
+     * Obtener QRs de un usuario
+     * @param {string} userId - ID del usuario
+     * @returns {Promise<Array>} - Lista de QRs del usuario
      */
-    deactivateQR: async (qrId) => {
-        try {
-            const qrRecord = await QRModel.findOne({ qrId });
-            
-            if (!qrRecord) {
-                throw new Error('Código QR no válido');
-            }
-            
-            qrRecord.isActive = false;
-            await qrRecord.save();
-            
-            return {
-                qrId: qrRecord.qrId,
-                isActive: false
-            };
-        } catch (error) {
-            throw error;
+    getUserQRs: async (userId) => {
+        const qrs = await QRModel.find({ userId }).populate('petId', 'name species breed');
+        return qrs;
+    },
+    
+    /**
+     * Desactivar un QR
+     * @param {string} qrId - ID del QR
+     * @param {string} userId - ID del usuario
+     * @param {string} userRole - Rol del usuario
+     * @returns {Promise<Object>} - El QR actualizado
+     */
+    deactivateQR: async (qrId, userId, userRole) => {
+        // Verificar si el QR existe
+        const qr = await QRModel.findOne({ qrId });
+        
+        if (!qr) {
+            throw new Error('QR no encontrado');
         }
+        
+        // Verificar si el usuario tiene permiso para desactivar este QR
+        if (qr.userId.toString() !== userId && userRole !== 'admin') {
+            throw new Error('No tienes permiso para desactivar este QR');
+        }
+        
+        // Actualizar el QR
+        const updatedQR = await QRModel.findOneAndUpdate(
+            { qrId },
+            { isActive: false },
+            { new: true }
+        );
+        
+        return updatedQR;
     }
 };
 
-module.exports = QRData; 
+module.exports = qrData; 
