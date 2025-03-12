@@ -15,7 +15,7 @@ const orderData = {
     createOrder: async (orderData) => {
         const { userId, quantity, shippingDetails } = orderData;
         
-        // Calcular el precio total (ejemplo: $10 por QR)
+        // Calcular el precio total 
         const totalAmount = quantity * 10;
         
         // Crear la orden en la base de datos

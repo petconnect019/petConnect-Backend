@@ -73,7 +73,7 @@ const qrData = {
             return {
                 qrId: qr.qrId,
                 isLinked: false,
-                message: 'Este QR no está vinculado a ninguna mascota'
+                message: 'Este QR no está vinculado a ninguna mascota',
             };
         }
         
@@ -89,6 +89,7 @@ const qrData = {
             qrId: qr.qrId,
             isLinked: true,
             isActive: qr.isActive,
+            redirectTo : `http://localhost:5000/api/pets/public/${pet._id}`,
             pet: {
                 _id: pet._id,
                 name: pet.name,

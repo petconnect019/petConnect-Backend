@@ -295,6 +295,10 @@ const PetData = {
             throw error;
         }
     }
+
+
+    // crear perfil publico de la mascota
+    
 };
 
 module.exports = PetData;

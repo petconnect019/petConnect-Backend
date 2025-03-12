@@ -133,8 +133,6 @@ src/
 - `PUT /api/users/profile` - Actualizar perfil propio
 - `PUT /api/users/password` - Cambiar contraseña
 - `PUT /api/users/privacy` - Actualizar configuración de privacidad
-- `POST /api/users/avatar` - Subir avatar
-- `DELETE /api/users/avatar` - Eliminar avatar
 - `GET /api/users/:id` - Obtener perfil de otro usuario (público)
 - `GET /api/users/:id/pets` - Obtener mascotas de un usuario (público)
 
@@ -145,6 +143,10 @@ src/
 - `DELETE /api/admin/users/:id` - Eliminar usuario
 - `PUT /api/admin/users/:id/role` - Cambiar rol de usuario
 - `GET /api/admin/stats/users` - Estadísticas de usuarios
+- `PUT /api/users/profile/picture` - Cambiar foto de perfil
+- `DELETE /api/users/profile/picture` - Eliminar foto de perfil
+
+
 
 ### Mascotas
 - `POST /api/pets` - Crear mascota
@@ -274,7 +276,8 @@ Esta separación de responsabilidades mejora la mantenibilidad, testabilidad y e
 
 ## 👥 Cuenta de Administrador por Defecto
 
-Al iniciar la aplicación por primera vez, se crea automáticamente una cuenta de administrador:
+Al iniciar la aplicación por primera vez, se crea
+ automáticamente una cuenta de administrador:
 - Email: admin@gmail.com
 - Contraseña: pectConnect12345
 
