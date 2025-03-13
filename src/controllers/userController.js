@@ -84,18 +84,32 @@ const UserController = {
             });
         }
     },
-
     updateProfile: async (req, res) => {
         try {
+            // Extraer datos necesarios
             const userId = req.user.id;
-            const { name, city, phone } = req.body;
-            const updateData = { name, city, phone };
+            const updateData = { 
+                name: req.body.name, 
+                city: req.body.city, 
+                phone: req.body.phone, 
+                gender: req.body.gender 
+            };
             
-            const profilePictureBuffer = req.file ? req.file.buffer : null;
-            const mimeType = req.file ? req.file.mimetype : null;
+            // Datos de la imagen si existe
+            const profilePicture = req.file ? {
+                buffer: req.file.buffer,
+                mimetype: req.file.mimetype
+            } : null;
             
-            const user = await UserData.updateProfile(userId, updateData, profilePictureBuffer, mimeType);
+            // Actualizar perfil
+            const user = await UserData.updateProfile(
+                userId, 
+                updateData, 
+                profilePicture?.buffer, 
+                profilePicture?.mimetype
+            );
             
+            // Respuesta exitosa
             res.status(200).json({
                 ok: true,
                 message: 'Perfil actualizado exitosamente',

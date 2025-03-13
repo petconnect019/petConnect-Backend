@@ -57,7 +57,9 @@ const AdminData = {
                 name: name,
                 email,
                 password: hashedPassword,
-                role: role || 'user'
+                role: role || 'user',
+                gender: gender || 'no especificado'
+
             });
 
             await newUser.save();
