@@ -571,66 +571,6 @@ const PetController = {
         }
     },
 
-    /**
-     * Crea una mascota y la vincula a un código QR
-     */
-    createPetWithQR: async (req, res) => {
-        try {
-            const userId = req.user.id;
-            const { name, gender, species, breed, color, birthDate, description, qrId } = req.body;
-
-            // Validaciones básicas
-            if (!name || !birthDate) {
-                return res.status(400).json({
-                    ok: false,
-                    message: 'El nombre y la fecha de nacimiento son obligatorios'
-                });
-            }
-
-            const petData = {
-                owner: userId,
-                name,
-                gender: gender || 'No especificado',
-                species: species || 'No especificado',
-                breed: breed || 'No especificado',
-                color: color || 'No especificado',
-                birthDate: new Date(birthDate),
-                description: description || ''
-            };
-
-            const photoBuffer = req.file ? req.file.buffer : null;
-            const mimeType = req.file ? req.file.mimetype : null;
-            
-            // Crear la mascota
-            const pet = await PetData.createPet(petData, photoBuffer, mimeType);
-
-            // Si se proporcionó un qrId, vincular la mascota al código QR
-            if (qrId) {
-                try {
-                    await QRData.linkQRToPet(qrId, pet._id);
-                } catch (qrError) {
-                    console.error('Error al vincular QR:', qrError);
-                    // No fallamos la creación de la mascota si hay un error con el QR
-                }
-            }
-
-            res.status(201).json({
-                ok: true,
-                message: 'Mascota creada exitosamente',
-                pet: pet.toObject(),
-                qrLinked: !!qrId
-            });
-
-        } catch (error) {
-            console.error('Error al crear mascota:', error);
-            res.status(500).json({
-                ok: false,
-                message: 'Error al crear la mascota',
-                error: error.message
-            });
-        }
-    },
-
     // Obtener perfil público de mascota
     getPublicProfile: async (req, res) => {
         try {
@@ -659,82 +599,9 @@ const PetController = {
         }
     },
 
-    // Reportar mascota como perdida
-    reportLost: async (req, res) => {
-        try {
-            const { petId } = req.params;
-            const { location } = req.body;
-            const userId = req.user.id;
-            
-            const updatedPet = await PetData.reportLost(petId, location, userId);
-            
-            res.json({
-                success: true,
-                pet: updatedPet,
-                message: 'Mascota reportada como perdida'
-            });
-        } catch (error) {
-            console.error('Error al reportar mascota como perdida:', error);
-            
-            if (error.message === 'Mascota no encontrada') {
-                return res.status(404).json({
-                    success: false,
-                    message: 'Mascota no encontrada'
-                });
-            }
-            
-            if (error.message === 'No tienes permiso para reportar esta mascota como perdida') {
-                return res.status(403).json({
-                    success: false,
-                    message: 'No tienes permiso para reportar esta mascota como perdida'
-                });
-            }
-            
-            res.status(500).json({
-                success: false,
-                message: 'Error al reportar la mascota como perdida',
-                error: error.message
-            });
-        }
-    },
+  
 
-    // Reportar mascota como encontrada
-    reportFound: async (req, res) => {
-        try {
-            const { petId } = req.params;
-            const userId = req.user.id;
-            
-            const updatedPet = await PetData.reportFound(petId, userId);
-            
-            res.json({
-                success: true,
-                pet: updatedPet,
-                message: 'Mascota reportada como encontrada'
-            });
-        } catch (error) {
-            console.error('Error al reportar mascota como encontrada:', error);
-            
-            if (error.message === 'Mascota no encontrada') {
-                return res.status(404).json({
-                    success: false,
-                    message: 'Mascota no encontrada'
-                });
-            }
-            
-            if (error.message === 'No tienes permiso para reportar esta mascota como encontrada') {
-                return res.status(403).json({
-                    success: false,
-                    message: 'No tienes permiso para reportar esta mascota como encontrada'
-                });
-            }
-            
-            res.status(500).json({
-                success: false,
-                message: 'Error al reportar la mascota como encontrada',
-                error: error.message
-            });
-        }
-    }
+   
 };
 
 module.exports = PetController;

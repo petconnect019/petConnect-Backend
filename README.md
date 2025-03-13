@@ -163,15 +163,10 @@ src/
 
     -- 
 - `http://localhost:5000/api/pets/67c115ad9eec126754d1eb30/profile-picture`
-- `GET /api/pets/public` - Buscar mascotas públicaS
+- `GET /api/pets/public` - Buscar mascotas públicaS -- eliminar api 
 
 ### Rutas publicas Mascotas
 - `GET /api/pets/public/:petId` - Obtener perfil público de una mascota ✅
-- `POST /api/pets/:petId/lost` - Reportar mascota como perdida  **asignarle rol USER - esta publico**❌
-- `POST /api/pets/:petId/found` - Reportar mascota como encontrada **asignarle rol USER - esta publico**❌
-
-
-
 
 ### Códigos QR
 - `POST /api/qr/generate` - Generar código QR (admin)
@@ -257,9 +252,7 @@ src/
 - `POST /api/messages/pet/:petId` - Enviar mensaje al dueño desde el perfil público (con o sin registro)
 - `GET /api/qr/:qrId/history` - Ver historial de escaneos de un QR
 
-### Gestión de Mascotas Perdidas
-- `GET /api/pets/lost` - Obtener lista de mascotas perdidas
-- `GET /api/pets/lost/nearby` - Obtener mascotas perdidas cercanas a una ubicación
+
 
 ## 💾 Límites y Restricciones
 
