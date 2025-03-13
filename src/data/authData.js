@@ -43,6 +43,7 @@ const AuthData = {
                 name: userData.name || userData.email.split('@')[0],
                 role: 'user',
                 is_profile_public: true,
+                gender : userData.gender
             });
 
             await user.save();
