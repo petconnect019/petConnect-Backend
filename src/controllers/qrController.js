@@ -61,7 +61,9 @@ const qrController = {
     scanQR: async (req, res) => {
         try {
             const { qrId } = req.params;
-            const qrInfo = await qrData.scanQR(qrId);
+            const scannerUserId = req.user ? req.user.id : null;
+            
+            const qrInfo = await qrData.scanQR(qrId, scannerUserId);
             
             res.json({
                 success: true,

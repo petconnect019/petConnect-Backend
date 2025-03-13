@@ -1,11 +1,6 @@
 const mongoose = require('mongoose');
 
 const petSchema = new mongoose.Schema({
-    owner: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        required: true
-    },
     name: {
         type: String,
         required: true,
@@ -26,6 +21,11 @@ const petSchema = new mongoose.Schema({
         defaul: 'No especificado',
       
     },
+    status:{
+        type: String,
+        enum:['Disponible','Perdido', 'Encontrado'],
+        default: 'Disponible'
+    },
     breed: {
         type: String,
         default: 'No especificado'
@@ -42,37 +42,32 @@ const petSchema = new mongoose.Schema({
         type: String,
         default: null
     },
+    medicalInfo: String,
+    owner: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+    },
     photos: [{
-        type: String
+        url: String,
+        isMain: {
+            type: Boolean,
+            default: false
+        }
     }],
-    is_lost: {
+    isLost: {
         type: Boolean,
         default: false
     },
-    created_at: {
+    lastSeenLocation: {
+        latitude: Number,
+        longitude: Number,
+        address: String
+    },
+    lostDate: Date,
+    createdAt: {
         type: Date,
         default: Date.now
-    },
-    estatus: {
-        type: String,
-        enum: ['disponible', 'adoptado', 'perdido', 'encontrado'],
-        default: 'disponible'
-    },
-    location: {
-        city: { type: String, trim: true, maxlength: 100 },
-        address: { type: String, trim: true, maxlength: 200 },
-        coordinates: {
-            latitude: { 
-                type: Number, 
-                min: -90, 
-                max: 90 
-            },
-            longitude: { 
-                type: Number, 
-                min: -180, 
-                max: 180 
-            }
-        }
     }
 }, { 
     timestamps: true,

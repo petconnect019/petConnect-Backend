@@ -2,6 +2,7 @@ const QRModel = require('../models/QRModel');
 const PetModel = require('../models/PetModel');
 const crypto = require('crypto');
 const QRCode = require('qrcode');
+const QRScanModel = require('../models/QRScanModel');
 
 const qrData = {
     /**
@@ -58,9 +59,10 @@ const qrData = {
     /**
      * Obtener información de un QR escaneado
      * @param {string} qrId - ID del QR
+     * @param {string} scannerUserId - ID del usuario que escanea el QR
      * @returns {Promise<Object>} - Información del QR y la mascota vinculada (si existe)
      */
-    scanQR: async (qrId) => {
+    scanQR: async (qrId, scannerUserId = null) => {
         // Buscar el QR
         const qr = await QRModel.findOne({ qrId, isActive: true });
         
@@ -68,40 +70,45 @@ const qrData = {
             throw new Error('QR no encontrado o inactivo');
         }
         
+        // Registrar el escaneo
+        await QRScanModel.create({
+            qrId: qr._id,
+            scannedBy: scannerUserId,
+            scanDate: new Date(),
+            location: null // Se podría añadir la ubicación si se proporciona
+        });
+        
         // Verificar si el QR está vinculado a una mascota
         if (!qr.isLinked || !qr.petId) {
             return {
                 qrId: qr.qrId,
                 isLinked: false,
-                message: 'Este QR no está vinculado a ninguna mascota',
+                message: 'Este QR no está vinculado a ninguna mascota'
             };
         }
         
-        // Obtener información de la mascota
-        const pet = await PetModel.findById(qr.petId).populate('owner', 'name email');
+        // Obtener información de la mascota usando petData
+        const petData = require('./petData');
+        const petProfile = await petData.getPublicProfile(qr.petId);
         
-        if (!pet) {
-            throw new Error('Mascota no encontrada');
+        // Determinar si el usuario que escanea puede chatear directamente
+        let canChatDirectly = false;
+        let needsRegistration = true;
+        
+        if (scannerUserId) {
+            canChatDirectly = true;
+            needsRegistration = false;
         }
         
-        // Devolver información pública de la mascota
         return {
             qrId: qr.qrId,
             isLinked: true,
             isActive: qr.isActive,
-            redirectTo : `http://localhost:5000/api/pets/public/${pet._id}`,
-            pet: {
-                _id: pet._id,
-                name: pet.name,
-                species: pet.species,
-                breed: pet.breed,
-                age: pet.age,
-                color: pet.color,
-                description: pet.description,
-                owner: {
-                    _id: pet.owner._id,
-                    name: pet.owner.name
-                }
+            pet: petProfile,
+            chatInfo: {
+                canChatDirectly,
+                needsRegistration,
+                ownerUserId: petProfile.owner._id
             }
         };
     },

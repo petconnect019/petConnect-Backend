@@ -1,5 +1,6 @@
 const PetModel = require('../models/PetModel');
 const { uploadToCloudinary, deleteFromCloudinary } = require('../utils/cloudinary');
+const UserModel = require('../models/UserModel');
 
 const PetData = {
     /**
@@ -254,7 +255,7 @@ const PetData = {
      */
     updatePetStatus: async (petId, status) => {
         try {
-            const validStatus = ['disponible', 'adoptado', 'perdido', 'encontrado'];
+            const validStatus = ['disponible', 'perdido', 'encontrado'];
             if (!validStatus.includes(status)) {
                 throw new Error('Estado no válido');
             }
@@ -294,11 +295,98 @@ const PetData = {
         } catch (error) {
             throw error;
         }
-    }
-
-
-    // crear perfil publico de la mascota
+    },
     
+    /**
+     * Obtener el perfil público de una mascota
+     * @param {string} petId - ID de la mascota
+     * @returns {Promise<Object>} - Datos públicos de la mascota
+     */
+    getPublicProfile: async (petId) => {
+        const pet = await PetModel.findById(petId)
+            .populate('owner', 'name email profilePicture')
+            .select('name species breed age color weight description isLost lastSeenLocation photos medicalInfo');
+        
+        if (!pet) {
+            throw new Error('Mascota no encontrada');
+        }
+        
+        // Formatear los datos para el perfil público
+        return {
+            _id: pet._id,
+            name: pet.name,
+            species: pet.species,
+            breed: pet.breed,
+            age: pet.age,
+            color: pet.color,
+            weight: pet.weight,
+            description: pet.description,
+            lastSeenLocation: pet.lastSeenLocation,
+            photos: pet.photos,
+            profile_picture: pet.profile_picture,
+            medicalInfo: pet.medicalInfo,
+            owner: {
+                _id: pet.owner._id,
+                name: pet.owner.name,
+                profile_picture: pet.owner.profile_picture
+            }
+        };
+    },
+
+    /**
+     * Marcar una mascota como perdida
+     * @param {string} petId - ID de la mascota
+     * @param {Object} location - Ubicación donde se perdió
+     * @param {string} userId - ID del dueño de la mascota
+     * @returns {Promise<Object>} - Mascota actualizada
+     */
+    reportLost: async (petId, location, userId) => {
+        const pet = await PetModel.findById(petId);
+        
+        if (!pet) {
+            throw new Error('Mascota no encontrada');
+        }
+        
+        // Verificar que el usuario es el dueño de la mascota
+        if (pet.owner.toString() !== userId) {
+            throw new Error('No tienes permiso para reportar esta mascota como perdida');
+        }
+        
+        pet.isLost = true;
+        pet.lastSeenLocation = location;
+        pet.lostDate = new Date();
+        
+        await pet.save();
+        
+        return pet;
+    },
+    
+    /**
+     * Marcar una mascota como encontrada
+     * @param {string} petId - ID de la mascota
+     * @param {string} userId - ID del dueño de la mascota
+     * @returns {Promise<Object>} - Mascota actualizada
+     */
+    reportFound: async (petId, userId) => {
+        const pet = await PetModel.findById(petId);
+        
+        if (!pet) {
+            throw new Error('Mascota no encontrada');
+        }
+        
+        // Verificar que el usuario es el dueño de la mascota
+        if (pet.owner.toString() !== userId) {
+            throw new Error('No tienes permiso para reportar esta mascota como encontrada');
+        }
+        
+        pet.isLost = false;
+        pet.lastSeenLocation = null;
+        pet.lostDate = null;
+        
+        await pet.save();
+        
+        return pet;
+    }
 };
 
 module.exports = PetData;

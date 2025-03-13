@@ -629,6 +629,111 @@ const PetController = {
                 error: error.message
             });
         }
+    },
+
+    // Obtener perfil público de mascota
+    getPublicProfile: async (req, res) => {
+        try {
+            const { petId } = req.params;
+            const petProfile = await PetData.getPublicProfile(petId);
+            
+            res.json({
+                success: true,
+                pet: petProfile
+            });
+        } catch (error) {
+            console.error('Error al obtener perfil público de mascota:', error);
+            
+            if (error.message === 'Mascota no encontrada') {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Mascota no encontrada'
+                });
+            }
+            
+            res.status(500).json({
+                success: false,
+                message: 'Error al obtener el perfil público de la mascota',
+                error: error.message
+            });
+        }
+    },
+
+    // Reportar mascota como perdida
+    reportLost: async (req, res) => {
+        try {
+            const { petId } = req.params;
+            const { location } = req.body;
+            const userId = req.user.id;
+            
+            const updatedPet = await PetData.reportLost(petId, location, userId);
+            
+            res.json({
+                success: true,
+                pet: updatedPet,
+                message: 'Mascota reportada como perdida'
+            });
+        } catch (error) {
+            console.error('Error al reportar mascota como perdida:', error);
+            
+            if (error.message === 'Mascota no encontrada') {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Mascota no encontrada'
+                });
+            }
+            
+            if (error.message === 'No tienes permiso para reportar esta mascota como perdida') {
+                return res.status(403).json({
+                    success: false,
+                    message: 'No tienes permiso para reportar esta mascota como perdida'
+                });
+            }
+            
+            res.status(500).json({
+                success: false,
+                message: 'Error al reportar la mascota como perdida',
+                error: error.message
+            });
+        }
+    },
+
+    // Reportar mascota como encontrada
+    reportFound: async (req, res) => {
+        try {
+            const { petId } = req.params;
+            const userId = req.user.id;
+            
+            const updatedPet = await PetData.reportFound(petId, userId);
+            
+            res.json({
+                success: true,
+                pet: updatedPet,
+                message: 'Mascota reportada como encontrada'
+            });
+        } catch (error) {
+            console.error('Error al reportar mascota como encontrada:', error);
+            
+            if (error.message === 'Mascota no encontrada') {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Mascota no encontrada'
+                });
+            }
+            
+            if (error.message === 'No tienes permiso para reportar esta mascota como encontrada') {
+                return res.status(403).json({
+                    success: false,
+                    message: 'No tienes permiso para reportar esta mascota como encontrada'
+                });
+            }
+            
+            res.status(500).json({
+                success: false,
+                message: 'Error al reportar la mascota como encontrada',
+                error: error.message
+            });
+        }
     }
 };
 

@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const PetController = require('../controllers/petController');
-const { verifyToken } = require('../middlewares/authMiddleware');
+const { verifyToken, optionalAuth } = require('../middlewares/authMiddleware');
 const { 
     upload, 
     handleUploadError, 
@@ -16,6 +16,7 @@ router.get('/:id/profile-picture', PetController.getProfilePicture);
 router.get('/:id/profile-picture/download', PetController.downloadProfilePicture);
 router.get('/:id/photos/download', PetController.downloadAllPhotos);
 router.get('/:id', PetController.getPetById); // Ver detalles de una mascota específica
+router.get('/public/:petId', optionalAuth, PetController.getPublicProfile);
 
 // Middleware de autenticación para rutas protegidas
 router.use(verifyToken);
@@ -70,5 +71,9 @@ router.post('/with-qr',
     handleUploadError,
     PetController.createPetWithQR
 );
+
+// Rutas para reportar mascota perdida/encontrada
+router.post('/:petId/lost', PetController.reportLost);
+router.post('/:petId/found', PetController.reportFound);
 
 module.exports = router;

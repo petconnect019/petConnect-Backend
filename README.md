@@ -117,53 +117,67 @@ src/
 ## 📡 Endpoints Principales
 
 ### Autenticación
-- `POST /api/auth/register` - Registro de usuario
-- `POST /api/auth/login` - Inicio de sesión
-- `POST /api/auth/logout` - Cerrar sesión
-- `GET /api/auth/google` - Autenticación con Google
-- `GET /api/auth/google/callback` - Callback para autenticación con Google
-- `POST /api/auth/refresh-token` - Renovar token de acceso
-- `POST /api/auth/request-password-reset` - Solicitar reset de contraseña
-- `POST /api/auth/reset-password` - Restablecer contraseña
-- `GET /api/auth/verify-email/:token` - Verificar email
-- `POST /api/auth/resend-verification` - Reenviar email de verificación
+- `POST /api/auth/register` - Registro de usuario ✅
+- `POST /api/auth/login` - Inicio de sesión ✅
+- `POST /api/auth/logout` - Cerrar sesión ✅
+- `GET /api/auth/google` - Autenticación con Google ✅
+- `GET /api/auth/google/callback` - Callback para autenticación con Google✅
+- `POST /api/auth/refresh-token` - Renovar token de acceso ✅
+- `POST /api/auth/request-password-reset` - Solicitar reset de contraseña✅
+- `POST /api/auth/reset-password` - Restablecer contraseña✅
+- `POST /api/auth/change-password`  -Cambiar contraseña✅
 
 ### Usuarios
-- `GET /api/users/profile` - Obtener perfil propio
-- `PUT /api/users/profile` - Actualizar perfil propio
-- `PUT /api/users/password` - Cambiar contraseña
-- `PUT /api/users/privacy` - Actualizar configuración de privacidad
-- `GET /api/users/:id` - Obtener perfil de otro usuario (público)
-- `GET /api/users/:id/pets` - Obtener mascotas de un usuario (público)
+- `GET /api/users/profile` - Obtener perfil propio ✅
+- `PUT /api/users/profile` - Actualizar perfil propio✅
+- `PUT /api/users/privacy` - Actualizar configuración de privacidad ✅
+- `GET /api/users/:id` - Obtener perfil de otro usuario (público) ✅
+- `PUT /api/users/profile/picture` - Cambiar foto de perfil ✅
+- `DELETE /api/users/profile/picture` - Eliminar foto de perfil   ❌falta
 
 ### Admin (Usuarios)
-- `GET /api/admin/users` - Listar todos los usuarios
-- `GET /api/admin/users/:id` - Obtener detalles de un usuario
-- `PUT /api/admin/users/:id` - Actualizar usuario
-- `DELETE /api/admin/users/:id` - Eliminar usuario
-- `PUT /api/admin/users/:id/role` - Cambiar rol de usuario
-- `GET /api/admin/stats/users` - Estadísticas de usuarios
-- `PUT /api/users/profile/picture` - Cambiar foto de perfil
-- `DELETE /api/users/profile/picture` - Eliminar foto de perfil
+- `GET /api/admin/users` - Listar todos los usuarios ❌falta
+- `GET /api/admin/users/:id` - Obtener detalles de un usuario ❌falta
+- `PUT /api/admin/users/:id` - Actualizar usuario  ❌falta
+- `DELETE /api/admin/users/:id` - Eliminar usuario ❌falta
+- `PUT /api/admin/users/:id/role` - Cambiar rol de usuario ❌falta
+- `GET /api/admin/stats/users` - Estadísticas de usuarios ❌falta
+- `GET /api/pets` - Listar Todas las mascotas  ✅**asignarle rol admin - esta publico**❌
+    reemmplazar: http://localhost:5000/api/admin/pets o
+
+### Reportes ADMIN
+- `POST /api/reports/pet/:petId` - Reportar una mascota ❌falta
+- `POST /api/reports/user/:userId` - Reportar un usuario❌falta
+- `GET /api/reports` - Listar reportes (admin)❌falta
+- `PUT /api/reports/:reportId/status` - Actualizar estado de un reporte (admin)❌falta
+- `DELETE /api/reports/:reportId` - Eliminar un reporte (admin)❌falta
+
+### Mascotas  Requieren token  
+- `POST /api/pets` - Crear mascota ✅
+- `GET /api/pets/user/pets ` - Obtener mascotas del usuario autenticado ✅
+- `GET /api/pets/:id` - Obtener mascota   ❌**asignar Rol**
+- `PUT /api/pets/:id` - Actualizar mascota  ✅
+- `DELETE /api/pets/:id` - Eliminar mascota ✅
+- `POST /api/pets/:id/photos` - Añadir fotos a mascota   ❌**403requiere permisos -actualizar**
+- `DELETE /api/pets/:id/photos/:photoId` - Eliminar foto de mascota  ❌**en espera**
+
+    -- 
+- `http://localhost:5000/api/pets/67c115ad9eec126754d1eb30/profile-picture`
+- `GET /api/pets/public` - Buscar mascotas públicaS
+
+### Rutas publicas Mascotas
+- `GET /api/pets/public/:petId` - Obtener perfil público de una mascota ✅
+- `POST /api/pets/:petId/lost` - Reportar mascota como perdida  **asignarle rol USER - esta publico**❌
+- `POST /api/pets/:petId/found` - Reportar mascota como encontrada **asignarle rol USER - esta publico**❌
 
 
 
-### Mascotas
-- `POST /api/pets` - Crear mascota
-- `GET /api/pets` - Listar mascotas propias
-- `GET /api/pets/:id` - Obtener mascota
-- `PUT /api/pets/:id` - Actualizar mascota
-- `DELETE /api/pets/:id` - Eliminar mascota
-- `POST /api/pets/:id/photos` - Añadir fotos a mascota
-- `DELETE /api/pets/:id/photos/:photoId` - Eliminar foto de mascota
-- `PUT /api/pets/:id/photos/:photoId/main` - Establecer foto principal
-- `GET /api/pets/public` - Buscar mascotas públicas
-- `GET /api/pets/public/:id` - Ver perfil público de mascota
 
 ### Códigos QR
 - `POST /api/qr/generate` - Generar código QR (admin)
 - `POST /api/qr/generate-multiple` - Generar múltiples QRs (admin)
 - `GET /api/qr/scan/:qrId` - Escanear código QR (público)
+// crear validador de qr
 - `POST /api/qr/link` - Vincular QR a mascota
 - `GET /api/qr/user` - Obtener QRs del usuario
 - `GET /api/qr` - Obtener todos los QRs (admin)
@@ -191,6 +205,19 @@ src/
 - `DELETE /api/messages/:messageId` - Eliminar un mensaje
 - `POST /api/messages/:messageId/reply` - Responder a un mensaje
 - `GET /api/messages/unread-count` - Obtener cantidad de mensajes no leídos
+
+### Chat en Tiempo Real (WebSocket)
+- `POST /api/chat/pet/:petId/start` - Iniciar chat con el dueño de una mascota
+- `POST /api/chat/pet/:petId/message` - Enviar mensaje al dueño de una mascota
+- `POST /api/chat/finder/:finderId/pet/:petId/message` - Enviar mensaje a un usuario que encontró una mascota
+- Conexión WebSocket: `ws://localhost:5000/socket.io/?EIO=4&transport=websocket`
+- Eventos WebSocket:
+  - `send_direct_message` - Enviar mensaje directo
+  - `direct_message` - Recibir mensaje directo
+  - `pet_message` - Recibir mensaje sobre mascota
+  - `chat_request` - Recibir solicitud de chat
+  - `message_sent` - Confirmación de envío de mensaje
+  - `user_offline` - Notificación de usuario desconectado
 
 ### Notificaciones
 - `GET /api/notifications` - Obtener notificaciones del usuario
@@ -223,6 +250,16 @@ src/
 - `POST /api/uploads/multiple` - Subir múltiples archivos
 - `GET /api/uploads/:fileId` - Obtener archivo
 - `DELETE /api/uploads/:fileId` - Eliminar archivo
+
+
+### Escaneo de QR y Comunicación
+- `GET /api/qr/scan/:qrId` - Escanear código QR (público, mejorado con información de perfil)
+- `POST /api/messages/pet/:petId` - Enviar mensaje al dueño desde el perfil público (con o sin registro)
+- `GET /api/qr/:qrId/history` - Ver historial de escaneos de un QR
+
+### Gestión de Mascotas Perdidas
+- `GET /api/pets/lost` - Obtener lista de mascotas perdidas
+- `GET /api/pets/lost/nearby` - Obtener mascotas perdidas cercanas a una ubicación
 
 ## 💾 Límites y Restricciones
 
