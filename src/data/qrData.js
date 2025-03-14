@@ -86,31 +86,6 @@ const qrData = {
                 message: 'Este QR no está vinculado a ninguna mascota'
             };
         }
-        
-        // Obtener información de la mascota usando petData
-        const petData = require('./petData');
-        const petProfile = await petData.getPublicProfile(qr.petId);
-        
-        // Determinar si el usuario que escanea puede chatear directamente
-        let canChatDirectly = false;
-        let needsRegistration = true;
-        
-        if (scannerUserId) {
-            canChatDirectly = true;
-            needsRegistration = false;
-        }
-        
-        return {
-            qrId: qr.qrId,
-            isLinked: true,
-            isActive: qr.isActive,
-            pet: petProfile,
-            chatInfo: {
-                canChatDirectly,
-                needsRegistration,
-                ownerUserId: petProfile.owner._id
-            }
-        };
     },
     
     /**
