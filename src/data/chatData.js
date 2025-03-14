@@ -7,8 +7,7 @@ const chatData = {
    * Verifica si un usuario tiene acceso a un chat con el dueño de una mascota
    * @param {string} userId - ID del usuario
    * @param {string} petId - ID de la mascota
-   * @returns {Promise<boolean>} - true si tiene acceso, false si no
-   */
+    */
   async userHasAccessToPetOwnerChat(userId, petId) {
     try {
       // Verificar que la mascota existe
@@ -32,7 +31,6 @@ const chatData = {
    * Inicia un chat con el dueño de una mascota
    * @param {string} userId - ID del usuario que inicia el chat
    * @param {string} petId - ID de la mascota
-   * @returns {Promise<Object>} - Información del chat iniciado
    */
   async startChatWithPetOwner(userId, petId) {
     try {
@@ -89,7 +87,6 @@ const chatData = {
    * @param {string} petId - ID de la mascota
    * @param {string} content - Contenido del mensaje
    * @param {Object} location - Ubicación opcional
-   * @returns {Promise<Object>} - Información del mensaje enviado
    */
   async sendMessageToPetOwner(userId, petId, content, location = null) {
     try {
@@ -128,8 +125,7 @@ const chatData = {
    * @param {string} finderId - ID del usuario que encontró la mascota
    * @param {string} petId - ID de la mascota
    * @param {string} content - Contenido del mensaje
-   * @returns {Promise<Object>} - Información del mensaje enviado
-   */
+    */
   async sendMessageToPetFinder(ownerId, finderId, petId, content) {
     try {
       // Verificar que la mascota existe y pertenece al dueño

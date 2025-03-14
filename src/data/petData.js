@@ -300,7 +300,6 @@ const PetData = {
     /**
      * Obtener el perfil público de una mascota
      * @param {string} petId - ID de la mascota
-     * @returns {Promise<Object>} - Datos públicos de la mascota
      */
     getPublicProfile: async (petId) => {
         const pet = await PetModel.findById(petId)
@@ -338,7 +337,6 @@ const PetData = {
      * @param {string} petId - ID de la mascota
      * @param {Object} location - Ubicación donde se perdió
      * @param {string} userId - ID del dueño de la mascota
-     * @returns {Promise<Object>} - Mascota actualizada
      */
     reportLost: async (petId, location, userId) => {
         const pet = await PetModel.findById(petId);
@@ -365,7 +363,6 @@ const PetData = {
      * Marcar una mascota como encontrada
      * @param {string} petId - ID de la mascota
      * @param {string} userId - ID del dueño de la mascota
-     * @returns {Promise<Object>} - Mascota actualizada
      */
     reportFound: async (petId, userId) => {
         const pet = await PetModel.findById(petId);

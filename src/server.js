@@ -58,7 +58,6 @@ socketService.initialize(io);
 
 // Conexión a MongoDB
 mongoose.connect(process.env.MONGODB_URI)
-    .then(() => console.log('Conectado a MongoDB'))
     .catch(err => console.error('Error conectando a MongoDB:', err));
 
 // Ruta de estado del servidor prueba el backend en el navegador (localhost:5000)

@@ -10,7 +10,6 @@ const orderData = {
      * @param {string} orderData.userId - ID del usuario
      * @param {number} orderData.quantity - Cantidad de QRs
      * @param {Object} orderData.shippingDetails - Detalles de envío
-     * @returns {Promise<Object>} - La orden creada
      */
     createOrder: async (orderData) => {
         const { userId, quantity, shippingDetails } = orderData;
@@ -37,7 +36,6 @@ const orderData = {
     /**
      * Confirmar el pago de una orden
      * @param {string} orderId - ID de la orden
-     * @returns {Promise<Object>} - La orden actualizada y los QRs generados
      */
     confirmPayment: async (orderId) => {
         // Buscar y actualizar la orden
@@ -77,7 +75,6 @@ const orderData = {
     /**
      * Obtener todas las órdenes de un usuario
      * @param {string} userId - ID del usuario
-     * @returns {Promise<Array>} - Lista de órdenes
      */
     getUserOrders: async (userId) => {
         const orders = await OrderModel.find({ userId });
@@ -87,7 +84,6 @@ const orderData = {
     /**
      * Obtener una orden específica
      * @param {string} orderId - ID de la orden
-     * @returns {Promise<Object>} - La orden
      */
     getOrderById: async (orderId) => {
         const order = await OrderModel.findById(orderId);
@@ -104,7 +100,6 @@ const orderData = {
      * @param {string} orderId - ID de la orden
      * @param {string} userId - ID del usuario
      * @param {string} userRole - Rol del usuario
-     * @returns {Promise<boolean>} - true si tiene permiso, false si no
      */
     hasPermissionForOrder: async (orderId, userId, userRole) => {
         const order = await OrderModel.findById(orderId);
