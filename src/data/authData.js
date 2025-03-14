@@ -36,14 +36,17 @@ const AuthData = {
                 throw new Error('El usuario ya existe');
             }
 
+            // Hashear la contraseña
+            const hashedPassword = await bcrypt.hash(userData.password, 10);
+
             // Crear nuevo usuario
             const user = new UserModel({
                 email: userData.email,
-                password: userData.password,
+                password: hashedPassword, 
                 name: userData.name || userData.email.split('@')[0],
                 role: 'user',
                 is_profile_public: true,
-                gender : userData.gender
+                gender: userData.gender
             });
 
             await user.save();

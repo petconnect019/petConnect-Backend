@@ -19,6 +19,12 @@ const UserData = {
                 throw new Error('El usuario ya existe');
             }
             
+            if (userData.password) {
+                const bcrypt = require('bcrypt');
+                const salt = await bcrypt.genSalt(10);
+                userData.password = await bcrypt.hash(userData.password, salt);
+            }
+            
             // Crear el usuario
             const user = new UserModel(userData);
             await user.save();
