@@ -131,7 +131,14 @@ const qrData = {
         
         // Verificar si el QR ya está vinculado
         if (qr.isLinked) {
-            throw new Error('Este QR ya está vinculado a una mascota');
+            const petData = require('./petData');
+            const petProfile = await petData.getPublicProfile(qr.petId);
+            return {    
+                qrId: qr.qrId,
+                isLinked: true,
+                message: 'Hola me encontré a esta mascota',
+                pet: petProfile
+            };
         }
         
         // Verificar si la mascota existe
