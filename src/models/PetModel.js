@@ -18,7 +18,7 @@ const petSchema = new mongoose.Schema({
     },
     color:{
         type: String ,
-        defaul: 'No especificado',
+        default: 'No especificado',
       
     },
     status:{
@@ -55,10 +55,6 @@ const petSchema = new mongoose.Schema({
             default: false
         }
     }],
-    isLost: {
-        type: Boolean,
-        default: false
-    },
     lastSeenLocation: {
         latitude: Number,
         longitude: Number,

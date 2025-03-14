@@ -109,7 +109,6 @@ const qrData = {
             const petData = require('./petData');
             const petProfile = await petData.getPublicProfile(qr.petId);
             return {    
-                qrId: qr.qrId,
                 isLinked: true,
                 message: 'Hola me encontré a esta mascota',
                 pet: petProfile
