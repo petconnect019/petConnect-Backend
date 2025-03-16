@@ -31,12 +31,25 @@ const orderSchema = new mongoose.Schema({
         zipCode: String,
         country: String
     },
+    customerName: {
+        type: String,
+        required: true
+    },
+    customerEmail: {
+        type: String,
+        required: true
+    },
     invoiceUrl: String,
     createdAt: {
         type: Date,
         default: Date.now
     }
-});
+}, { timestamps: true });
+
+orderSchema.index({ userId: 1 });
+orderSchema.index({ status: 1 });
+orderSchema.index({ paymentId: 1 });
+orderSchema.index({ customerEmail: 1 });
 
 const OrderModel = mongoose.model('Order', orderSchema);
 

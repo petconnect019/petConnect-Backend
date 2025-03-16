@@ -1,13 +1,13 @@
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
-const UserModel = require('../models/UserModel');
+const UserModel = require('../../models/UserModel');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const { sendEmail } = require('../services/emailService');
-const { handleAuthenticationSuccess, clearSession } = require('../config/session');
-const tokenService = require('../services/tokenService');
-const PetModel = require('../models/PetModel');
-const AuthData = require('../data/authData');
+const { sendEmail } = require('../../services/emailService');
+const { handleAuthenticationSuccess, clearSession } = require('../../config/session');
+const tokenService = require('../../services/tokenService');
+const PetModel = require('../../models/PetModel');
+const AuthData = require('../../data/authData');
 
 
 const AuthController = {

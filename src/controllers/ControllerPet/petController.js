@@ -1,8 +1,8 @@
 const mongoose = require('mongoose');
-const PetModel = require('../models/PetModel');
-const { uploadToCloudinary, getOptimizedUrl, downloadFromCloudinary, getDownloadUrl, deleteFromCloudinary } = require('../utils/cloudinary');
-const PetData = require('../data/petData');
-const QRData = require('../data/qrData');
+const PetModel = require('../../models/PetModel');
+const { uploadToCloudinary, getOptimizedUrl, downloadFromCloudinary, getDownloadUrl, deleteFromCloudinary } = require('../../utils/cloudinary');
+const PetData = require('../../data/petData');
+const QRData = require('../../data/qrData');
 
 const PetController = {
     createPet: async (req, res) => {
@@ -107,39 +107,6 @@ const PetController = {
         }
     },
 
-    getProfilePicture: async (req, res) => {
-        try {
-            const petId = req.params.id;
-            const pet = await PetData.getPetById(petId);
-            
-            if (!pet) {
-                return res.status(404).json({
-                    ok: false,
-                    message: 'Mascota no encontrada'
-                });
-            }
-            
-            if (!pet.profile_picture) {
-                return res.status(404).json({
-                    ok: false,
-                    message: 'La mascota no tiene foto de perfil'
-                });
-            }
-            
-            res.status(200).json({
-                ok: true,
-                profile_picture: pet.profile_picture
-            });
-        } catch (error) {
-            console.error('Error al obtener foto de perfil:', error);
-            res.status(500).json({
-                ok: false,
-                message: 'Error al obtener la foto de perfil',
-                error: error.message
-            });
-        }
-    },
-
     updatePet: async (req, res) => {
         try {
             const petId = req.params.id;
@@ -238,107 +205,6 @@ const PetController = {
         }
     },
 
-    addPetPhotos: async (req, res) => {
-        try {
-            const petId = req.params.id;
-            const userId = req.user.id;
-            
-            // Verificar que la mascota existe y pertenece al usuario
-            const pet = await PetData.getPetById(petId);
-            if (!pet) {
-                return res.status(404).json({
-                    ok: false,
-                    message: 'Mascota no encontrada'
-                });
-            }
-
-            if (pet.owner.toString() !== userId) {
-                return res.status(403).json({
-                    ok: false,
-                    message: 'No tienes permiso para actualizar esta mascota'
-                });
-            }
-            
-            if (!req.files || req.files.length === 0) {
-                return res.status(400).json({
-                    ok: false,
-                    message: 'No se han proporcionado imágenes'
-                });
-            }
-            
-            const photoUrls = await PetData.addPetPhotos(petId, req.files);
-            
-            res.status(200).json({
-                ok: true,
-                message: 'Fotos añadidas exitosamente',
-                photos: photoUrls
-            });
-            
-        } catch (error) {
-            console.error('Error al añadir fotos:', error);
-            res.status(500).json({
-                ok: false,
-                message: 'Error al añadir fotos',
-                error: error.message
-            });
-        }
-    },
-
-    deletePetPhoto: async (req, res) => {
-        try {
-            const petId = req.params.id;
-            const photoId = req.params.photoId;
-            const userId = req.user.id;
-            
-            // Verificar que la mascota existe y pertenece al usuario
-            const pet = await PetData.getPetById(petId);
-            
-            if (!pet) {
-                return res.status(404).json({
-                    ok: false,
-                    message: 'Mascota no encontrada'
-                });
-            }
-            
-            if (pet.owner._id.toString() !== userId && req.user.role !== 'admin') {
-                return res.status(403).json({
-                    ok: false,
-                    message: 'No tienes permiso para actualizar esta mascota'
-                });
-            }
-            
-            await PetData.deletePetPhoto(petId, photoId);
-            
-            res.status(200).json({
-                ok: true,
-                message: 'Foto eliminada exitosamente'
-            });
-        } catch (error) {
-            console.error('Error al eliminar foto:', error);
-            res.status(500).json({
-                ok: false,
-                message: 'Error al eliminar la foto',
-                error: error.message
-            });
-        }
-    },
-
-    downloadPetPhoto: async (req, res) => {
-        try {
-            const photoId = req.params.photoId;
-            
-            // Redirigir a la URL de la foto
-            res.redirect(photoId);
-        } catch (error) {
-            console.error('Error al descargar foto:', error);
-            res.status(500).json({
-                ok: false,
-                message: 'Error al descargar la foto',
-                error: error.message
-            });
-        }
-    },
-
     updatePetStatus: async (req, res) => {
         try {
             const petId = req.params.id;
@@ -419,158 +285,6 @@ const PetController = {
         }
     },
 
-    updatePetProfilePicture: async (req, res) => {
-        try {
-            const petId = req.params.id;
-            const userId = req.user.id;
-            
-            // Verificar que la mascota existe y pertenece al usuario
-            const pet = await PetData.getPetById(petId);
-            if (!pet) {
-                return res.status(404).json({
-                    ok: false,
-                    message: 'Mascota no encontrada'
-                });
-            }
-            
-            if (pet.owner.toString() !== userId) {
-                return res.status(403).json({
-                    ok: false,
-                    message: 'No tienes permiso para actualizar esta mascota'
-                });
-            }
-            
-            if (!req.file) {
-                return res.status(400).json({
-                    ok: false,
-                    message: 'No se ha proporcionado ninguna imagen'
-                });
-            }
-            
-            const profilePictureUrl = await PetData.updatePetProfilePicture(
-                petId, 
-                req.file.buffer, 
-                req.file.mimetype
-            );
-            
-            res.status(200).json({
-                ok: true,
-                message: 'Foto de perfil actualizada exitosamente',
-                profile_picture: profilePictureUrl
-            });
-            
-        } catch (error) {
-            console.error('Error al actualizar foto de perfil:', error);
-            res.status(500).json({
-                ok: false,
-                message: 'Error al actualizar la foto de perfil',
-                error: error.message
-            });
-        }
-    },
-
-    removeProfilePicture: async (req, res) => {
-        try {
-            const petId = req.params.id;
-            const userId = req.user.id;
-            
-            // Verificar que la mascota existe y pertenece al usuario
-            const pet = await PetData.getPetById(petId);
-            
-            if (!pet) {
-                return res.status(404).json({
-                    ok: false,
-                    message: 'Mascota no encontrada'
-                });
-            }
-            
-            if (pet.owner._id.toString() !== userId && req.user.role !== 'admin') {
-                return res.status(403).json({
-                    ok: false,
-                    message: 'No tienes permiso para actualizar esta mascota'
-                });
-            }
-            
-            await PetData.removeProfilePicture(petId);
-            
-            res.status(200).json({
-                ok: true,
-                message: 'Foto de perfil eliminada exitosamente'
-            });
-        } catch (error) {
-            console.error('Error al eliminar foto de perfil:', error);
-            res.status(500).json({
-                ok: false,
-                message: 'Error al eliminar la foto de perfil',
-                error: error.message
-            });
-        }
-    },
-
-    downloadProfilePicture: async (req, res) => {
-        try {
-            const petId = req.params.id;
-            const pet = await PetData.getPetById(petId);
-            
-            if (!pet) {
-                return res.status(404).json({
-                    ok: false,
-                    message: 'Mascota no encontrada'
-                });
-            }
-            
-            if (!pet.profile_picture) {
-                return res.status(404).json({
-                    ok: false,
-                    message: 'La mascota no tiene foto de perfil'
-                });
-            }
-            
-            // Redirigir a la URL de descarga
-            res.redirect(pet.profile_picture);
-        } catch (error) {
-            console.error('Error al descargar foto de perfil:', error);
-            res.status(500).json({
-                ok: false,
-                message: 'Error al descargar la foto de perfil',
-                error: error.message
-            });
-        }
-    },
-
-    downloadAllPhotos: async (req, res) => {
-        try {
-            const petId = req.params.id;
-            const pet = await PetData.getPetById(petId);
-            
-            if (!pet) {
-                return res.status(404).json({
-                    ok: false,
-                    message: 'Mascota no encontrada'
-                });
-            }
-            
-            if (!pet.photos || pet.photos.length === 0) {
-                return res.status(404).json({
-                    ok: false,
-                    message: 'La mascota no tiene fotos adicionales'
-                });
-            }
-            
-            res.status(200).json({
-                ok: true,
-                photos: pet.photos
-            });
-        } catch (error) {
-            console.error('Error al descargar fotos:', error);
-            res.status(500).json({
-                ok: false,
-                message: 'Error al descargar las fotos',
-                error: error.message
-            });
-        }
-    },
-
     // Obtener perfil público de mascota
     getPublicProfile: async (req, res) => {
         try {
@@ -597,11 +311,7 @@ const PetController = {
                 error: error.message
             });
         }
-    },
-
-  
-
-   
+    }
 };
 
 module.exports = PetController;

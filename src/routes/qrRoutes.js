@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const qrController = require('../controllers/qrController');
+const qrController = require('../controllers/controllerQR/qrController');
 const { verifyToken, isAdmin, optionalAuth } = require('../middlewares/authMiddleware');
 
 // Rutas públicas

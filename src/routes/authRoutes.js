@@ -2,7 +2,7 @@ const express = require('express');
 const passport = require("passport");
 const jwt = require('jsonwebtoken');
 const router = express.Router();
-const AuthController = require('../controllers/authController');
+const AuthController = require('../controllers/controllerAuth/authController');
 const { verifyToken } = require('../middlewares/authMiddleware');
 
 // Rutas públicas de autenticación

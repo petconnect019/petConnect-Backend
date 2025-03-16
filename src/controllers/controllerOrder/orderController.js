@@ -1,12 +1,13 @@
-const orderData = require('../data/orderData');
+const orderData = require('../../data/orderData');
 
 const orderController = {
     // Crear una nueva orden
     createOrder: async (req, res) => {
         try {
-            const { quantity, shippingDetails } = req.body;
+            const { quantity, shippingDetails, customerName, customerEmail } = req.body;
             const userId = req.user.id;
 
+            // Validar campos obligatorios
             if (!quantity || quantity < 1) {
                 return res.status(400).json({
                     success: false,
@@ -14,10 +15,29 @@ const orderController = {
                 });
             }
 
+            // Validar información del cliente
+            if (!customerName || !customerEmail) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'El nombre y email del cliente son obligatorios'
+                });
+            }
+
+            // Validar formato de email
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(customerEmail)) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'El formato del email es inválido'
+                });
+            }
+
             const result = await orderData.createOrder({
                 userId,
                 quantity,
-                shippingDetails
+                shippingDetails,
+                customerName,
+                customerEmail
             });
 
             res.status(201).json({
@@ -27,7 +47,16 @@ const orderController = {
             });
         } catch (error) {
             console.error('Error al crear orden:', error);
-            res.status(500).json({
+            
+            // Determinar el código de estado HTTP apropiado
+            let statusCode = 500;
+            if (error.message.includes('Usuario no encontrado')) {
+                statusCode = 404;
+            } else if (error.message.includes('Solicitud inválida')) {
+                statusCode = 400;
+            }
+            
+            res.status(statusCode).json({
                 success: false,
                 message: 'Error al crear la orden',
                 error: error.message
@@ -39,8 +68,14 @@ const orderController = {
     confirmPayment: async (req, res) => {
         try {
             const { orderId } = req.params;
+            let { forceConfirm = false } = req.body;
             
-            const result = await orderData.confirmPayment(orderId);
+            // Restringir forceConfirm solo a entornos de desarrollo
+            if (process.env.NODE_ENV === 'production') {
+                forceConfirm = false;
+            }
+            
+            const result = await orderData.confirmPayment(orderId, forceConfirm);
             
             res.json({
                 success: true,
@@ -50,14 +85,17 @@ const orderController = {
         } catch (error) {
             console.error('Error al confirmar pago:', error);
             
+            // Determinar el código de estado HTTP apropiado
+            let statusCode = 500;
             if (error.message === 'Orden no encontrada') {
-                return res.status(404).json({
-                    success: false,
-                    message: 'Orden no encontrada'
-                });
+                statusCode = 404;
+            } else if (error.message.includes('El pago no ha sido completado')) {
+                statusCode = 400;
+            } else if (error.message.includes('PaymentIntent no encontrado')) {
+                statusCode = 404;
             }
             
-            res.status(500).json({
+            res.status(statusCode).json({
                 success: false,
                 message: 'Error al confirmar el pago',
                 error: error.message
@@ -111,14 +149,13 @@ const orderController = {
         } catch (error) {
             console.error('Error al obtener orden:', error);
             
+            // Determinar el código de estado HTTP apropiado
+            let statusCode = 500;
             if (error.message === 'Orden no encontrada') {
-                return res.status(404).json({
-                    success: false,
-                    message: 'Orden no encontrada'
-                });
+                statusCode = 404;
             }
             
-            res.status(500).json({
+            res.status(statusCode).json({
                 success: false,
                 message: 'Error al obtener la orden',
                 error: error.message

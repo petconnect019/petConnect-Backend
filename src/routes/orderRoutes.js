@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const OrderController = require('../controllers/orderController');
+const OrderController = require('../controllers/ControllerOrder/orderController');
 const { verifyToken } = require('../middlewares/authMiddleware');
 
 // Todas las rutas requieren autenticación

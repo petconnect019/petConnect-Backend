@@ -1,4 +1,4 @@
-const UserData = require('../data/userData');
+const UserData = require('../../data/userData');
 
 const UserController = {
     createUser: async (req, res) => {

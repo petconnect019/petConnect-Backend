@@ -1,7 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const PetController = require('../controllers/petController');
-const { verifyToken, optionalAuth } = require('../middlewares/authMiddleware');
+const PetController = require('../controllers/ControllerPet/petController');
+const PhotoController = require('../controllers/ControllerPet/photoPetController');
+const ProfilePictureController = require('../controllers/ControllerPet/profilePictureController');
+const { verifyToken, optionalAuth, isPetOwnerOrAdmin } = require('../middlewares/authMiddleware');
 const { 
     upload, 
     handleUploadError, 
@@ -9,12 +11,12 @@ const {
 } = require('../middlewares/uploadMiddleware');
 
 // Rutas públicas (no requieren autenticación)
-router.get('/download/:photoId', PetController.downloadPetPhoto); // Descargar una foto
+router.get('/download/:photoId', PhotoController.downloadPetPhoto); // Descargar una foto
 router.get('/user/pets', verifyToken, PetController.getPetsByOwner); // Obtener mascotas del usuario autenticado
 router.get('/', PetController.getAllPets); // Ver todas las mascotas
-router.get('/:id/profile-picture', PetController.getProfilePicture);
-router.get('/:id/profile-picture/download', PetController.downloadProfilePicture);
-router.get('/:id/photos/download', PetController.downloadAllPhotos);
+router.get('/:id/profile-picture', ProfilePictureController.getProfilePicture);
+router.get('/:id/profile-picture/download', ProfilePictureController.downloadProfilePicture);
+router.get('/:id/photos/download', PhotoController.downloadAllPhotos);
 router.get('/:id', PetController.getPetById); // Ver detalles de una mascota específica
 router.get('/public/:petId', optionalAuth, PetController.getPublicProfile);
 
@@ -44,27 +46,26 @@ router.put('/:id/profile-picture',
     checkStorageLimit,
     upload.single('photo'),
     handleUploadError,
-    PetController.updatePetProfilePicture
+    ProfilePictureController.updatePetProfilePicture
 );
 
 // Eliminar foto de perfil
-router.delete('/:id/profile-picture', PetController.removeProfilePicture);
+router.delete('/:id/profile-picture', ProfilePictureController.removeProfilePicture);
 
 // Rutas para manejo de fotos adicionales
 // Añadir fotos a una mascota
 router.post('/:id/photos',
+    verifyToken,
+    isPetOwnerOrAdmin,
     checkStorageLimit,
     upload.array('photos', 5),
     handleUploadError,
-    PetController.addPetPhotos
+    PhotoController.addPetPhotos
 ); 
-router.delete('/:id/photos/:photoId', PetController.deletePetPhoto); // Eliminar una foto específica
+router.delete('/:id/photos/:photoId', PhotoController.deletePetPhoto); // Eliminar una foto específica
 
 // Rutas para estados especiales de mascotas
 router.put('/:id/status', PetController.updatePetStatus); // Actualizar estado (perdido, encontrado, etc.)
 router.put('/:id/location', PetController.updatePetLocation); // Actualizar ubicación
-
-
-
 
 module.exports = router;

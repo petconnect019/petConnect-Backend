@@ -1,3 +1,7 @@
+/**
+ * Rutas de prueba para crear ordenes, mascotas, QRs y vincularlos
+ */
+
 const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');

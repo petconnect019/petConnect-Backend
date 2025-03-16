@@ -1,4 +1,4 @@
-const qrData = require('../data/qrData');
+const qrData = require('../../data/qrData');
 
 const qrController = {
     /**

@@ -1,4 +1,4 @@
-const AdminData = require('../data/adminData');
+const AdminData = require('../../data/adminData');
 
 const AdminController = {
     getAllUsers: async (req, res) => {

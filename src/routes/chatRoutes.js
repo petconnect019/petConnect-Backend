@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const chatController = require('../controllers/chatController');
+const chatController = require('../controllers/controllerChat/chatController');
 const { verifyToken } = require('../middlewares/authMiddleware');
 
 // Todas las rutas de chat requieren autenticación

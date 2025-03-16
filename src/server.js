@@ -33,7 +33,25 @@ app.use(morgan('dev'));
 
 // Configuración de CORS
 app.use(cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    origin: function(origin, callback) {
+        // Permitir solicitudes sin origen (como aplicaciones móviles o curl)
+        if (!origin) return callback(null, true);
+        
+        // Lista de orígenes permitidos
+        const allowedOrigins = [
+            process.env.FRONTEND_URL || 'http://localhost:5173',
+            'http://localhost:3000',
+            'http://localhost:5500',
+            'http://127.0.0.1:5500',
+            'http://localhost:8080'
+        ];
+        
+        if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV === 'development') {
+            callback(null, true);
+        } else {
+            callback(new Error('No permitido por CORS'));
+        }
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],

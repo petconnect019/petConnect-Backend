@@ -1,5 +1,5 @@
-const chatData = require('../data/chatData');
-const socketService = require('../services/socketService');
+const chatData = require('../../data/chatData');
+const socketService = require('../../services/socketService');
 
 const chatController = {
   // Obtener todos los chats del usuario

@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const AdminController = require('../controllers/adminController');
-const PetController = require('../controllers/petController');
+const AdminController = require('../controllers/controllerrAdmin/adminController');
+const PetController = require('../controllers/ControllerPet/petController');
 const { verifyToken, isAdmin } = require('../middlewares/authMiddleware');
 
 // Todas las rutas de admin requieren autenticación y rol de admin

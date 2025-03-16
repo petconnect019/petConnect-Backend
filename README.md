@@ -142,8 +142,7 @@ src/
 - `DELETE /api/admin/users/:id` - Eliminar usuario ❌falta
 - `PUT /api/admin/users/:id/role` - Cambiar rol de usuario ❌falta
 - `GET /api/admin/stats/users` - Estadísticas de usuarios ❌falta
-- `GET /api/pets` - Listar Todas las mascotas  ✅**asignarle rol admin - esta publico**❌
-    reemmplazar: http://localhost:5000/api/admin/pets o
+- `GET /api/admin/pets` - Listar Todas las mascotas  ✅
 
 ### Reportes ADMIN
 - `POST /api/reports/pet/:petId` - Reportar una mascota ❌falta
@@ -155,15 +154,10 @@ src/
 ### Mascotas  Requieren token  
 - `POST /api/pets` - Crear mascota ✅
 - `GET /api/pets/user/pets ` - Obtener mascotas del usuario autenticado ✅
-- `GET /api/pets/:id` - Obtener mascota   ❌**asignar Rol**
 - `PUT /api/pets/:id` - Actualizar mascota  ✅
 - `DELETE /api/pets/:id` - Eliminar mascota ✅
 - `POST /api/pets/:id/photos` - Añadir fotos a mascota   ❌**403requiere permisos -actualizar**
 - `DELETE /api/pets/:id/photos/:photoId` - Eliminar foto de mascota  ❌**en espera**
-
-    -- 
-- `http://localhost:5000/api/pets/67c115ad9eec126754d1eb30/profile-picture`
-- `GET /api/pets/public` - Buscar mascotas públicaS -- eliminar api 
 
 ### Rutas publicas Mascotas
 - `GET /api/pets/public/:petId` - Obtener perfil público de una mascota ✅
