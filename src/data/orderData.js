@@ -24,10 +24,6 @@ const orderData = {
         const unitPrice = 1000; // $10.00 en centavos
         const totalAmount = quantity * unitPrice;
         
-        // Iniciar sesión de transacción
-        const session = await mongoose.startSession();
-        session.startTransaction();
-        
         try {
             // Preparar información del cliente para Stripe
             let customerInfo = {
@@ -62,8 +58,8 @@ const orderData = {
                 customerInfo
             );
             
-            // Crear la orden en la base de datos dentro de la transacción
-            const order = await OrderModel.create([{
+            // Crear la orden en la base de datos
+            const order = await OrderModel.create({
                 userId,
                 quantity,
                 totalAmount: totalAmount / 100, // Guardar en dólares en la BD
@@ -72,30 +68,22 @@ const orderData = {
                 shippingDetails,
                 customerName: customerInfo.name,
                 customerEmail: customerInfo.email
-            }], { session });
-            
+            });
+                        
             // Actualizar el order_id en los metadatos del PaymentIntent
             await stripe.paymentIntents.update(paymentIntent.paymentIntentId, {
                 metadata: {
                     userId,
                     quantity,
-                    order_id: order[0]._id.toString()
+                    order_id: order._id.toString()
                 }
             });
             
-            // Confirmar la transacción
-            await session.commitTransaction();
-            session.endSession();
-            
             return {
-                order: order[0],
+                order,
                 clientSecret: paymentIntent.clientSecret
             };
         } catch (error) {
-            // Revertir la transacción en caso de error
-            await session.abortTransaction();
-            session.endSession();
-            
             console.error('Error al crear orden:', error);
             throw new Error(`Error al crear orden: ${error.message}`);
         }
@@ -107,13 +95,9 @@ const orderData = {
      * @param {boolean} forceConfirm - Forzar confirmación para pruebas
      */
     confirmPayment: async (orderId, forceConfirm = false) => {
-        // Iniciar sesión de transacción
-        const session = await mongoose.startSession();
-        session.startTransaction();
-        
         try {
             // Buscar la orden
-            const order = await OrderModel.findById(orderId).session(session);
+            const order = await OrderModel.findById(orderId);
             
             if (!order) {
                 throw new Error('Orden no encontrada');
@@ -126,14 +110,14 @@ const orderData = {
                 throw new Error(`El pago no ha sido completado. Estado: ${paymentStatus.status}`);
             }
             
-            // Actualizar el estado de la orden dentro de la transacción
+            // Actualizar el estado de la orden
             const updatedOrder = await OrderModel.findByIdAndUpdate(
                 orderId,
                 { status: 'completed' },
-                { new: true, session }
+                { new: true }
             );
             
-            // Generar códigos QR para la orden dentro de la transacción
+            // Generar códigos QR para la orden
             const qrCodes = [];
             for (let i = 0; i < order.quantity; i++) {
                 const qrId = crypto.randomBytes(8).toString('hex');
@@ -141,28 +125,20 @@ const orderData = {
                 const qrUrl = `${baseUrl}/api/qr/scan/${qrId}`;
                 const qrImage = await QRCode.toDataURL(qrUrl);
                 
-                const qr = await QRModel.create([{
+                const qr = await QRModel.create({
                     qrId,
                     userId: order.userId,
                     orderId: order._id,
                     isLinked: false,
                     isActive: true,
                     qrImage
-                }], { session });
+                });
                 
-                qrCodes.push(qr[0]);
+                qrCodes.push(qr);
             }
-            
-            // Confirmar la transacción
-            await session.commitTransaction();
-            session.endSession();
             
             return { order: updatedOrder, qrCodes };
         } catch (error) {
-            // Revertir la transacción en caso de error
-            await session.abortTransaction();
-            session.endSession();
-            
             console.error('Error al confirmar pago:', error);
             throw new Error(`Error al confirmar pago: ${error.message}`);
         }
@@ -174,7 +150,17 @@ const orderData = {
      */
     getUserOrders: async (userId) => {
         const orders = await OrderModel.find({ userId });
-        return orders;
+        
+        // Para cada orden, obtener sus códigos QR asociados
+        const ordersWithQRs = await Promise.all(orders.map(async (order) => {
+            const qrCodes = await QRModel.find({ orderId: order._id });
+            return {
+                order,
+                qrCodes
+            };
+        }));
+        
+        return ordersWithQRs;
     },
     
     /**
@@ -188,7 +174,10 @@ const orderData = {
             throw new Error('Orden no encontrada');
         }
         
-        return order;
+        // Buscar los códigos QR asociados a esta orden
+        const qrCodes = await QRModel.find({ orderId: order._id });
+        
+        return { order, qrCodes };
     },
     
     /**

@@ -107,11 +107,11 @@ const orderController = {
     getUserOrders: async (req, res) => {
         try {
             const userId = req.user.id;
-            const orders = await orderData.getUserOrders(userId);
+            const ordersWithQRs = await orderData.getUserOrders(userId);
 
             res.json({
                 success: true,
-                orders
+                orders: ordersWithQRs
             });
         } catch (error) {
             console.error('Error al obtener órdenes:', error);
@@ -140,11 +140,12 @@ const orderController = {
                 });
             }
             
-            const order = await orderData.getOrderById(orderId);
+            const result = await orderData.getOrderById(orderId);
             
             res.json({
                 success: true,
-                order
+                order: result.order,
+                qrCodes: result.qrCodes
             });
         } catch (error) {
             console.error('Error al obtener orden:', error);

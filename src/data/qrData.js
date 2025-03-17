@@ -77,11 +77,18 @@ const qrData = {
         });
         
         // Verificar si el QR está vinculado a una mascota
-        if (!qr.isLinked || !qr.petId) {
+        if (qr.isLinked && qr.petId) {
+            const petData = require('./petData');
+            const petProfile = await petData.getPublicProfile(qr.petId);
+            return {
+                message: 'Hola Estoy perdido, me puedes ayudar a encontrar a mi dueño?',
+                pet: petProfile
+            };
+        } else {
             return {
                 qrId: qr.qrId,
                 isLinked: false,
-                message: 'Este QR no está vinculado a ninguna mascota'
+                message: 'Este QR no está vinculado a ninguna mascota. Por favor, redirige a vincular una mascota.'  
             };
         }
     },
