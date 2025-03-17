@@ -19,7 +19,7 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
     cors: {
-        origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+        origin: process.env.FRONTEND_URL || 'http://localhost:5175',
         methods: ['GET', 'POST'],
         credentials: true
     }
@@ -39,7 +39,7 @@ app.use(cors({
         
         // Lista de orígenes permitidos
         const allowedOrigins = [
-            process.env.FRONTEND_URL || 'http://localhost:5173',
+            process.env.FRONTEND_URL || 'http://localhost:5175',
             'http://localhost:3000',
             'http://localhost:5500',
             'http://127.0.0.1:5500',

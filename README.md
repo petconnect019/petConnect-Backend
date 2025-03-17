@@ -58,7 +58,7 @@ JWT_SECRET=tu_jwt_secret
 SESSION_SECRET=tu_session_secret
 
 # Frontend
-FRONTEND_URL=http://localhost:5173
+FRONTEND_URL=http://localhost:5175
 BASE_URL=http://localhost:5000
 
 # Cloudinary

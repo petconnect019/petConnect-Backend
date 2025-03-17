@@ -21,7 +21,7 @@ const orderData = {
         const { userId, quantity, shippingDetails, customerName, customerEmail } = orderData;
         
         // Calcular el precio total (en centavos para Stripe)
-        const unitPrice = 1000; // $10.00 en centavos
+        const unitPrice = 379; // $3,79 dolares en centavos
         const totalAmount = quantity * unitPrice;
         
         try {
