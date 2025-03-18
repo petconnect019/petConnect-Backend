@@ -11,10 +11,10 @@ const PetController = {
             const { name, gender, species, breed, color, birthDate, description } = req.body;
     
             // Validar datos básicos requeridos
-            if (!name || !birthDate) {
+            if (!name) {
                 return res.status(400).json({
                     ok: false,
-                    message: 'El nombre y la fecha de nacimiento son obligatorios'
+                    message: 'El nombre es obligatorio'
                 });
             }
     
