@@ -35,7 +35,7 @@ const PetController = {
                 species: species || 'No especificado',
                 breed: breed || 'No especificado',
                 color: color || 'No especificado',
-                birthDate: new Date(birthDate),
+                birthDate: birthDate ? new Date(birthDate) : null,
                 description: description || ''
             };
     
