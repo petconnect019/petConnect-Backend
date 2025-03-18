@@ -19,8 +19,8 @@ const PetController = {
             }
     
             // Validar formato de fecha
-            const isValidDate = !isNaN(new Date(birthDate).getTime());
-            if (!isValidDate) {
+            const isValidDate = birthDate ? !isNaN(new Date(birthDate).getTime()) : true;
+            if (birthDate && !isValidDate) {
                 return res.status(400).json({
                     ok: false,
                     message: 'Formato de fecha inválido'
