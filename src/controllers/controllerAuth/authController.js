@@ -13,7 +13,7 @@ const AuthData = require('../../data/authData');
 const AuthController = {
     registerUser: async (req, res) => {
         try {
-            const { email, password, name } = req.body;
+            const { email, password, name, gender } = req.body;
 
             // Validar datos de entrada
             const emailValidation = AuthData.validateEmail(email);
@@ -34,7 +34,7 @@ const AuthController = {
                     errors: { password: passwordValidation.error }
                 });
             }
-            const userData = { email, password, name };
+            const userData = { email, password, name, gender };
             
             try {
                 const { user, isNewUser } = await AuthData.registerUser(userData);
@@ -247,18 +247,29 @@ const AuthController = {
             const { accessToken } = await handleAuthenticationSuccess(req, res, req.user);
 
             // Verificar si el usuario tiene mascotas y si es nuevo
-            const { hasPets,userResponse, isNewUser } = await AuthData.findOrCreateGoogleUser({
+            const { hasPets, isNewUser } = await AuthData.findOrCreateGoogleUser({
                 id: req.user.google_id,
                 emails: [{ value: req.user.email }],
                 displayName: req.user.name,
                 photos: [{ value: req.user.profile_picture }]
             });
 
+            // Incluir todos los datos del usuario en la respuesta
             const responseData = {
                 ok: true,
                 message: 'Login con Google exitoso',
                 accessToken,
-                user: userResponse,
+                user: {
+                    ...req.user,
+                    gender: req.user.gender,
+                    email: req.user.email,
+                    name: req.user.name,
+                    profile_picture: req.user.profile_picture,
+                    role: req.user.role,
+                    google_id: req.user.google_id,
+                    created_at: req.user.created_at,
+                    updated_at: req.user.updated_at
+                },
                 hasPets,
                 isNewUser
             };

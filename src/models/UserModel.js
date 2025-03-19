@@ -38,7 +38,9 @@ const userSchema = new mongoose.Schema({
         default: false
      },
      gender : {
-        type: String
+        type: String,
+        enum: ['Masculino', 'Femenino', 'Otro'],
+        default: 'Otro'
      },
     reset_token:
      {

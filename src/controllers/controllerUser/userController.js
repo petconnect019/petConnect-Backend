@@ -3,14 +3,15 @@ const UserData = require('../../data/userData');
 const UserController = {
     createUser: async (req, res) => {
         try {
-            const { google_id, name, email, profile_picture, role } = req.body;
+            const { google_id, name, email, profile_picture, role, gender } = req.body;
 
             const userData = {
                 google_id,
                 name,
                 email,
                 profile_picture,
-                role: role || 'user'
+                role: role || 'user',
+                gender
             };
 
             try {
@@ -19,7 +20,7 @@ const UserController = {
                 res.status(201).json({ 
                     ok: true,
                     message: 'Usuario creado exitosamente', 
-                    userId: user._id 
+                    user
                 });
             } catch (error) {
                 if (error.message === 'El usuario ya existe') {

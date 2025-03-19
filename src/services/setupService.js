@@ -10,7 +10,7 @@ const setupAdminAccount = async () => {
             console.log('Creando cuenta por defecto...');
 
             // Crear contraseña segura y hashearla
-            const password = 'pectConnect12345';
+            const password = 'petConnect12345';
             const salt = await bcrypt.genSalt(10);
             const hashedPassword = await bcrypt.hash(password, salt);
             try {

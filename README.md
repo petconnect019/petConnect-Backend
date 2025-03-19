@@ -150,6 +150,7 @@ src/
 - `GET /api/reports` - Listar reportes (admin)❌falta
 - `PUT /api/reports/:reportId/status` - Actualizar estado de un reporte (admin)❌falta
 - `DELETE /api/reports/:reportId` - Eliminar un reporte (admin)❌falta
+-  `POST /api/admin/register`  Crear un usuario - requiere token admin. ✅
 
 ### Mascotas  Requieren token  
 - `POST /api/pets` - Crear mascota ✅
@@ -303,7 +304,7 @@ Esta separación de responsabilidades mejora la mantenibilidad, testabilidad y e
 Al iniciar la aplicación por primera vez, se crea
  automáticamente una cuenta de administrador:
 - Email: admin@gmail.com
-- Contraseña: pectConnect12345
+- Contraseña: petConnect12345
 
 **Importante**: Cambiar la contraseña después del primer inicio de sesión.
 
