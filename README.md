@@ -157,9 +157,15 @@ src/
 - `GET /api/pets/user/pets ` - Obtener mascotas del usuario autenticado ✅
 - `PUT /api/pets/:id` - Actualizar mascota  ✅
 - `DELETE /api/pets/:id` - Eliminar mascota ✅
-- `POST /api/pets/:id/photos` - Añadir fotos a mascota   ❌**403requiere permisos -actualizar**
-- `DELETE /api/pets/:id/photos/:photoId` - Eliminar foto de mascota  ❌**en espera**
 
+- `PUT /api/pets/:id/location` - Actualizar ubicación ❌falta
+
+### Rutas para fotos de perfil
+- `PUT /api/pets/:id/profile-picture` - Actualizar foto de perfil ✅
+- `DELETE /api/pets/:id/profile-picture` - Eliminar foto de perfil ✅
+- `POST /api/pets/:id/photos` - Añadir fotos a mascota  ✅
+- `GET /api/pets/:id/profile-picture/download` - Descargar foto de perfil ✅
+- `GET /api/pets/:id/photos/download` - Descargar todas las fotos de una mascota ✅
 ### Rutas publicas Mascotas
 - `GET /api/pets/public/:petId` - Obtener perfil público de una mascota ✅
 
