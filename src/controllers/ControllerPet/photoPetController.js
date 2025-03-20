@@ -36,9 +36,9 @@ const PhotoController = {
     deletePetPhoto: async (req, res) => {
         try {
             const petId = req.params.id;
-            const photoId = req.params.photoId;
+            const photoUrl = decodeURIComponent(req.params.photoId);
             
-            await PetData.deletePetPhoto(petId, photoId);
+            await PetData.deletePetPhoto(petId, photoUrl);
             
             res.status(200).json({
                 ok: true,

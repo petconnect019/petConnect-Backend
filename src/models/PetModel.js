@@ -48,13 +48,11 @@ const petSchema = new mongoose.Schema({
         ref: 'User',
         required: true
     },
-    photos: [{
-        url: String,
-        isMain: {
-            type: Boolean,
-            default: false
-        }
-    }],
+    photos:{
+        type: Array,
+        default: []
+    },
+
     lastSeenLocation: {
         latitude: Number,
         longitude: Number,
