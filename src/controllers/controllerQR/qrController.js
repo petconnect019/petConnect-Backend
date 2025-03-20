@@ -56,7 +56,7 @@ const qrController = {
     },
     
     /**
-     * Escanea un código QR (versión actualizada)
+     * Escanea un código QR
      */
     scanQR: async (req, res) => {
         try {
@@ -72,10 +72,10 @@ const qrController = {
         } catch (error) {
             console.error('Error al escanear QR:', error);
             
-            if (error.message === 'QR no encontrado o inactivo') {
+            if (error.message === 'QR no encontrado o ha sido eliminado') {
                 return res.status(404).json({
                     success: false,
-                    message: 'QR no encontrado o inactivo'
+                    message: 'QR no encontrado o ha sido eliminado'
                 });
             }
             
@@ -95,7 +95,7 @@ const qrController = {
     },
     
     /**
-     * Vincula un código QR a una mascota (versión actualizada)
+     * Vincula un código QR a una mascota
      */
     linkQRToPet: async (req, res) => {
         try {
@@ -112,10 +112,10 @@ const qrController = {
         } catch (error) {
             console.error('Error al vincular QR:', error);
             
-            if (error.message === 'QR no encontrado o inactivo') {
+            if (error.message === 'QR no encontrado o ha sido eliminado') {
                 return res.status(404).json({
                     success: false,
-                    message: 'QR no encontrado o inactivo'
+                    message: 'QR no encontrado o ha sido eliminado'
                 });
             }
             
@@ -149,9 +149,19 @@ const qrController = {
     },
     
     /**
-     * Obtiene todos los códigos QR
+     * Obtiene todos los códigos QR (solo administradores)
      */
     getAllQRs: async (req, res) => {
+        const userRole = req.user.role;
+
+        // Verificar si el usuario es administrador
+        if (userRole !== 'admin') {
+            return res.status(403).json({
+                success: false,
+                message: 'No tienes permiso para acceder a esta información'
+            });
+        }
+
         try {
             const qrs = await qrData.getAllQRs();
             
@@ -177,6 +187,12 @@ const qrController = {
             const userId = req.user.id;
             const qrs = await qrData.getUserQRs(userId);
             
+            if (!qrs || qrs.length === 0) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'No tienes QRs en lista'
+                });
+            }
             res.json({
                 success: true,
                 qrs
@@ -192,7 +208,7 @@ const qrController = {
     },
     
     /**
-     * Desactiva un código QR
+     * Desactiva un código QR (solo administradores)
      */
     deactivateQR: async (req, res) => {
         try {
@@ -204,6 +220,7 @@ const qrController = {
             
             res.json({
                 success: true,
+                message: 'QR desactivado exitosamente',
                 qr: updatedQR
             });
         } catch (error) {
@@ -216,16 +233,62 @@ const qrController = {
                 });
             }
             
-            if (error.message === 'No tienes permiso para desactivar este QR') {
+            if (error.message === 'Solo los administradores pueden desactivar códigos QR') {
                 return res.status(403).json({
                     success: false,
-                    message: 'No tienes permiso para desactivar este QR'
+                    message: 'Solo los administradores pueden desactivar códigos QR'
                 });
             }
             
             res.status(500).json({
                 success: false,
                 message: 'Error al desactivar el QR',
+                error: error.message
+            });
+        }
+    },
+    
+    /**
+     * Elimina un código QR (para usuarios normales)
+     */
+    deleteQR: async (req, res) => {
+        try {
+            const { qrId } = req.params;
+            const userId = req.user.id;
+            
+            const result = await qrData.deleteQR(qrId, userId);
+            
+            res.json({
+                success: true,
+                message: result.message
+            });
+        } catch (error) {
+            console.error('Error al eliminar QR:', error);
+            
+            if (error.message === 'QR no encontrado') {
+                return res.status(404).json({
+                    success: false,
+                    message: 'QR no encontrado'
+                });
+            }
+            
+            if (error.message === 'No tienes permiso para eliminar este QR') {
+                return res.status(403).json({
+                    success: false,
+                    message: 'No tienes permiso para eliminar este QR'
+                });
+            }
+            
+            if (error.message === 'No se puede eliminar un QR que está vinculado a una mascota. Desvincúlalo primero.') {
+                return res.status(400).json({
+                    success: false,
+                    message: 'No se puede eliminar un QR que está vinculado a una mascota. Desvincúlalo primero.'
+                });
+            }
+            
+            res.status(500).json({
+                success: false,
+                message: 'Error al eliminar el QR',
                 error: error.message
             });
         }

@@ -30,7 +30,6 @@ const qrData = {
      * Generar múltiples códigos QR
      * @param {string} userId - ID del usuario
      * @param {number} count - Cantidad de QRs a generar
-     *  
      */
     generateMultipleQRs: async (userId, count) => {
         const qrCodes = [];
@@ -61,11 +60,11 @@ const qrData = {
      * @param {string} scannerUserId - ID del usuario que escanea el QR
      */
     scanQR: async (qrId, scannerUserId = null) => {
-        // Buscar el QR
-        const qr = await QRModel.findOne({ qrId, isActive: true });
+        // Buscar el QR (ahora solo verificamos que exista, ya no comprobamos isActive)
+        const qr = await QRModel.findOne({ qrId });
         
-        if (!qr) {
-            throw new Error('QR no encontrado o inactivo');
+        if (!qr || !qr.isActive) {
+            throw new Error('QR no encontrado o ha sido eliminado');
         }
         
         // Registrar el escaneo
@@ -102,10 +101,10 @@ const qrData = {
      */
     linkQRToPet: async (qrId, petId, userId, userRole) => {
         // Verificar si el QR existe
-        const qr = await QRModel.findOne({ qrId, isActive: true });
+        const qr = await QRModel.findOne({ qrId });
         
-        if (!qr) {
-            throw new Error('QR no encontrado o inactivo');
+        if (!qr || !qr.isActive) {
+            throw new Error('QR no encontrado o ha sido eliminado');
         }
         
         // Verificar si el QR ya está vinculado
@@ -159,7 +158,7 @@ const qrData = {
     },
     
     /**
-     * Desactivar un QR
+     * Desactivar un QR (ahora solo para administradores)
      * @param {string} qrId - ID del QR
      * @param {string} userId - ID del usuario
      * @param {string} userRole - Rol del usuario
@@ -172,9 +171,9 @@ const qrData = {
             throw new Error('QR no encontrado');
         }
         
-        // Verificar si el usuario tiene permiso para desactivar este QR
-        if (qr.userId.toString() !== userId && userRole !== 'admin') {
-            throw new Error('No tienes permiso para desactivar este QR');
+        // Verificar si el usuario es administrador
+        if (userRole !== 'admin') {
+            throw new Error('Solo los administradores pueden desactivar códigos QR');
         }
         
         // Actualizar el QR
@@ -185,6 +184,32 @@ const qrData = {
         );
         
         return updatedQR;
+    },
+    
+    /**
+     * Eliminar un QR (para usuarios normales)
+     * @param {string} qrId - ID del QR
+     * @param {string} userId - ID del usuario
+     */
+    deleteQR: async (qrId, userId) => {
+        // Verificar si el QR existe
+        const qr = await QRModel.findOne({ qrId });
+        
+        if (!qr) {
+            throw new Error('QR no encontrado');
+        }
+        
+        // Verificar si el usuario es dueño del QR
+        if (qr.userId.toString() !== userId) {
+            throw new Error('No tienes permiso para eliminar este QR');
+        }
+        
+      
+        
+        // Eliminar el QR
+        await QRModel.findOneAndDelete({ qrId });
+        
+        return { message: 'QR eliminado exitosamente' };
     }
 };
 

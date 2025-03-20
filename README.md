@@ -252,6 +252,8 @@ src/
 - `GET /api/qr/scan/:qrId` - Escanear código QR (público, mejorado con información de perfil)
 - `POST /api/messages/pet/:petId` - Enviar mensaje al dueño desde el perfil público (con o sin registro)
 - `GET /api/qr/:qrId/history` - Ver historial de escaneos de un QR
+- `DELETE /api/qr/:qrId`  Eliminar QR como Usuario
+- `DELETE /api/qr/admin/:qrId`  Desactivar qr de un usuario con el rol de administrador- token admin 
 
 
 
