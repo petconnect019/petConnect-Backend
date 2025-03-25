@@ -65,7 +65,6 @@ router.post('/:id/photos',
 router.delete('/:id/photos/:photoId', PhotoController.deletePetPhoto); // Eliminar una foto específica
 
 // Rutas para estados especiales de mascotas
-router.put('/:id/status', PetController.updatePetStatus); // Actualizar estado (perdido, encontrado, etc.)
 router.put('/:id/location', PetController.updatePetLocation); // Actualizar ubicación
 
 module.exports = router;

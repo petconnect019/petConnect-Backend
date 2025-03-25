@@ -271,31 +271,7 @@ const PetData = {
         }
     },
     
-    /**
-     * Actualiza el estado de una mascota
-     */
-    updatePetStatus: async (petId, status) => {
-        try {
-            const validStatus = ['disponible', 'perdido', 'encontrado'];
-            if (!validStatus.includes(status)) {
-                throw new Error('Estado no válido');
-            }
-            
-            const pet = await PetModel.findByIdAndUpdate(
-                petId,
-                { estatus: status },
-                { new: true }
-            );
-            
-            if (!pet) {
-                throw new Error('Mascota no encontrada');
-            }
-            
-            return pet;
-        } catch (error) {
-            throw error;
-        }
-    },
+   
     
     /**
      * Actualiza la ubicación de una mascota
@@ -352,59 +328,6 @@ const PetData = {
             }
         };
     },
-
-    /**
-     * Marcar una mascota como perdida
-     * @param {string} petId - ID de la mascota
-     * @param {Object} location - Ubicación donde se perdió
-     * @param {string} userId - ID del dueño de la mascota
-     */
-    reportLost: async (petId, location, userId) => {
-        const pet = await PetModel.findById(petId);
-        
-        if (!pet) {
-            throw new Error('Mascota no encontrada');
-        }
-        
-        // Verificar que el usuario es el dueño de la mascota
-        if (pet.owner.toString() !== userId) {
-            throw new Error('No tienes permiso para reportar esta mascota como perdida');
-        }
-        
-        pet.isLost = true;
-        pet.lastSeenLocation = location;
-        pet.lostDate = new Date();
-        
-        await pet.save();
-        
-        return pet;
-    },
-    
-    /**
-     * Marcar una mascota como encontrada
-     * @param {string} petId - ID de la mascota
-     * @param {string} userId - ID del dueño de la mascota
-     */
-    reportFound: async (petId, userId) => {
-        const pet = await PetModel.findById(petId);
-        
-        if (!pet) {
-            throw new Error('Mascota no encontrada');
-        }
-        
-        // Verificar que el usuario es el dueño de la mascota
-        if (pet.owner.toString() !== userId) {
-            throw new Error('No tienes permiso para reportar esta mascota como encontrada');
-        }
-        
-        pet.isLost = false;
-        pet.lastSeenLocation = null;
-        pet.lostDate = null;
-        
-        await pet.save();
-        
-        return pet;
-    }
 };
 
 module.exports = PetData;

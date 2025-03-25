@@ -173,45 +173,6 @@ const PetController = {
         }
     },
 
-    updatePetStatus: async (req, res) => {
-        try {
-            const petId = req.params.id;
-            const userId = req.user.id;
-            const { status } = req.body;
-            
-            // Verificar que la mascota existe y pertenece al usuario
-            const pet = await PetData.getPetById(petId);
-            
-            if (!pet) {
-                return res.status(404).json({
-                    ok: false,
-                    message: 'Mascota no encontrada'
-                });
-            }
-            
-            if (pet.owner._id.toString() !== userId && req.user.role !== 'admin') {
-                return res.status(403).json({
-                    ok: false,
-                    message: 'No tienes permiso para actualizar esta mascota'
-                });
-            }
-            
-            const updatedPet = await PetData.updatePetStatus(petId, status);
-            
-            res.status(200).json({
-                ok: true,
-                message: 'Estado actualizado exitosamente',
-                pet: updatedPet
-            });
-        } catch (error) {
-            console.error('Error al actualizar estado:', error);
-            res.status(500).json({
-                ok: false,
-                message: 'Error al actualizar el estado',
-                error: error.message
-            });
-        }
-    },
 
     updatePetLocation: async (req, res) => {
         try {
