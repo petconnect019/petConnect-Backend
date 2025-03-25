@@ -160,8 +160,8 @@ src/
 
 - `PUT /api/pets/:id/location` - Actualizar ubicación ❌falta
 
-### Rutas para fotos de perfil
-- `PUT /api/pets/:id/profile-picture` - Actualizar foto de perfil ✅
+### Rutas para fotos de perfil mascota
+- `PUT /api/pets/:id/profile-picture` - Actualizar foto de perfil mascota✅
 - `DELETE /api/pets/:id/profile-picture` - Eliminar foto de perfil ✅
 - `POST /api/pets/:id/photos` - Añadir fotos a mascota  ✅
 - `GET /api/pets/:id/profile-picture/download` - Descargar foto de perfil ✅
