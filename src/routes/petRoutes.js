@@ -43,6 +43,8 @@ router.delete('/:id', PetController.deletePet); // Eliminar mascota
 
 // Rutas para manejo de fotos de perfil
 router.put('/:id/profile-picture',
+    verifyToken,
+    isPetOwnerOrAdmin,
     checkStorageLimit,
     upload.single('photo'),
     handleUploadError,

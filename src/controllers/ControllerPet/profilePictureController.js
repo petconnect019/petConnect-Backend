@@ -53,7 +53,7 @@ const ProfilePictureController = {
                 });
             }
             
-            if (pet.owner.toString() !== userId) {
+            if (req.user.role !== 'admin' && pet.owner._id.toString() !== userId) {
                 return res.status(403).json({
                     ok: false,
                     message: 'No tienes permiso para actualizar esta mascota'
