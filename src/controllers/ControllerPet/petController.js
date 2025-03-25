@@ -8,55 +8,23 @@ const PetController = {
     createPet: async (req, res) => {
         try {
             const userId = req.user.id;
-            const { name, gender, species, breed, color, birthDate, description } = req.body;
+            const petData = { ...req.body, owner: userId };
     
-            // Validar datos básicos requeridos
-            if (!name) {
-                return res.status(400).json({
-                    ok: false,
-                    message: 'El nombre es obligatorio'
-                });
-            }
+            // Obtener imagen si se envió
+            const photoBuffer = req.file?.buffer || null;
+            const mimeType = req.file?.mimetype || null;
     
-            // Validar formato de fecha
-            const isValidDate = birthDate ? !isNaN(new Date(birthDate).getTime()) : true;
-            if (birthDate && !isValidDate) {
-                return res.status(400).json({
-                    ok: false,
-                    message: 'Formato de fecha inválido'
-                });
-            }
-    
-            // Crear objeto con datos básicos
-            const petData = {
-                owner: userId,
-                name,
-                gender: gender || 'No especificado',
-                species: species || 'No especificado',
-                breed: breed || 'No especificado',
-                color: color || 'No especificado',
-                birthDate: birthDate ? new Date(birthDate) : null,
-                description: description || ''
-            };
-    
-            const photoBuffer = req.file ? req.file.buffer : null;
-            const mimeType = req.file ? req.file.mimetype : null;
-            
+            // Crear la mascota en la base de datos
             const pet = await PetData.createPet(petData, photoBuffer, mimeType);
-
+    
             res.status(201).json({
                 ok: true,
                 message: 'Mascota creada exitosamente',
-                pet: pet.toObject()
+                pet: pet.toObject(),
             });
-    
         } catch (error) {
             console.error('Error al crear mascota:', error);
-            res.status(500).json({
-                ok: false,
-                message: 'Error al crear la mascota',
-                error: error.message
-            });
+            res.status(500).json({ ok: false, message: 'Error al crear la mascota', error: error.message });
         }
     },
 

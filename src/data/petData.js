@@ -73,17 +73,38 @@ const PetData = {
      */
     createPet: async (petData, photoBuffer = null, mimeType = null) => {
         try {
-            const pet = new PetModel(petData);
-            await pet.save();
-            
-            // Si hay una foto, subirla a Cloudinary
+            // Validar datos básicos
+            if (!petData.name) {
+                throw new Error('El nombre es obligatorio');
+            }
+    
+            // Validar formato de fecha
+            if (petData.birthDate && isNaN(new Date(petData.birthDate).getTime())) {
+                throw new Error('Formato de fecha inválido');
+            }
+    
+            // Definir valores por defecto
+            const newPet = new PetModel({
+                owner: petData.owner,
+                name: petData.name,
+                gender: petData.gender || 'No especificado',
+                species: petData.species || 'No especificado',
+                breed: petData.breed || 'No especificado',
+                color: petData.color || 'No especificado',
+                birthDate: petData.birthDate ? new Date(petData.birthDate) : null,
+                description: petData.description || '',
+            });
+    
+            await newPet.save();
+    
+            // Subir imagen si existe
             if (photoBuffer) {
                 const result = await uploadToCloudinary(photoBuffer, mimeType);
-                pet.profile_picture = result.secure_url;
-                await pet.save();
+                newPet.profile_picture = result.secure_url;
+                await newPet.save();
             }
-            
-            return pet;
+    
+            return newPet;
         } catch (error) {
             throw error;
         }
