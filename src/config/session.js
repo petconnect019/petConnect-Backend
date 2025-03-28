@@ -62,6 +62,9 @@ const handleAuthenticationSuccess = async (req, res, user) => {
             role: user.role,
             is_profile_public: user.is_profile_public,
             show_contact: user.show_contact,
+            country: user.country,
+            state: user.state,
+            address: user.address,
             city: user.city,
             phone: user.phone
         };

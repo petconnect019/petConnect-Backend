@@ -13,7 +13,7 @@ const AuthData = require('../../data/authData');
 const AuthController = {
     registerUser: async (req, res) => {
         try {
-            const { email, password, name, gender } = req.body;
+            const { email, password } = req.body;
 
             // Validar datos de entrada
             const emailValidation = AuthData.validateEmail(email);
@@ -34,8 +34,9 @@ const AuthController = {
                     errors: { password: passwordValidation.error }
                 });
             }
-            const userData = { email, password, name, gender };
-            
+
+            const userData = { ...req.body };
+
             try {
                 const { user, isNewUser } = await AuthData.registerUser(userData);
                 const { accessToken, userResponse } = await handleAuthenticationSuccess(req, res, user);
@@ -65,6 +66,7 @@ const AuthController = {
             });
         }
     },
+
 
     loginUser: async (req, res) => {
         try {

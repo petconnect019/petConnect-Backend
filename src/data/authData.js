@@ -41,12 +41,8 @@ const AuthData = {
 
             // Crear nuevo usuario
             const user = new UserModel({
-                email: userData.email,
-                password: hashedPassword, 
-                name: userData.name || userData.email.split('@')[0],
-                role: 'user',
-                is_profile_public: true,
-                gender: userData.gender || 'Otro'
+              ...userData,
+              password: hashedPassword,
             });
 
             await user.save();
