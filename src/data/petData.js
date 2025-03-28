@@ -48,7 +48,7 @@ const PetData = {
     getPetById: async (petId) => {
         try {
             const pet = await PetModel.findById(petId)
-                .populate('owner', 'name email profile_picture phone city is_profile_public show_contact');
+                .populate('owner', 'name email profile_picture phone city state country address is_profile_public show_contact');
             return pet;
         } catch (error) {
             throw error;

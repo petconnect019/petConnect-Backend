@@ -1,168 +1,149 @@
 const orderData = require('../../data/orderData');
+const epaycoService = require('../../services/epaycoService');
 
-const orderController = {
-    // Crear una nueva orden
-    createOrder: async (req, res) => {
-        try {
-            const { quantity, shippingDetails, customerName, customerEmail } = req.body;
-            const userId = req.user.id;
+class OrderController {
+    
+async createOrder(req, res) {
+    try {
+        const { 
+            quantity, 
+            shippingDetails, 
+            customerName, 
+            customerEmail,
+            customerLastName,
+            docNumber,
+            ip,
+            paymentMethod, // Nuevo campo
+            paymentData    // Datos específicos del método de pago
+        } = req.body;
+        const userId = req.user.id;
 
-            // Validar campos obligatorios
-            if (!quantity || quantity < 1) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'La cantidad debe ser al menos 1'
-                });
-            }
-
-            // Validar información del cliente
-            if (!customerName || !customerEmail) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'El nombre y email del cliente son obligatorios'
-                });
-            }
-
-            // Validar formato de email
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (!emailRegex.test(customerEmail)) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'El formato del email es inválido'
-                });
-            }
-
-            const result = await orderData.createOrder({
-                userId,
-                quantity,
-                shippingDetails,
-                customerName,
-                customerEmail
-            });
-
-            res.status(201).json({
-                success: true,
-                order: result.order,
-                clientSecret: result.clientSecret
-            });
-        } catch (error) {
-            console.error('Error al crear orden:', error);
-            
-            // Determinar el código de estado HTTP apropiado
-            let statusCode = 500;
-            if (error.message.includes('Usuario no encontrado')) {
-                statusCode = 404;
-            } else if (error.message.includes('Solicitud inválida')) {
-                statusCode = 400;
-            }
-            
-            res.status(statusCode).json({
-                success: false,
-                message: 'Error al crear la orden',
-                error: error.message
-            });
+        // Validaciones básicas
+        if (!quantity || quantity < 1) {
+            return res.status(400).json({ error: 'La cantidad debe ser mayor a 0' });
         }
-    },
 
-    // Confirmar pago de orden
-    confirmPayment: async (req, res) => {
+        if (!paymentMethod) {
+            return res.status(400).json({ error: 'Se requiere método de pago' });
+        }
+
+        // Obtener IP del cliente
+        const clientIp = ip || req.ip || '127.0.0.1';
+
+        let paymentResult;
+        let customerId = null;
+
+        switch(paymentMethod) {
+            case 'credit_card':
+                if (!paymentData.cardInfo) {
+                    return res.status(400).json({ error: 'Se requiere información de la tarjeta' });
+                }
+                // Crear token y cliente para tarjeta
+                const tokenCard = await epaycoService.createToken(paymentData.cardInfo);
+                customerId = await epaycoService.createCustomer({
+                    name: customerName || req.user.name,
+                    lastName: customerLastName,
+                    email: customerEmail || req.user.email,
+                    city: shippingDetails?.city,
+                    address: shippingDetails?.address,
+                    phone: shippingDetails?.phone,
+                    docNumber: docNumber,
+                    ip: clientIp
+                }, tokenCard);
+                break;
+
+            case 'pse':
+                if (!paymentData.bankCode) {
+                    return res.status(400).json({ error: 'Se requiere código de banco para PSE' });
+                }
+                break;
+
+            case 'cash':
+                if (!paymentData.cashType) {
+                    return res.status(400).json({ error: 'Se requiere tipo de pago en efectivo' });
+                }
+                break;
+
+            default:
+                return res.status(400).json({ error: 'Método de pago no válido' });
+        }
+
+        // Crear orden
+        const result = await orderData.createOrder({
+            userId,
+            quantity,
+            shippingDetails,
+            customerName: customerName || req.user.name,
+            customerEmail: customerEmail || req.user.email,
+            customerLastName,
+            docNumber,
+            customerId,
+            paymentMethod,
+            ip: clientIp,
+            ...paymentData
+        });
+
+        res.status(201).json({
+            order: result.order,
+            qrCodes: result.qrCodes,
+            transaction: result.transaction
+        });
+    } catch (error) {
+        console.error('Error al crear orden:', error);
+        res.status(500).json({ 
+            error: 'Error al crear orden',
+            details: error.message 
+        });
+    }
+}
+
+    async confirmPayment(req, res) {
         try {
-            const { orderId } = req.params;
-            let { forceConfirm = false } = req.body;
-            
-            // Restringir forceConfirm solo a entornos de desarrollo
-            if (process.env.NODE_ENV === 'production') {
-                forceConfirm = false;
+            if (!epaycoService.validateSignature(req.body)) {
+                return res.status(400).json({ error: 'Firma inválida' });
             }
+
+            const order = await orderData.confirmPayment(req.body);
             
-            const result = await orderData.confirmPayment(orderId, forceConfirm);
-            
-            res.json({
-                success: true,
-                order: result.order,
-                qrCodes: result.qrCodes
+            res.status(200).json({
+                message: 'Pago confirmado correctamente',
+                order
             });
         } catch (error) {
             console.error('Error al confirmar pago:', error);
-            
-            // Determinar el código de estado HTTP apropiado
-            let statusCode = 500;
-            if (error.message === 'Orden no encontrada') {
-                statusCode = 404;
-            } else if (error.message.includes('El pago no ha sido completado')) {
-                statusCode = 400;
-            } else if (error.message.includes('PaymentIntent no encontrado')) {
-                statusCode = 404;
-            }
-            
-            res.status(statusCode).json({
-                success: false,
-                message: 'Error al confirmar el pago',
-                error: error.message
-            });
-        }
-    },
-
-    // Obtener órdenes del usuario
-    getUserOrders: async (req, res) => {
-        try {
-            const userId = req.user.id;
-            const ordersWithQRs = await orderData.getUserOrders(userId);
-
-            res.json({
-                success: true,
-                orders: ordersWithQRs
-            });
-        } catch (error) {
-            console.error('Error al obtener órdenes:', error);
-            res.status(500).json({
-                success: false,
-                message: 'Error al obtener las órdenes',
-                error: error.message
-            });
-        }
-    },
-
-    // Obtener una orden específica
-    getOrderById: async (req, res) => {
-        try {
-            const { orderId } = req.params;
-            const userId = req.user.id;
-            const userRole = req.user.role;
-            
-            // Verificar si el usuario tiene permiso para ver esta orden
-            const hasPermission = await orderData.hasPermissionForOrder(orderId, userId, userRole);
-            
-            if (!hasPermission) {
-                return res.status(403).json({
-                    success: false,
-                    message: 'No tienes permiso para ver esta orden'
-                });
-            }
-            
-            const result = await orderData.getOrderById(orderId);
-            
-            res.json({
-                success: true,
-                order: result.order,
-                qrCodes: result.qrCodes
-            });
-        } catch (error) {
-            console.error('Error al obtener orden:', error);
-            
-            // Determinar el código de estado HTTP apropiado
-            let statusCode = 500;
-            if (error.message === 'Orden no encontrada') {
-                statusCode = 404;
-            }
-            
-            res.status(statusCode).json({
-                success: false,
-                message: 'Error al obtener la orden',
-                error: error.message
+            res.status(500).json({ 
+                error: 'Error al confirmar pago',
+                details: error.message 
             });
         }
     }
-};
 
-module.exports = orderController; 
+    async getOrderById(req, res) {
+        try {
+            const order = await orderData.getOrderById(req.params.orderId);
+            if (!order) {
+                return res.status(404).json({ error: 'Orden no encontrada' });
+            }
+            res.json(order);
+        } catch (error) {
+            res.status(500).json({ 
+                error: 'Error al obtener orden',
+                details: error.message 
+            });
+        }
+    }
+
+    async getUserOrders(req, res) {
+        try {
+            const orders = await orderData.getUserOrders(req.user.id);
+            res.json(orders);
+        } catch (error) {
+            res.status(500).json({ 
+                error: 'Error al obtener órdenes del usuario',
+                details: error.message 
+            });
+        }
+    }
+}
+
+module.exports = new OrderController();

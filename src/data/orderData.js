@@ -3,198 +3,156 @@ const QRModel = require('../models/QRModel');
 const UserModel = require('../models/UserModel');
 const crypto = require('crypto');
 const QRCode = require('qrcode');
-const stripeService = require('../services/stripeService');
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-const mongoose = require('mongoose');
+const epaycoService = require('../services/epaycoService');
 
-const orderData = {
-    /**
-     * Crear una nueva orden
-     * @param {Object} orderData - Datos de la orden
-     * @param {string} orderData.userId - ID del usuario
-     * @param {number} orderData.quantity - Cantidad de QRs
-     * @param {Object} orderData.shippingDetails - Detalles de envío
-     * @param {string} orderData.customerName - Nombre del cliente
-     * @param {string} orderData.customerEmail - Email del cliente
-     */
-    createOrder: async (orderData) => {
-        const { userId, quantity, shippingDetails, customerName, customerEmail } = orderData;
-        
-        // Calcular el precio total (en centavos para Stripe)
-        const unitPrice = 379; // $3,79 dolares en centavos
-        const totalAmount = quantity * unitPrice;
-        
-        try {
-            // Preparar información del cliente para Stripe
-            let customerInfo = {
-                name: customerName,
-                email: customerEmail,
-                city: shippingDetails?.city
-            };
-            
-            // Si no se proporciona nombre o email, obtener del usuario
-            if (!customerName || !customerEmail) {
-                const user = await UserModel.findById(userId);
-                if (!user) {
-                    throw new Error('Usuario no encontrado');
-                }
-                
-                customerInfo = {
-                    name: customerName || user.name,
-                    email: customerEmail || user.email,
-                    city: shippingDetails?.city || user.city
-                };
-            }
-            
-            // Crear un payment intent en Stripe
-            const paymentIntent = await stripeService.createPaymentIntent(
-                totalAmount, 
-                'usd', 
-                {
-                    userId,
-                    quantity,
-                    order_id: null // Se actualizará después de crear la orden
-                },
-                customerInfo
-            );
-            
-            // Crear la orden en la base de datos
-            const order = await OrderModel.create({
-                userId,
-                quantity,
-                totalAmount: totalAmount / 100, // Guardar en dólares en la BD
-                paymentId: paymentIntent.paymentIntentId,
-                status: 'pending',
-                shippingDetails,
-                customerName: customerInfo.name,
-                customerEmail: customerInfo.email
-            });
-                        
-            // Actualizar el order_id en los metadatos del PaymentIntent
-            await stripe.paymentIntents.update(paymentIntent.paymentIntentId, {
-                metadata: {
-                    userId,
-                    quantity,
-                    order_id: order._id.toString()
-                }
-            });
-            
-            return {
-                order,
-                clientSecret: paymentIntent.clientSecret
-            };
-        } catch (error) {
-            console.error('Error al crear orden:', error);
-            throw new Error(`Error al crear orden: ${error.message}`);
-        }
-    },
+class OrderData {
+async createOrder(orderData) {
+    const { 
+        userId, 
+        quantity, 
+        shippingDetails, 
+        customerName, 
+        customerEmail,
+        customerLastName,
+        docNumber,
+        paymentMethod,
+        customerId,
+        ...paymentData
+    } = orderData;
     
-    /**
-     * Confirmar el pago de una orden
-     * @param {string} orderId - ID de la orden
-     * @param {boolean} forceConfirm - Forzar confirmación para pruebas
-     */
-    confirmPayment: async (orderId, forceConfirm = false) => {
-        try {
-            // Buscar la orden
-            const order = await OrderModel.findById(orderId);
-            
-            if (!order) {
-                throw new Error('Orden no encontrada');
+    const unitPrice = 15000;
+    const totalAmount = quantity * unitPrice;
+
+    try {
+        // Crear la orden
+        const order = await OrderModel.create({
+            userId,
+            quantity,
+            totalAmount,
+            status: 'Pendiente',
+            paymentStatus: 'CREATED',
+            shippingDetails,
+            customerName,
+            customerEmail,
+            customerLastName,
+            docNumber,
+            customerId,
+            paymentDetails: {
+                paymentMethod
             }
-            
-            // Verificar el estado del pago en Stripe
-            const paymentStatus = await stripeService.confirmPayment(order.paymentId, forceConfirm);
-            
-            if (paymentStatus.status !== 'succeeded') {
-                throw new Error(`El pago no ha sido completado. Estado: ${paymentStatus.status}`);
-            }
-            
-            // Actualizar el estado de la orden
-            const updatedOrder = await OrderModel.findByIdAndUpdate(
-                orderId,
-                { status: 'completed' },
-                { new: true }
-            );
-            
-            // Generar códigos QR para la orden
-            const qrCodes = [];
-            for (let i = 0; i < order.quantity; i++) {
-                const qrId = crypto.randomBytes(8).toString('hex');
-                const baseUrl = process.env.BASE_URL || 'http://localhost:5000';
-                const qrUrl = `${baseUrl}/api/qr/scan/${qrId}`;
-                const qrImage = await QRCode.toDataURL(qrUrl);
-                
-                const qr = await QRModel.create({
-                    qrId,
-                    userId: order.userId,
-                    orderId: order._id,
-                    isLinked: false,
-                    isActive: true,
-                    qrImage
+        });
+
+        // Generar códigos QR
+        const qrCodes = await this.generateQRCodes(order);
+
+        // Procesar pago según el método
+        let payment;
+        switch(paymentMethod) {
+            case 'credit_card':
+                payment = await epaycoService.createPayment({
+                    ...order.toObject(),
+                    tokenCard: paymentData.tokenCard,
+                    customerName,
+                    customerEmail,
+                    customerLastName,
+                    docNumber
                 });
-                
-                qrCodes.push(qr);
+                break;
+
+            case 'pse':
+                payment = await epaycoService.createPSEPayment({
+                    ...order.toObject(),
+                    bankCode: paymentData.bankCode,
+                    typePerson: paymentData.typePerson,
+                    docType: paymentData.docType
+                });
+                break;
+
+            case 'cash':
+                payment = await epaycoService.createCashPayment({
+                    ...order.toObject(),
+                    cashType: paymentData.cashType
+                });
+                break;
+        }
+
+        // Actualizar orden con datos del pago
+        order.paymentId = payment.ref_payco;
+        order.transactionId = payment.transaction_id;
+        await order.save();
+
+        return { 
+            order, 
+            qrCodes, 
+            transaction: {
+                ref_payco: payment.ref_payco,
+                transaction_id: payment.transaction_id,
+                status: payment.status,
+                url: payment.url,
+                ...(payment.pin && { pin: payment.pin }) // Solo para pagos en efectivo
             }
+        };
+    } catch (error) {
+        console.error('Error al crear orden:', error);
+        throw new Error(`Error al crear orden: ${error.message}`);
+    }
+}
+
+    async generateQRCodes(order) {
+        const qrCodes = [];
+        for (let i = 0; i < order.quantity; i++) {
+            const qrId = crypto.randomBytes(8).toString('hex');
+            const baseUrl = process.env.BASE_URL || 'http://localhost:5000';
+            const qrUrl = `${baseUrl}/api/qr/scan/${qrId}`;
+            const qrImage = await QRCode.toDataURL(qrUrl);
             
-            return { order: updatedOrder, qrCodes };
+            const qr = await QRModel.create({
+                qrId,
+                userId: order.userId,
+                orderId: order._id,
+                isLinked: false,
+                isActive: true,
+                qrImage
+            });
+            qrCodes.push(qr);
+        }
+        return qrCodes;
+    }
+
+    async confirmPayment(paymentData) {
+        try {
+            const order = await OrderModel.findById(paymentData.x_id_invoice);
+            if (!order) throw new Error('Orden no encontrada');
+
+            const transactionStatus = await epaycoService.getTransactionStatus(paymentData.x_ref_payco);
+            
+            // Actualizar estado usando el método estático
+            const updatedOrder = await OrderModel.updatePaymentStatus(order._id, {
+                status: transactionStatus.data.status,
+                message: transactionStatus.data.message,
+                transactionDate: new Date(transactionStatus.data.transaction_date),
+                authorizationCode: transactionStatus.data.authorization_code,
+                errorCode: transactionStatus.data.error_code,
+                responseCode: transactionStatus.data.response_code,
+                responseMessage: transactionStatus.data.response_message,
+                reason: transactionStatus.data.reason
+               
+            });
+
+            return updatedOrder;
         } catch (error) {
             console.error('Error al confirmar pago:', error);
             throw new Error(`Error al confirmar pago: ${error.message}`);
         }
-    },
-    
-    /**
-     * Obtener todas las órdenes de un usuario
-     * @param {string} userId - ID del usuario
-     */
-    getUserOrders: async (userId) => {
-        const orders = await OrderModel.find({ userId });
-        
-        // Para cada orden, obtener sus códigos QR asociados
-        const ordersWithQRs = await Promise.all(orders.map(async (order) => {
-            const qrCodes = await QRModel.find({ orderId: order._id });
-            return {
-                order,
-                qrCodes
-            };
-        }));
-        
-        return ordersWithQRs;
-    },
-    
-    /**
-     * Obtener una orden específica
-     * @param {string} orderId - ID de la orden
-     */
-    getOrderById: async (orderId) => {
-        const order = await OrderModel.findById(orderId);
-        
-        if (!order) {
-            throw new Error('Orden no encontrada');
-        }
-        
-        // Buscar los códigos QR asociados a esta orden
-        const qrCodes = await QRModel.find({ orderId: order._id });
-        
-        return { order, qrCodes };
-    },
-    
-    /**
-     * Verificar si un usuario tiene permiso para ver una orden
-     * @param {string} orderId - ID de la orden
-     * @param {string} userId - ID del usuario
-     * @param {string} userRole - Rol del usuario
-     */
-    hasPermissionForOrder: async (orderId, userId, userRole) => {
-        const order = await OrderModel.findById(orderId);
-        
-        if (!order) {
-            throw new Error('Orden no encontrada');
-        }
-        
-        return order.userId.toString() === userId || userRole === 'admin';
     }
-};
 
-module.exports = orderData; 
+    async getOrderById(orderId) {
+        return await OrderModel.findById(orderId);
+    }
+
+    async getUserOrders(userId) {
+        return await OrderModel.find({ userId }).sort({ createdAt: -1 });
+    }
+}
+
+module.exports = new OrderData();
