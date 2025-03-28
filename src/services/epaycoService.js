@@ -4,59 +4,103 @@ const crypto = require("crypto");
 class EpaycoService {
     constructor() {
         try {
-            // Verificar que las variables de entorno estén definidas
             if (!process.env.EPAYCO_PUBLIC_KEY || !process.env.EPAYCO_PRIVATE_KEY) {
-                throw new Error('Las claves de ePayco no están configuradas en las variables de entorno');
+                throw new Error('Las claves de ePayco no están configuradas');
             }
 
-            // Inicialización del cliente ePayco
-            this.epayco = Epayco({
+            this.epayco = new Epayco({
                 apiKey: process.env.EPAYCO_PUBLIC_KEY,
                 privateKey: process.env.EPAYCO_PRIVATE_KEY,
                 lang: "ES",
-                test: true
+                test: process.env.NODE_ENV !== 'production'
             });
 
-            // Verificación de la inicialización
             if (!this.epayco) {
                 throw new Error('No se pudo crear el cliente ePayco');
             }
-
-            console.log('Cliente ePayco inicializado correctamente con las claves:', {
-                publicKey: process.env.EPAYCO_PUBLIC_KEY.substring(0, 8) + '...',
-                privateKey: process.env.EPAYCO_PRIVATE_KEY.substring(0, 8) + '...'
-            });
         } catch (error) {
             console.error('Error en el constructor de EpaycoService:', error);
             throw error;
         }
     }
 
-    async createToken(cardInfo) {
+    async processPayment(orderData, paymentMethod) {
         try {
-            if (!this.epayco) {
-                throw new Error('Cliente ePayco no inicializado');
+            console.log('Procesando pago con método:', paymentMethod);
+            console.log('Datos de pago recibidos:', JSON.stringify(orderData.paymentData));
+
+            let paymentResult;
+            
+            switch(paymentMethod) {
+                case 'credit_card':
+                    if (!orderData.paymentData) {
+                        throw new Error('No se proporcionaron datos de pago');
+                    }
+                    const { number, expYear, expMonth, cvc } = orderData.paymentData;
+                    if (!number || !expYear || !expMonth || !cvc) {
+                        throw new Error(`Datos de tarjeta incompletos: ${JSON.stringify({
+                            hasNumber: !!number,
+                            hasExpYear: !!expYear,
+                            hasExpMonth: !!expMonth,
+                            hasCvc: !!cvc
+                        })}`);
+                    }
+                    paymentResult = await this.processCreditCardPayment(orderData);
+                    break;
+
+                case 'pse':
+                    if (!orderData.paymentData?.bankCode) {
+                        throw new Error('Código de banco requerido para PSE');
+                    }
+                    paymentResult = await this.processPSEPayment(orderData);
+                    break;
+
+                case 'cash':
+                    if (!orderData.paymentData?.cashType) {
+                        throw new Error('Tipo de pago en efectivo requerido');
+                    }
+                    paymentResult = await this.processCashPayment(orderData);
+                    break;
+
+                default:
+                    throw new Error(`Método de pago no soportado: ${paymentMethod}`);
             }
 
-            const credit_info = {
-                "card[number]": cardInfo.number,
-                "card[exp_year]": cardInfo.expYear,
-                "card[exp_month]": cardInfo.expMonth,
-                "card[cvc]": cardInfo.cvc,
-                "hasCvv": true
+            console.log('Resultado del procesamiento:', JSON.stringify(paymentResult));
+            return {
+                success: true,
+                data: paymentResult
             };
+        } catch (error) {
+            console.error('Error en processPayment:', error);
+            return {
+                success: false,
+                error: error.message,
+                details: error.stack
+            };
+        }
+    }
 
-            console.log('Creando token con datos:', {
-                number: cardInfo.number.substring(0, 4) + '...',
-                expYear: cardInfo.expYear,
-                expMonth: cardInfo.expMonth
-            });
+    async createToken(cardInfo) {
+        try {
+            console.log('Creando token para tarjeta:', JSON.stringify({
+                hasNumber: !!cardInfo.number,
+                hasExpYear: !!cardInfo.expYear,
+                hasExpMonth: !!cardInfo.expMonth,
+                hasCvc: !!cardInfo.cvc
+            }));
+
+            const credit_info = {
+                "card[number]": cardInfo.number.toString().replace(/\s/g, ''),
+                "card[exp_year]": cardInfo.expYear.toString(),
+                "card[exp_month]": cardInfo.expMonth.toString().padStart(2, '0'),
+                "card[cvc]": cardInfo.cvc.toString()
+            };
 
             const token = await this.epayco.token.create(credit_info);
             
-            if (!token || !token.data || !token.data.id) {
-                console.error('Respuesta inválida al crear token:', token);
-                throw new Error('Respuesta inválida al crear token');
+            if (!token?.data?.id) {
+                throw new Error('No se pudo generar el token de la tarjeta');
             }
 
             return token.data.id;
@@ -68,160 +112,108 @@ class EpaycoService {
 
     async createCustomer(customerInfo, tokenCard) {
         try {
-            if (!this.epayco) {
-                throw new Error('Cliente ePayco no inicializado');
-            }
-
-            // Validar y formatear la IP
-            const defaultIp = "127.0.0.1";
-            const ip = customerInfo.ip || defaultIp;
-            
-            // Validar formato de IP
-            const ipRegex = /^(\d{1,3}\.){3}\d{1,3}$/;
-            if (!ipRegex.test(ip)) {
-                console.warn(`IP inválida proporcionada: ${ip}, usando IP por defecto: ${defaultIp}`);
-            }
-
             const customer_data = {
                 token_card: tokenCard,
-                name: customerInfo.name,
-                last_name: customerInfo.lastName,
-                email: customerInfo.email,
+                name: customerInfo.customerName,
+                last_name: customerInfo.customerLastName,
+                email: customerInfo.customerEmail,
                 default: true,
-                country: "CO",
-                city: customerInfo.city || "Bogota",
-                address: customerInfo.address || "Cr 123 # 56 78",
-                phone: customerInfo.phone || "3180000000",
+                city: customerInfo.shippingDetails?.city || "Bogota",
+                address: customerInfo.shippingDetails?.address,
+                phone: customerInfo.shippingDetails?.phone,
+                cell_phone: customerInfo.shippingDetails?.cellPhone,
                 doc_type: "CC",
-                doc_number: customerInfo.docNumber || "10358519",
-                ip: ip
+                doc_number: customerInfo.docNumber
             };
-
-            console.log('Creando cliente con datos:', {
-                name: customerInfo.name,
-                email: customerInfo.email,
-                tokenCard: tokenCard.substring(0, 8) + '...',
-                ip: ip
-            });
 
             const customer = await this.epayco.customers.create(customer_data);
             
-            if (!customer) {
-                console.error('Respuesta vacía al crear cliente');
-                throw new Error('Respuesta vacía al crear cliente');
+            if (!customer?.data?.customerId) {
+                throw new Error('Error al crear cliente en ePayco');
             }
 
-            // Verificar la estructura de la respuesta
-            if (customer.success && customer.data && customer.data.customerId) {
-                console.log('Cliente creado exitosamente:', {
-                    customerId: customer.data.customerId,
-                    email: customer.data.email,
-                    status: customer.data.status
-                });
-                return customer.data.customerId;
-            }
-
-            console.error('Respuesta inválida al crear cliente:', customer);
-            throw new Error(customer.data?.description || 'Error al crear cliente en ePayco');
+            return customer.data.customerId;
         } catch (error) {
-            console.error('Error al crear cliente:', error);
-            if (error.response) {
-                console.error('Detalles del error de ePayco:', error.response.data);
-                throw new Error(`Error de ePayco: ${error.response.data.message || error.message}`);
-            }
             throw new Error(`Error al crear cliente: ${error.message}`);
         }
     }
 
-    async createPayment(orderData) {
+    async processCreditCardPayment(orderData) {
         try {
-            if (!this.epayco) {
-                throw new Error('Cliente ePayco no inicializado');
-            }
+            const tokenCard = await this.createToken(orderData.paymentData);
+            const customerId = await this.createCustomer(orderData, tokenCard);
 
-            console.log('Creando pago con datos:', {
-                amount: orderData.totalAmount,
-                invoice: orderData._id.toString(),
-                name_billing: orderData.customerName
-            });
-
-            const paymentData = {
-                token_card: orderData.tokenCard,
-                customer_id: orderData.customerId,
+            const payment = await this.epayco.charge.create({
+                token_card: tokenCard,
+                customer_id: customerId,
                 doc_type: "CC",
-                doc_number: orderData.docNumber || "10358519",
+                doc_number: orderData.docNumber,
                 name: orderData.customerName,
-                last_name: orderData.customerLastName || "Doe",
+                last_name: orderData.customerLastName,
                 email: orderData.customerEmail,
-                city: orderData.shippingDetails?.city || "Bogota",
-                address: orderData.shippingDetails?.address || "Cr 4 # 55 36",
-                phone: orderData.shippingDetails?.phone || "3005234321",
-                cell_phone: orderData.shippingDetails?.cellPhone || "3010000001",
                 bill: orderData._id.toString(),
                 description: `Pago por ${orderData.quantity} código(s) QR`,
                 value: String(orderData.totalAmount),
                 tax: "0",
                 tax_base: String(orderData.totalAmount),
                 currency: "COP",
-                ip: orderData.ip || "127.0.0.1",
-                url_response: `${process.env.FRONTEND_URL}/pago-exitoso`,
-                url_confirmation: `${process.env.BASE_URL}/api/orders/epayco/confirmation`,
-                method_confirmation: "POST",
-                extra1: orderData.userId.toString(),
-                extra2: orderData.quantity.toString()
-            };
+                url_response: `${process.env.FRONTEND_URL}/payment/response`,
+                url_confirmation: `${process.env.BASE_URL}/api/orders/confirmation`
+            });
 
-            const payment = await this.epayco.charge.create(paymentData);
-            
-            if (!payment) {
-                console.error('Respuesta de ePayco vacía');
-                throw new Error('Respuesta inválida de ePayco');
-            }
-
-            // Verificar la estructura de la respuesta
-            if (payment.success && payment.data) {
-                console.log('Pago creado exitosamente:', {
-                    ref_payco: payment.data.ref_payco,
-                    factura: payment.data.factura,
-                    estado: payment.data.estado
-                });
-                return {
-                    ref_payco: payment.data.ref_payco,
-                    transaction_id: payment.data.recibo,
-                    status: payment.data.estado,
-                    url: payment.data.urlpago
-                };
-            }
-
-            console.error('Respuesta inválida de ePayco:', payment);
-            throw new Error(payment.data?.description || 'Error al procesar el pago en ePayco');
+            return this.formatPaymentResponse(payment);
         } catch (error) {
-            console.error('Error detallado en createPayment:', error);
-            if (error.response) {
-                console.error('Detalles del error de ePayco:', error.response.data);
-                throw new Error(`Error de ePayco: ${error.response.data.message || error.message}`);
-            }
-            throw new Error(`Error al crear el pago: ${error.message}`);
+            throw new Error(`Error en el pago con tarjeta: ${error.message}`);
         }
+    }
+
+    async processPSEPayment(orderData) {
+        const payment = await this.epayco.bank.create({
+            bank: orderData.paymentData.bankCode,
+            type_person: orderData.typePerson || "0",
+            doc_type: orderData.docType || "CC",
+            doc_number: orderData.docNumber,
+            name: orderData.customerName,
+            last_name: orderData.customerLastName,
+            email: orderData.customerEmail,
+            bill: orderData._id.toString(),
+            description: `Pago PSE por ${orderData.quantity} código(s) QR`,
+            value: String(orderData.totalAmount),
+            tax: "0",
+            tax_base: String(orderData.totalAmount),
+            currency: "COP",
+            url_response: `${process.env.FRONTEND_URL}/payment/response`,
+            url_confirmation: `${process.env.BASE_URL}/api/orders/confirmation`
+        });
+
+        return this.formatPaymentResponse(payment);
+    }
+
+    async processCashPayment(orderData) {
+        const payment = await this.epayco.cash.create({
+            type: orderData.paymentData.cashType,
+            invoice: orderData._id.toString(),
+            description: `Pago en efectivo por ${orderData.quantity} código(s) QR`,
+            value: String(orderData.totalAmount),
+            tax: "0",
+            tax_base: String(orderData.totalAmount),
+            currency: "COP",
+            name: orderData.customerName,
+            last_name: orderData.customerLastName,
+            email: orderData.customerEmail,
+            cell_phone: orderData.shippingDetails?.cellPhone,
+            end_date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+            url_response: `${process.env.FRONTEND_URL}/payment/response`,
+            url_confirmation: `${process.env.BASE_URL}/api/orders/confirmation`
+        });
+
+        return this.formatPaymentResponse(payment);
     }
 
     validateSignature(data) {
         try {
-            if (!data.x_signature || !data.x_cust_id_cliente || !data.x_ref_payco || 
-                !data.x_transaction_id || !data.x_amount || !data.x_currency_code) {
-                console.log('Datos de firma incompletos:', data);
-                return false;
-            }
-
             const signature = `${data.x_cust_id_cliente}^${process.env.EPAYCO_PRIVATE_KEY}^${data.x_ref_payco}^${data.x_transaction_id}^${data.x_amount}^${data.x_currency_code}`;
             const hash = crypto.createHash("sha256").update(signature).digest("hex");
-            
-            console.log('Validación de firma:', {
-                calculada: hash,
-                recibida: data.x_signature,
-                coinciden: hash === data.x_signature
-            });
-
             return hash === data.x_signature;
         } catch (error) {
             console.error('Error en validateSignature:', error);
@@ -229,139 +221,40 @@ class EpaycoService {
         }
     }
 
-    async getTransactionStatus(refPayco) {
-        try {
-            if (!this.epayco) {
-                throw new Error('Cliente ePayco no inicializado');
-            }
-
-            console.log('Consultando estado de transacción:', refPayco);
-            const transaction = await this.epayco.charge.get(refPayco);
-            
-            if (!transaction || !transaction.data) {
-                console.error('Respuesta de estado vacía:', transaction);
-                throw new Error('Respuesta inválida al consultar estado');
-            }
-
-            return transaction.data;
-        } catch (error) {
-            console.error('Error en getTransactionStatus:', error);
-            if (error.response) {
-                console.error('Detalles del error de ePayco:', error.response.data);
-                throw new Error(`Error de ePayco: ${error.response.data.message || error.message}`);
-            }
-            throw new Error(`Error al obtener estado de transacción: ${error.message}`);
+    formatPaymentResponse(payment) {
+        if (!payment?.data) {
+            throw new Error('Respuesta de pago inválida');
         }
+
+        return {
+            ref_payco: payment.data.ref_payco,
+            transaction_id: payment.data.recibo || payment.data.requestId,
+            status: payment.data.estado || 'PENDING',
+            url: payment.data.urlpago || payment.data.urlbanco || payment.data.urlrecibo,
+            checkout_url: `https://secure.epayco.co/validation/v1/reference/${payment.data.ref_payco}`
+        };
     }
 
-    async createPSEPayment(orderData) {
+    async getTransactionStatus(ref_payco) {
         try {
-            if (!this.epayco) {
-                throw new Error('Cliente ePayco no inicializado');
-            }
-
-            console.log('Creando pago PSE con datos:', {
-                amount: orderData.totalAmount,
-                invoice: orderData._id.toString(),
-                bank: orderData.bankCode
-            });
-
-            const pseData = {
-                bank: orderData.bankCode,
-                type_person: orderData.typePerson || "0", // 0: natural, 1: jurídica
-                doc_type: orderData.docType || "CC",
-                doc_number: orderData.docNumber,
-                name: orderData.customerName,
-                last_name: orderData.customerLastName,
-                email: orderData.customerEmail,
-                bill: orderData._id.toString(),
-                description: `Pago PSE por ${orderData.quantity} código(s) QR`,
-                value: String(orderData.totalAmount),
-                tax: "0",
-                tax_base: String(orderData.totalAmount),
-                currency: "COP",
-                ip: orderData.ip || "127.0.0.1",
-                url_response: `${process.env.FRONTEND_URL}/pago-exitoso`,
-                url_confirmation: `${process.env.BASE_URL}/api/orders/epayco/confirmation`
-            };
-
-            const payment = await this.epayco.bank.create(pseData);
+            const transaction = await this.epayco.charge.get(ref_payco);
             
-            if (!payment || !payment.data) {
-                throw new Error('Respuesta inválida de ePayco para PSE');
+            if (!transaction?.data) {
+                throw new Error('Error al obtener estado de transacción');
             }
 
             return {
-                ref_payco: payment.data.ref_payco,
-                transaction_id: payment.data.requestId,
-                status: 'Pendiente',
-                url: payment.data.urlbanco
+                status: transaction.data.status,
+                date: transaction.data.transaction_date,
+                reference: transaction.data.ref_payco,
+                description: transaction.data.description,
+                currency: transaction.data.currency,
+                value: transaction.data.value
             };
         } catch (error) {
-            console.error('Error en createPSEPayment:', error);
-            throw new Error(`Error al crear pago PSE: ${error.message}`);
-        }
-    }
-
-    async createCashPayment(orderData) {
-        try {
-            if (!this.epayco) {
-                throw new Error('Cliente ePayco no inicializado');
-            }
-
-            console.log('Creando pago en efectivo con datos:', {
-                amount: orderData.totalAmount,
-                invoice: orderData._id.toString(),
-                type: orderData.cashType
-            });
-
-            const cashData = {
-                type: orderData.cashType, // efecty, baloto, gana, etc.
-                invoice: orderData._id.toString(),
-                description: `Pago en efectivo por ${orderData.quantity} código(s) QR`,
-                value: String(orderData.totalAmount),
-                tax: "0",
-                tax_base: String(orderData.totalAmount),
-                currency: "COP",
-                name: orderData.customerName,
-                last_name: orderData.customerLastName,
-                email: orderData.customerEmail,
-                cell_phone: orderData.shippingDetails?.cellPhone,
-                end_date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 horas
-                ip: orderData.ip || "127.0.0.1",
-                url_response: `${process.env.FRONTEND_URL}/pago-exitoso`,
-                url_confirmation: `${process.env.BASE_URL}/api/orders/epayco/confirmation`
-            };
-
-            const payment = await this.epayco.cash.create(cashData);
-
-            if (!payment || !payment.data) {
-                throw new Error('Respuesta inválida de ePayco para pago en efectivo');
-            }
-
-            return {
-                ref_payco: payment.data.ref_payco,
-                transaction_id: payment.data.requestId,
-                status: 'Pendiente',
-                url: payment.data.urlrecibo,
-                pin: payment.data.pin // Código para pago en efectivo
-            };
-        } catch (error) {
-            console.error('Error en createCashPayment:', error);
-            throw new Error(`Error al crear pago en efectivo: ${error.message}`);
+            throw new Error(`Error al obtener estado: ${error.message}`);
         }
     }
 }
 
-// Crear la instancia con mejor manejo de errores
-let epaycoService;
-try {
-    epaycoService = new EpaycoService();
-    console.log('Servicio ePayco inicializado correctamente');
-} catch (error) {
-    console.error('Error al inicializar EpaycoService:', error.message);
-    console.error('Detalles del error:', error);
-    throw error; // Lanzamos el error para que la aplicación no continúe con un servicio no inicializado
-}
-
-module.exports = epaycoService;
+module.exports = new EpaycoService();

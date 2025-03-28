@@ -1,158 +1,195 @@
 const OrderModel = require('../models/OrderModel');
-const QRModel = require('../models/QRModel');
-const UserModel = require('../models/UserModel');
-const crypto = require('crypto');
-const QRCode = require('qrcode');
 const epaycoService = require('../services/epaycoService');
+const QRModel = require('../models/QRModel');
+const qrData = require('./qrData');
 
-class OrderData {
-async createOrder(orderData) {
-    const { 
-        userId, 
-        quantity, 
-        shippingDetails, 
-        customerName, 
-        customerEmail,
-        customerLastName,
-        docNumber,
-        paymentMethod,
-        customerId,
-        ...paymentData
-    } = orderData;
-    
-    const unitPrice = 15000;
-    const totalAmount = quantity * unitPrice;
-
-    try {
-        // Crear la orden
-        const order = await OrderModel.create({
-            userId,
-            quantity,
-            totalAmount,
-            status: 'Pendiente',
-            paymentStatus: 'CREATED',
-            shippingDetails,
-            customerName,
-            customerEmail,
-            customerLastName,
-            docNumber,
-            customerId,
-            paymentDetails: {
-                paymentMethod
-            }
-        });
-
-        // Generar códigos QR
-        const qrCodes = await this.generateQRCodes(order);
-
-        // Procesar pago según el método
-        let payment;
-        switch(paymentMethod) {
-            case 'credit_card':
-                payment = await epaycoService.createPayment({
-                    ...order.toObject(),
-                    tokenCard: paymentData.tokenCard,
-                    customerName,
-                    customerEmail,
-                    customerLastName,
-                    docNumber
-                });
-                break;
-
-            case 'pse':
-                payment = await epaycoService.createPSEPayment({
-                    ...order.toObject(),
-                    bankCode: paymentData.bankCode,
-                    typePerson: paymentData.typePerson,
-                    docType: paymentData.docType
-                });
-                break;
-
-            case 'cash':
-                payment = await epaycoService.createCashPayment({
-                    ...order.toObject(),
-                    cashType: paymentData.cashType
-                });
-                break;
-        }
-
-        // Actualizar orden con datos del pago
-        order.paymentId = payment.ref_payco;
-        order.transactionId = payment.transaction_id;
-        await order.save();
-
-        return { 
-            order, 
-            qrCodes, 
-            transaction: {
-                ref_payco: payment.ref_payco,
-                transaction_id: payment.transaction_id,
-                status: payment.status,
-                url: payment.url,
-                ...(payment.pin && { pin: payment.pin }) // Solo para pagos en efectivo
-            }
-        };
-    } catch (error) {
-        console.error('Error al crear orden:', error);
-        throw new Error(`Error al crear orden: ${error.message}`);
-    }
-}
-
-    async generateQRCodes(order) {
-        const qrCodes = [];
-        for (let i = 0; i < order.quantity; i++) {
-            const qrId = crypto.randomBytes(8).toString('hex');
-            const baseUrl = process.env.BASE_URL || 'http://localhost:5000';
-            const qrUrl = `${baseUrl}/api/qr/scan/${qrId}`;
-            const qrImage = await QRCode.toDataURL(qrUrl);
-            
-            const qr = await QRModel.create({
-                qrId,
-                userId: order.userId,
-                orderId: order._id,
-                isLinked: false,
-                isActive: true,
-                qrImage
-            });
-            qrCodes.push(qr);
-        }
-        return qrCodes;
-    }
-
-    async confirmPayment(paymentData) {
+const orderData = {
+    async createOrder(orderInfo, userId) {
         try {
-            const order = await OrderModel.findById(paymentData.x_id_invoice);
-            if (!order) throw new Error('Orden no encontrada');
+            const { quantity, shippingDetails, customerName, customerEmail, customerLastName, docNumber, paymentMethod, paymentData } = orderInfo;
 
-            const transactionStatus = await epaycoService.getTransactionStatus(paymentData.x_ref_payco);
-            
-            // Actualizar estado usando el método estático
-            const updatedOrder = await OrderModel.updatePaymentStatus(order._id, {
-                status: transactionStatus.data.status,
-                message: transactionStatus.data.message,
-                transactionDate: new Date(transactionStatus.data.transaction_date),
-                authorizationCode: transactionStatus.data.authorization_code,
-                errorCode: transactionStatus.data.error_code,
-                responseCode: transactionStatus.data.response_code,
-                responseMessage: transactionStatus.data.response_message,
-                reason: transactionStatus.data.reason
-               
+            // Validar datos básicos
+            if (!quantity || quantity < 1) {
+                throw new Error('La cantidad debe ser mayor a 0');
+            }
+
+            if (!paymentMethod) {
+                throw new Error('Método de pago requerido');
+            }
+
+            if (!paymentData) {
+                throw new Error('Datos de pago requeridos');
+            }
+
+            const unitPrice = 15000;
+            const totalAmount = quantity * unitPrice;
+
+            // Crear orden inicial
+            const order = await OrderModel.create({
+                userId,
+                quantity,
+                totalAmount,
+                status: 'CREATED',
+                paymentStatus: 'PENDING',
+                shippingDetails,
+                customerName,
+                customerEmail,
+                customerLastName,
+                docNumber,
+                customerId: 'PENDING',
+                paymentDetails: {
+                    paymentMethod
+                }
             });
 
-            return updatedOrder;
+            // Procesar el pago
+            const paymentResult = await epaycoService.processPayment({
+                ...order.toObject(),
+                paymentData
+            }, paymentMethod);
+
+            if (!paymentResult.success) {
+                await OrderModel.findByIdAndUpdate(order._id, {
+                    status: 'FAILED',
+                    paymentStatus: 'FAILED',
+                    'paymentResponse.error': paymentResult.error
+                });
+
+                throw new Error(paymentResult.error);
+            }
+
+            // Generar QRs si el pago es aceptado
+            let generatedQRs = [];
+            if (paymentResult.data.status === 'Aceptada') {
+                generatedQRs = await qrData.generateMultipleQRs(userId, quantity);
+                
+                // Actualizar los QRs con el orderId
+                for (const qr of generatedQRs) {
+                    await QRModel.findByIdAndUpdate(qr._id, { orderId: order._id });
+                }
+            }
+
+            // Actualizar orden con información del pago y QRs
+            const updateData = {
+                paymentId: paymentResult.data.ref_payco,
+                transactionId: paymentResult.data.transaction_id,
+                status: paymentResult.data.status === 'Aceptada' ? 'ACCEPTED' : 'PENDING',
+                paymentStatus: paymentResult.data.status === 'Aceptada' ? 'COMPLETED' : 'PROCESSING'
+            };
+
+            if (generatedQRs.length > 0) {
+                updateData.qrCodes = generatedQRs.map(qr => qr._id);
+            }
+
+            const updatedOrder = await OrderModel.findByIdAndUpdate(
+                order._id,
+                updateData,
+                { 
+                    new: true,
+                    populate: {
+                        path: 'qrCodes',
+                        select: 'qrId qrImage isLinked isActive'
+                    }
+                }
+            );
+
+            return {
+                order: updatedOrder,
+                payment: paymentResult.data
+            };
         } catch (error) {
-            console.error('Error al confirmar pago:', error);
-            throw new Error(`Error al confirmar pago: ${error.message}`);
+            throw error;
         }
-    }
+    },
+
+    async confirmPayment(confirmationData) {
+        const { 
+            x_ref_payco, 
+            x_transaction_state, 
+            x_amount, 
+            x_currency_code,
+            x_test_request,
+            x_response,
+            x_approval_code,
+            x_transaction_date
+        } = confirmationData;
+
+        // Buscar la orden
+        const order = await OrderModel.findOne({ paymentId: x_ref_payco });
+        if (!order) {
+            throw new Error('Orden no encontrada');
+        }
+
+        // Validar monto y moneda
+        if (parseFloat(x_amount) !== order.totalAmount || x_currency_code !== 'COP') {
+            throw new Error('Datos de transacción inválidos');
+        }
+
+        // Generar QRs si es necesario
+        let generatedQRs = [];
+        if (x_transaction_state === 'Aceptada' && (!order.qrCodes || order.qrCodes.length === 0)) {
+            generatedQRs = await qrData.generateMultipleQRs(order.userId, order.quantity);
+            
+            // Actualizar los QRs con el orderId
+            for (const qr of generatedQRs) {
+                await QRModel.findByIdAndUpdate(qr._id, { orderId: order._id });
+            }
+        }
+
+        // Actualizar la orden
+        const updateData = {
+            status: x_transaction_state === 'Aceptada' ? 'ACCEPTED' : 'REJECTED',
+            paymentStatus: x_transaction_state === 'Aceptada' ? 'COMPLETED' : 'FAILED',
+            'paymentResponse.status': x_transaction_state,
+            'paymentResponse.date': new Date(),
+            'paymentResponse.transactionDate': new Date(x_transaction_date),
+            'paymentResponse.authorizationCode': x_approval_code,
+            'paymentResponse.responseMessage': x_response,
+            'paymentResponse.testRequest': x_test_request === 'TRUE'
+        };
+
+        if (generatedQRs.length > 0) {
+            updateData.qrCodes = generatedQRs.map(qr => qr._id);
+        }
+
+        const updatedOrder = await OrderModel.findByIdAndUpdate(
+            order._id,
+            updateData,
+            { 
+                new: true,
+                populate: { 
+                    path: 'qrCodes',
+                    select: 'qrId qrImage isLinked isActive'
+                }
+            }
+        );
+
+        return {
+            message: x_transaction_state === 'Aceptada' ? 
+                'Pago confirmado y códigos QR generados' : 
+                'Pago ' + x_transaction_state.toLowerCase(),
+            order: updatedOrder,
+            qrCodes: updatedOrder.qrCodes
+        };
+    },
 
     async getOrderById(orderId) {
-        return await OrderModel.findById(orderId);
-    }
+        const order = await OrderModel.findById(orderId)
+            .populate('qrCodes', 'qrId qrImage isLinked isActive');
+        
+        if (!order) {
+            throw new Error('Orden no encontrada');
+        }
+
+        return order;
+    },
 
     async getUserOrders(userId) {
-        return await OrderModel.find({ userId }).sort({ createdAt: -1 });
+        return await OrderModel.find({ userId })
+            .sort({ createdAt: -1 })
+            .populate('qrCodes', 'qrId qrImage isLinked isActive');
     }
-}
+};
 
-module.exports = new OrderData();
+
+module.exports = orderData; 

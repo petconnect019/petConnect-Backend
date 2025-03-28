@@ -28,8 +28,7 @@ const orderSchema = new mongoose.Schema({
             'CANCELLED',    // Cancelado por el usuario
             'REFUNDED'      // Reembolso realizado
         ],
-        default: 'CREATED',
-        index: true
+        default: 'CREATED'
     },
     paymentStatus: {
         type: String,
@@ -42,19 +41,21 @@ const orderSchema = new mongoose.Schema({
         ],
         default: 'PENDING'
     },
+    customerId: {
+        type: String,
+        required: true,
+        default: 'PENDING'
+    },
     paymentId: {
-        type: String, // ref_payco de ePayco
-        sparse: true,
-        index: true
+        type: String // ref_payco de ePayco
     },
     transactionId: {
-        type: String, // transaction_id o recibo de ePayco
-        sparse: true
+        type: String // transaction_id o recibo de ePayco
     },
-    customerId: {
-        type: String, // ID del cliente en ePayco
-        required: true
-    },
+    qrCodes: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'QR'
+    }],
     shippingDetails: {
         address: {
             type: String,
@@ -108,19 +109,16 @@ const orderSchema = new mongoose.Schema({
         match: [/^\d{8,12}$/, 'El número de documento debe tener entre 8 y 12 dígitos']
     },
     paymentDetails: {
-        cardLast4: {
-            type: String,
-            match: [/^\d{4}$/, 'Los últimos 4 dígitos deben ser números']
-        },
+        cardLast4: String,
         cardBrand: {
             type: String,
             enum: ['visa', 'mastercard', 'american-express', 'diners-club']
         },
         paymentMethod: {
             type: String,
-            enum: ['credit_card', 'pse', 'cash'],
-            default: 'credit_card',
-            required: true
+            enum: ['credit_card', 'pse', 'cash', 'pending'],
+            required: true,
+            default: 'pending'
         }
     },
     paymentResponse: {
@@ -151,11 +149,11 @@ const orderSchema = new mongoose.Schema({
     }
 });
 
-// Índices
+// Definir todos los índices en un solo lugar
 orderSchema.index({ userId: 1 });
 orderSchema.index({ status: 1 });
 orderSchema.index({ paymentStatus: 1 });
-orderSchema.index({ paymentId: 1 });
+orderSchema.index({ paymentId: 1 }, { sparse: true });
 orderSchema.index({ customerEmail: 1 });
 orderSchema.index({ createdAt: -1 });
 
