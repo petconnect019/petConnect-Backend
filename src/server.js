@@ -14,6 +14,7 @@ const http = require('http');
 const socketIo = require('socket.io');
 const jwt = require('jsonwebtoken');
 const socketService = require('./services/socketService');
+const ngrok = require('@ngrok/ngrok');
 
 const app = express();
 const server = http.createServer(app);
@@ -76,6 +77,7 @@ socketService.initialize(io);
 
 // Conexión a MongoDB
 mongoose.connect(process.env.MONGODB_URI)
+    .then(() => console.log('Conectado a MongoDB'))
     .catch(err => console.error('Error conectando a MongoDB:', err));
 
 // Ruta de estado del servidor prueba el backend en el navegador (localhost:5000)
@@ -96,3 +98,18 @@ const startServer = async () => {
 };
 
 startServer();
+
+// Configurar ngrok
+if (process.env.NODE_ENV === 'development') {
+    ngrok.connect({ 
+        addr: PORT, 
+        authtoken_from_env: true 
+    })
+    .then(listener => {
+        console.log(`Servidor expuesto en: ${listener.url()}`);
+        console.log('Configura estas URLs en ePayco:');
+        console.log(`URL de Respuesta: ${listener.url()}/payment-response`);
+        console.log(`URL de Confirmación: ${listener.url()}/api/payments/epayco/confirmation`);
+    })
+    .catch(err => console.error('Error al iniciar ngrok:', err));
+}

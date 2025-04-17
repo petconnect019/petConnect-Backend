@@ -10,6 +10,7 @@ const testRoutes = require('./testRoutes');
 const chatRoutes = require('./chatRoutes');
 const adminRoutes = require('./adminRoutes');
 const stripeRoutes = require('./stripeRoutes');
+const paymentRoutes = require('./payment.routes');
 const AdminData = require('../data/adminData');
 
 // Endpoint de salud para verificar la conexión
@@ -31,5 +32,6 @@ router.use('/test', testRoutes);
 router.use('/chat', chatRoutes);
 router.use('/admin', adminRoutes);
 router.use('/stripe', stripeRoutes);
+router.use('/payments', paymentRoutes);
 
 module.exports = router; 

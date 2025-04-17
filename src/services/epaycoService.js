@@ -1,5 +1,6 @@
 const Epayco = require('epayco-sdk-node');
 const crypto = require("crypto");
+const epayco = require('../config/epayco.config');
 
 class EpaycoService {
     constructor() {
@@ -253,6 +254,60 @@ class EpaycoService {
             };
         } catch (error) {
             throw new Error(`Error al obtener estado: ${error.message}`);
+        }
+    }
+
+    static async createPayment(paymentData) {
+        try {
+            const payment = await epayco.charge.create(paymentData);
+            return payment;
+        } catch (error) {
+            console.error('Error en EpaycoService.createPayment:', error);
+            throw error;
+        }
+    }
+
+    static async getPaymentInfo(refPayco) {
+        try {
+            const paymentInfo = await epayco.charge.get(refPayco);
+            return paymentInfo;
+        } catch (error) {
+            console.error('Error en EpaycoService.getPaymentInfo:', error);
+            throw error;
+        }
+    }
+
+    static async createToken(cardData) {
+        try {
+            const token = await epayco.token.create(cardData);
+            return token;
+        } catch (error) {
+            console.error('Error en EpaycoService.createToken:', error);
+            throw error;
+        }
+    }
+
+    static async createCustomer(customerData) {
+        try {
+            const customer = await epayco.customers.create(customerData);
+            return customer;
+        } catch (error) {
+            console.error('Error en EpaycoService.createCustomer:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Verificar el estado de un pago
+     * @param {string} paymentId - ID del pago a verificar
+     */
+    async verifyPayment(paymentId) {
+        try {
+            const payment = await this.epayco.charge.get(paymentId);
+            return payment;
+        } catch (error) {
+            console.error('Error al verificar pago:', error);
+            throw new Error(`Error al verificar el pago: ${error.message}`);
         }
     }
 }

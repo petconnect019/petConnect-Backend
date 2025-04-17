@@ -1,16 +1,6 @@
 const mongoose = require('mongoose');
 
 const qrSchema = new mongoose.Schema({
-    qrId: {
-        type: String,
-        required: true,
-        unique: true
-    },
-    petId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Pet',
-        required: false
-    },
     userId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
@@ -19,25 +9,37 @@ const qrSchema = new mongoose.Schema({
     orderId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Order',
-        required: false
+        required: true
     },
-    isLinked: {
-        type: Boolean,
-        default: false
+    qrId: {
+        type: String,
+        required: true,
+        unique: true
     },
     qrImage: {
         type: String,
         required: true
     },
+    status: {
+        type: String,
+        enum: ['active', 'inactive', 'used'],
+        default: 'active'
+    },
     createdAt: {
         type: Date,
         default: Date.now
     },
-    isActive: {
-        type: Boolean,
-        default: true
+    updatedAt: {
+        type: Date,
+        default: Date.now
     }
-}, { timestamps: true });
+});
+
+// Middleware para actualizar updatedAt antes de guardar
+qrSchema.pre('save', function(next) {
+    this.updatedAt = new Date();
+    next();
+});
 
 const QRModel = mongoose.model('QR', qrSchema);
 
