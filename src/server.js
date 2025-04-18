@@ -14,7 +14,6 @@ const http = require('http');
 const socketIo = require('socket.io');
 const jwt = require('jsonwebtoken');
 const socketService = require('./services/socketService');
-const ngrok = require('@ngrok/ngrok');
 
 const app = express();
 const server = http.createServer(app);
@@ -34,30 +33,24 @@ app.use(morgan('dev'));
 
 // Configuración de CORS
 app.use(cors({
-    origin: function(origin, callback) {
-        // Permitir solicitudes sin origen (como aplicaciones móviles o curl)
-        if (!origin) return callback(null, true);
-        
-        // Lista de orígenes permitidos
-        const allowedOrigins = [
-            process.env.FRONTEND_URL || 'http://localhost:5175',
-            'http://localhost:3000',
-            'http://localhost:5500',
-            'http://127.0.0.1:5500',
-            'http://localhost:8080'
-        ];
-        
-        if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV === 'development') {
-            callback(null, true);
-        } else {
-            callback(new Error('No permitido por CORS'));
-        }
-    },
+    origin: ['http://localhost:5175', 'http://localhost:3000'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With', 'X-CSRF-Token'],
+    exposedHeaders: ['Content-Range', 'X-Content-Range'],
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
-    exposedHeaders: ['set-cookie']
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
+    maxAge: 86400 // Cache preflight requests for 24 hours
 }));
+
+// Manejar solicitudes OPTIONS
+app.options('*', (req, res) => {
+    res.setHeader('Access-Control-Allow-Origin', 'http://localhost:5175');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, Origin, X-Requested-With, X-CSRF-Token');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.status(204).end();
+});
 
 // Configuración de sesión y autenticación
 app.use(sessionConfig);
@@ -98,18 +91,3 @@ const startServer = async () => {
 };
 
 startServer();
-
-// Configurar ngrok
-if (process.env.NODE_ENV === 'development') {
-    ngrok.connect({ 
-        addr: PORT, 
-        authtoken_from_env: true 
-    })
-    .then(listener => {
-        console.log(`Servidor expuesto en: ${listener.url()}`);
-        console.log('Configura estas URLs en ePayco:');
-        console.log(`URL de Respuesta: ${listener.url()}/payment-response`);
-        console.log(`URL de Confirmación: ${listener.url()}/api/payments/epayco/confirmation`);
-    })
-    .catch(err => console.error('Error al iniciar ngrok:', err));
-}

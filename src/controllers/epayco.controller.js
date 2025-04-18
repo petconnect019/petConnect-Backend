@@ -29,19 +29,32 @@ const transporter = nodemailer.createTransport({
 const epaycoController = {
     createPayment: async (req, res) => {
         try {
+            console.log('Iniciando creación de pago con datos:', req.body);
+            
             const { amount, qrCount, userId } = req.body;
 
             // Validar datos de entrada
             if (!amount || !qrCount || !userId) {
+                console.error('Faltan datos requeridos:', { amount, qrCount, userId });
                 return res.status(400).json({
                     success: false,
                     message: 'Faltan datos requeridos'
                 });
             }
 
+            // Validar que el monto sea un número positivo
+            if (isNaN(amount) || amount <= 0) {
+                console.error('Monto inválido:', amount);
+                return res.status(400).json({
+                    success: false,
+                    message: 'El monto debe ser un número positivo'
+                });
+            }
+
             // Obtener datos del usuario
             const user = await UserModel.findById(userId);
             if (!user) {
+                console.error('Usuario no encontrado:', userId);
                 return res.status(404).json({
                     success: false,
                     message: 'Usuario no encontrado'
@@ -57,13 +70,16 @@ const epaycoController = {
             });
 
             await order.save();
+            console.log('Orden creada:', order._id);
 
             // Validar que las URLs estén configuradas
             if (!process.env.BACKEND_URL) {
+                console.error('BACKEND_URL no configurada');
                 throw new Error('BACKEND_URL no está configurada en las variables de entorno');
             }
 
             if (!process.env.FRONTEND_URL) {
+                console.error('FRONTEND_URL no configurada');
                 throw new Error('FRONTEND_URL no está configurada en las variables de entorno');
             }
 
@@ -89,24 +105,33 @@ const epaycoController = {
                 extra1: order._id.toString()
             };
 
-            console.log('Variables de entorno:', {
-                BACKEND_URL: process.env.BACKEND_URL,
-                FRONTEND_URL: process.env.FRONTEND_URL
-            });
-
             console.log('Datos del pago:', {
                 ...paymentData,
                 url_response: paymentData.url_response,
                 url_confirmation: paymentData.url_confirmation
             });
 
-            const payment = await Epayco.charge.create(paymentData);
-            
-            res.json({
-                success: true,
-                payment,
-                order
-            });
+            try {
+                const payment = await Epayco.charge.create(paymentData);
+                console.log('Pago creado en ePayco:', payment);
+                
+                res.json({
+                    success: true,
+                    payment,
+                    order
+                });
+            } catch (epaycoError) {
+                console.error('Error de ePayco:', epaycoError);
+                // Actualizar el estado de la orden a fallido
+                order.status = 'failed';
+                await order.save();
+                
+                res.status(500).json({
+                    success: false,
+                    message: 'Error al procesar el pago con ePayco',
+                    error: epaycoError.message
+                });
+            }
         } catch (error) {
             console.error('Error al crear pago:', error);
             res.status(500).json({
