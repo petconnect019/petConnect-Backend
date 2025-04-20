@@ -58,7 +58,10 @@ const qrController = {
                     orderId,
                     content: `OrderId: ${orderId} - QR number: ${i}`,
                     dataUrl: await qrUtils.generateQRUrl(`OrderId: ${orderId} - QR number: ${i}`),
-                    qrNumber: i
+                    qrNumber: i,
+                    isLinked: false,
+                    isActive: true,
+                    petId: null
                 });
                 
                 // Guardar el QR

@@ -97,11 +97,11 @@ class PaymentController {
             const referencia = req.query.ref_payco || '';
             
             // Redirigir a una página de resumen o éxito
-            const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5175';
+            const frontendUrl = process.env.FRONTEND_URL ;
             res.redirect(`${frontendUrl}/payment/success?ref_payco=${referencia}`);
         } catch (error) {
             console.error('Error en respuesta de pago:', error);
-            const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5175';
+            const frontendUrl = process.env.FRONTEND_URL;
             res.redirect(`${frontendUrl}/payment/error`);
         }
     }
