@@ -6,16 +6,18 @@ const qrSchema = new mongoose.Schema({
         ref: 'Order',
         required: true
     },
-    content: {
+    qrId: {
         type: String,
-        required: true
+        required: true,
+        unique: true
     },
     dataUrl: {
         type: String,
         required: true
     },
-    qrNumber: {
-        type: Number,
+    userId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
         required: true
     },
     isLinked: {
@@ -31,6 +33,10 @@ const qrSchema = new mongoose.Schema({
         ref: 'Pet',
         default: null
     },
+    qrImage: {
+        type: String,
+        default: null
+    },
     createdAt: {
         type: Date,
         default: Date.now
@@ -42,6 +48,7 @@ const qrSchema = new mongoose.Schema({
 // Índices para mejorar el rendimiento de las consultas
 qrSchema.index({ orderId: 1 });
 qrSchema.index({ isActive: 1 });
+qrSchema.index({ qrId: 1 }, { unique: true });
 
 // Crear un nuevo modelo QR en lugar de modificar uno existente
 const QRModel = mongoose.models.QR || mongoose.model('QR', qrSchema);

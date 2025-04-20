@@ -1,35 +1,39 @@
 const UserModel = require('../models/UserModel');
+const bcrypt = require('bcrypt');
 const { uploadToCloudinary, deleteFromCloudinary } = require('../utils/cloudinary');
 
 const UserData = {
     /**
      * Crea un nuevo usuario
+     * @param {Object} userData - Datos del usuario a crear
+     * @returns {Object} El usuario creado
      */
     createUser: async (userData) => {
         try {
             // Verificar si el usuario ya existe
-            const existingUser = await UserModel.findOne({
-                $or: [
-                    { google_id: userData.google_id },
-                    { email: userData.email }
-                ]
-            });
-            
+            const existingUser = await UserModel.findOne({ email: userData.email });
             if (existingUser) {
                 throw new Error('El usuario ya existe');
             }
             
+            // Si hay contraseña, encriptarla
             if (userData.password) {
-                const bcrypt = require('bcrypt');
                 const salt = await bcrypt.genSalt(10);
                 userData.password = await bcrypt.hash(userData.password, salt);
             }
             
-            // Crear el usuario
+            // Asegurar que el rol siempre sea 'user' a menos que se especifique otra cosa
+            userData.role = userData.role || 'user';
+            
+            // Crear y guardar el usuario
             const user = new UserModel(userData);
             await user.save();
             
-            return user;
+            // Quitar la contraseña antes de devolver el usuario
+            const userObject = user.toObject();
+            delete userObject.password;
+            
+            return userObject;
         } catch (error) {
             throw error;
         }
@@ -37,6 +41,7 @@ const UserData = {
     
     /**
      * Obtiene todos los usuarios
+     * @returns {Array} Lista de usuarios
      */
     getAllUsers: async () => {
         try {
@@ -48,29 +53,18 @@ const UserData = {
     },
     
     /**
-     * Obtiene un usuario por su ID
-     */
-    getUserById: async (userId) => {
-        try {
-            const user = await UserModel.findById(userId).select('-password');
-            if (!user) {
-                throw new Error('Usuario no encontrado');
-            }
-            return user;
-        } catch (error) {
-            throw error;
-        }
-    },
-    
-    /**
-     * Obtiene el perfil del usuario actual
+     * Obtiene el perfil de un usuario
+     * @param {string} userId - ID del usuario
+     * @returns {Object} Perfil del usuario
      */
     getProfile: async (userId) => {
         try {
-            const user = await UserModel.findById(userId).select('-password');
+            const user = await UserModel.findById(userId, '-password');
+            
             if (!user) {
                 throw new Error('Usuario no encontrado');
             }
+            
             return user;
         } catch (error) {
             throw error;
@@ -79,32 +73,29 @@ const UserData = {
     
     /**
      * Actualiza el perfil de un usuario
+     * @param {string} userId - ID del usuario
+     * @param {Object} updateData - Datos a actualizar
+     * @returns {Object} Perfil actualizado
      */
-    updateProfile: async (userId, updateData, profilePictureBuffer = null, mimeType = null) => {
+    updateProfile: async (userId, updateData) => {
         try {
-            let profilePictureUrl = null;
-            
-            // Si hay una nueva foto de perfil
-            if (profilePictureBuffer) {
-                const user = await UserModel.findById(userId);
-                if (user.profile_picture) {
-                    await deleteFromCloudinary(user.profile_picture);
-                }
-                
-                const result = await uploadToCloudinary(profilePictureBuffer, mimeType);
-                profilePictureUrl = result.secure_url;
-                updateData.profile_picture = profilePictureUrl;
-            }
-            
-            const user = await UserModel.findByIdAndUpdate(
-                userId,
-                updateData,
-                { new: true, select: '-password' }
-            );
+            // Obtener el usuario
+            const user = await UserModel.findById(userId);
             
             if (!user) {
                 throw new Error('Usuario no encontrado');
             }
+            
+            // Actualizar solo los campos permitidos
+            const allowedFields = ['name', 'phone', 'city', 'state', 'country', 'address', 'gender'];
+            
+            allowedFields.forEach(field => {
+                if (updateData[field] !== undefined) {
+                    user[field] = updateData[field];
+                }
+            });
+            
+            await user.save();
             
             return user;
         } catch (error) {
@@ -114,23 +105,33 @@ const UserData = {
     
     /**
      * Actualiza la configuración de privacidad de un usuario
+     * @param {string} userId - ID del usuario
+     * @param {Object} privacySettings - Configuración de privacidad
+     * @returns {Object} Configuración actualizada
      */
     updatePrivacy: async (userId, privacySettings) => {
         try {
-            const user = await UserModel.findByIdAndUpdate(
-                userId,
-                {
-                    is_profile_public: privacySettings.isProfilePublic,
-                    show_contact: privacySettings.showContact
-                },
-                { new: true, select: '-password' }
-            );
+            const user = await UserModel.findById(userId);
             
             if (!user) {
                 throw new Error('Usuario no encontrado');
             }
             
-            return user;
+            // Actualizar configuración de privacidad
+            if (privacySettings.is_profile_public !== undefined) {
+                user.is_profile_public = privacySettings.is_profile_public;
+            }
+            
+            if (privacySettings.show_contact !== undefined) {
+                user.show_contact = privacySettings.show_contact;
+            }
+            
+            await user.save();
+            
+            return {
+                is_profile_public: user.is_profile_public,
+                show_contact: user.show_contact
+            };
         } catch (error) {
             throw error;
         }
@@ -138,10 +139,15 @@ const UserData = {
     
     /**
      * Actualiza la foto de perfil de un usuario
+     * @param {string} userId - ID del usuario
+     * @param {Buffer} photoBuffer - Buffer de la imagen
+     * @param {string} mimeType - Tipo MIME de la imagen
+     * @returns {string} URL de la nueva foto de perfil
      */
-    updateProfilePicture: async (userId, profilePictureBuffer, mimeType) => {
+    updateProfilePicture: async (userId, photoBuffer, mimeType) => {
         try {
             const user = await UserModel.findById(userId);
+            
             if (!user) {
                 throw new Error('Usuario no encontrado');
             }
@@ -151,8 +157,8 @@ const UserData = {
                 await deleteFromCloudinary(user.profile_picture);
             }
             
-            // Subir nueva foto
-            const result = await uploadToCloudinary(profilePictureBuffer, mimeType);
+            // Subir la nueva foto
+            const result = await uploadToCloudinary(photoBuffer, mimeType);
             
             // Actualizar usuario
             user.profile_picture = result.secure_url;
@@ -166,25 +172,44 @@ const UserData = {
     
     /**
      * Elimina un usuario
+     * @param {string} userId - ID del usuario a eliminar
+     * @returns {boolean} true si se eliminó correctamente
      */
     deleteUser: async (userId) => {
         try {
             const user = await UserModel.findById(userId);
+            
             if (!user) {
                 throw new Error('Usuario no encontrado');
             }
             
-            // Eliminar foto de perfil de Cloudinary si existe
+            // Eliminar foto de perfil si existe
             if (user.profile_picture) {
-                try {
-                    await deleteFromCloudinary(user.profile_picture);
-                } catch (deleteError) {
-                    console.error('Error al eliminar imagen de Cloudinary:', deleteError);
-                }
+                await deleteFromCloudinary(user.profile_picture);
             }
             
             await UserModel.findByIdAndDelete(userId);
+            
             return true;
+        } catch (error) {
+            throw error;
+        }
+    },
+    
+    /**
+     * Obtiene un usuario por ID
+     * @param {string} userId - ID del usuario
+     * @returns {Object} Datos del usuario
+     */
+    getUserById: async (userId) => {
+        try {
+            const user = await UserModel.findById(userId, '-password');
+            
+            if (!user) {
+                throw new Error('Usuario no encontrado');
+            }
+            
+            return user;
         } catch (error) {
             throw error;
         }

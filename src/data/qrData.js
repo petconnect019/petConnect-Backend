@@ -3,6 +3,7 @@ const PetModel = require('../models/PetModel');
 const crypto = require('crypto');
 const QRCode = require('qrcode');
 const QRScanModel = require('../models/QRScanModel');
+const OrderModel = require('../models/OrderModel');
 
 // Función para generar imagen QR (implementada directamente aquí)
 const generateQRImage = async (data) => {
@@ -49,14 +50,13 @@ const qrData = {
             // Generar la imagen del QR usando la función mejorada
             const qrImage = await generateQRImage(qrId);
             
+            // Crear el registro en la base de datos
             const qr = await QRModel.create({
                 qrId,
                 userId,
                 isLinked: false,
                 isActive: true,
                 qrImage,
-                qrNumber: i + 1,
-                content: `OrderId: ${orderId} - QR number: ${i + 1}`,
                 dataUrl: qrImage,
                 orderId: orderId
             });
@@ -217,12 +217,73 @@ const qrData = {
             throw new Error('No tienes permiso para eliminar este QR');
         }
         
-      
-        
         // Eliminar el QR
         await QRModel.findOneAndDelete({ qrId });
         
         return { message: 'QR eliminado exitosamente' };
+    },
+    
+    /**
+     * Obtiene un QR específico por su ID
+     * @param {string} qrId - ID del QR a obtener
+     * @returns {Object} Datos del QR
+     */
+    getQRById: async (qrId) => {
+        try {
+            const qr = await QRModel.findById(qrId);
+            
+            if (!qr) {
+                throw new Error('Código QR no encontrado');
+            }
+            
+            return {
+                id: qr._id,
+                orderId: qr.orderId,
+                qrId: qr.qrId,
+                dataUrl: qr.dataUrl,
+                isActive: qr.isActive,
+                isLinked: qr.isLinked,
+                petId: qr.petId,
+                createdAt: qr.createdAt
+            };
+        } catch (error) {
+            console.error(`Error al obtener QR por ID ${qrId}:`, error);
+            throw error;
+        }
+    },
+    
+    /**
+     * Obtiene todos los QRs asociados a las órdenes pagadas de un usuario
+     * @param {string} userId - ID del usuario
+     * @returns {Array} Array de QRs asociados al usuario
+     */
+    getUserQRCodes: async (userId) => {
+        try {
+            // Buscar órdenes pagadas del usuario
+            const orders = await OrderModel.find({ 
+                userId,
+                status: 'completed',
+                paymentStatus: 'COMPLETED'
+            }).populate('qrCodes', 'qrId qrImage isLinked isActive userId petId');
+            
+            if (!orders || orders.length === 0) {
+                return [];
+            }
+            
+            // Extraer QRs activos de las órdenes
+            const qrCodes = orders.reduce((acc, order) => {
+                if (order.qrCodes && Array.isArray(order.qrCodes)) {
+                    const orderQRs = order.qrCodes.filter(qr => qr && qr.isActive);
+                    return acc.concat(orderQRs);
+                }
+                return acc;
+            }, []);
+            
+            return qrCodes;
+        } catch (error) {
+            console.error(`Error al obtener QRs del usuario ${userId}:`, error);
+            throw error;
+        }
     }
 };
 

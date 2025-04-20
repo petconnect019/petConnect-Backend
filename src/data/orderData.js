@@ -28,40 +28,63 @@ const orderData = {
 
     confirmOrder: async function(orderId) {
         try {
-            // Generar QRs
+            // Verificar que la orden existe
             const order = await OrderModel.findById(orderId);
             if (!order) {
                 throw new Error('Orden no encontrada');
             }
-
-            const generatedQRs = await qrData.generateMultipleQRs(order.userId, order.quantity, order._id);
             
-            // Actualizar los QRs con el orderId
-            for (const qr of generatedQRs) {
-                await QRModel.findByIdAndUpdate(qr._id, { orderId: order._id });
+            // Verificar si la orden ya tiene QRs generados
+            if (order.qrCodes && order.qrCodes.length > 0) {
+                console.log(`La orden ${orderId} ya tiene ${order.qrCodes.length} QRs generados`);
+                return {
+                    order,
+                    qrCodes: []
+                };
             }
 
-            // Actualizar orden con los QRs y cambiar estado
-            const updatedOrder = await OrderModel.findByIdAndUpdate(
-                order._id,
-                {
-                    status: 'completed',
-                    paymentStatus: 'COMPLETED',
-                    qrCodes: generatedQRs.map(qr => qr._id)
-                },
-                { 
-                    new: true,
-                    populate: {
-                        path: 'qrCodes',
-                        select: 'code status'
+            console.log(`Generando ${order.quantity} QRs para la orden ${orderId}`);
+            
+            try {
+                // Generar QRs
+                const generatedQRs = await qrData.generateMultipleQRs(order.userId, order.quantity, order._id);
+                
+                // Actualizar orden con los QRs y cambiar estado
+                const updatedOrder = await OrderModel.findByIdAndUpdate(
+                    order._id,
+                    {
+                        status: 'completed',
+                        paymentStatus: 'COMPLETED',
+                        qrCodes: generatedQRs.map(qr => qr._id)
+                    },
+                    { 
+                        new: true,
+                        populate: {
+                            path: 'qrCodes',
+                            select: 'qrId qrImage isLinked isActive'
+                        }
                     }
-                }
-            );
+                );
 
-            return {
-                order: updatedOrder,
-                qrCodes: generatedQRs
-            };
+                return {
+                    order: updatedOrder,
+                    qrCodes: generatedQRs
+                };
+            } catch (error) {
+                console.error(`Error al generar QRs: ${error.message}`);
+                
+                // Intentar actualizar el estado de la orden sin generar QRs
+                const updatedOrder = await OrderModel.findByIdAndUpdate(
+                    order._id,
+                    {
+                        status: 'completed',
+                        paymentStatus: 'COMPLETED'
+                    },
+                    { new: true }
+                );
+                
+                throw new Error(`Error al generar códigos QR: ${error.message}`);
+            }
         } catch (error) {
             console.error('Error al confirmar orden:', error);
             throw error;
