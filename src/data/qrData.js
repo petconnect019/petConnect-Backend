@@ -3,6 +3,7 @@ const PetModel = require('../models/PetModel');
 const crypto = require('crypto');
 const QRCode = require('qrcode');
 const QRScanModel = require('../models/QRScanModel');
+const { generateQRImage } = require('../utils/qrData');
 
 const qrData = {
     /**
@@ -10,10 +11,11 @@ const qrData = {
      * @param {string} userId - ID del usuario
      */
     generateQR: async (userId) => {
+        // Generar un ID único para el QR
         const qrId = crypto.randomBytes(8).toString('hex');
-        const baseUrl = process.env.BASE_URL || 'http://localhost:5000';
-        const qrUrl = `${baseUrl}/api/qr/scan/${qrId}`;
-        const qrImage = await QRCode.toDataURL(qrUrl);
+        
+        // Generar la imagen del QR usando la función mejorada
+        const qrImage = await generateQRImage(qrId);
         
         const qr = await QRModel.create({
             qrId,
@@ -35,10 +37,11 @@ const qrData = {
         const qrCodes = [];
         
         for (let i = 0; i < count; i++) {
+            // Generar un ID único para cada QR
             const qrId = crypto.randomBytes(8).toString('hex');
-            const baseUrl = process.env.BASE_URL || 'http://localhost:5000';
-            const qrUrl = `${baseUrl}/api/qr/scan/${qrId}`;
-            const qrImage = await QRCode.toDataURL(qrUrl);
+            
+            // Generar la imagen del QR usando la función mejorada
+            const qrImage = await generateQRImage(qrId);
             
             const qr = await QRModel.create({
                 qrId,

@@ -13,7 +13,9 @@ class EpaycoService {
                 apiKey: process.env.EPAYCO_PUBLIC_KEY,
                 privateKey: process.env.EPAYCO_PRIVATE_KEY,
                 lang: "ES",
-                test: process.env.NODE_ENV !== 'production'
+                test: process.env.NODE_ENV !== 'production',
+                p_cust_id_cliente: process.env.EPAYCO_CUST_ID_CLIENTE,
+                p_key: process.env.EPAYCO_P_KEY
             });
 
             if (!this.epayco) {
@@ -213,7 +215,7 @@ class EpaycoService {
 
     validateSignature(data) {
         try {
-            const signature = `${data.x_cust_id_cliente}^${process.env.EPAYCO_PRIVATE_KEY}^${data.x_ref_payco}^${data.x_transaction_id}^${data.x_amount}^${data.x_currency_code}`;
+            const signature = `${data.x_cust_id_cliente}^${process.env.EPAYCO_P_KEY}^${data.x_ref_payco}^${data.x_transaction_id}^${data.x_amount}^${data.x_currency_code}`;
             const hash = crypto.createHash("sha256").update(signature).digest("hex");
             return hash === data.x_signature;
         } catch (error) {

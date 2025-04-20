@@ -43,7 +43,22 @@ const generateQRCode = async (qrCodes) => {
 
 const generateQRImage = async (data) => {
     try {
-        const qrImage = await QRCode.toDataURL(data);
+        // Opciones mejoradas para generar QRs más robustos
+        const options = {
+            errorCorrectionLevel: 'H', // Alta corrección de errores
+            margin: 2, // Margen alrededor del QR
+            width: 300, // Tamaño del QR
+            color: {
+                dark: '#000000', // Color del QR
+                light: '#FFFFFF' // Color de fondo
+            }
+        };
+        
+        // Agregamos el dominio del frontend a la URL para asegurar que funcione correctamente
+        const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5175';
+        const qrContent = typeof data === 'string' ? `${baseUrl}/qr/scan/${data}` : JSON.stringify(data);
+        
+        const qrImage = await QRCode.toDataURL(qrContent, options);
         return qrImage;
     } catch (error) {
         console.error('Error al generar código QR:', error);

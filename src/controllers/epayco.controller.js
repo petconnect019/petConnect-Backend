@@ -2,7 +2,9 @@ const Epayco = require('epayco-sdk-node')({
     apiKey: process.env.EPAYCO_PUBLIC_KEY,
     privateKey: process.env.EPAYCO_PRIVATE_KEY,
     lang: 'ES',
-    test: true
+    test: process.env.EPAYCO_TEST === 'true',
+    p_cust_id_cliente: process.env.EPAYCO_CUST_ID_CLIENTE,
+    p_key: process.env.EPAYCO_P_KEY
 });
 
 const QRCode = require('qrcode');
@@ -29,7 +31,7 @@ const epaycoController = {
         try {
             console.log('Iniciando creación de pago con datos:', req.body);
             
-            const { amount, qrCount, userId } = req.body;
+            const { amount, qrCount, userId, shippingData } = req.body;
 
             // Validar datos de entrada
             if (!amount || !qrCount || !userId) {
@@ -64,7 +66,8 @@ const epaycoController = {
                 userId: user._id,
                 amount,
                 qrCount,
-                status: 'pending'
+                status: 'pending',
+                shippingData: shippingData || {} // Guardar los datos de envío si están disponibles
             });
 
             await order.save();
@@ -95,7 +98,7 @@ const epaycoController = {
                 name: user.name,
                 last_name: user.lastName,
                 email: user.email,
-                cellphone: user.phone || "3000000000",
+                cellphone: shippingData?.phone || user.phone || "3000000000",
                 end_date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
                 url_response: `${process.env.FRONTEND_URL}/payment-response`,
                 url_confirmation: `${process.env.BACKEND_URL}/api/payments/epayco/confirmation`,
@@ -176,43 +179,88 @@ const epaycoController = {
                 });
             }
 
+            // Si la orden ya está completada, no hacer nada
+            if (order.status === 'completed') {
+                return res.json({
+                    success: true,
+                    message: 'La orden ya fue procesada anteriormente'
+                });
+            }
+
             // Actualizar la orden
             order.paymentId = x_ref_payco;
             order.status = 'completed';
             await order.save();
 
-            // Generar códigos QR
+            // Generar códigos QR utilizando la nueva función mejorada
             const qrCodes = [];
             for (let i = 0; i < order.qrCount; i++) {
-                const qrId = require('uuid').v4();
-                const qrImage = await generateQRImage(qrId);
-                
-                const qrCode = new QRModel({
-                    qrId,
-                    qrImage,
-                    userId: order.userId,
-                    orderId: order._id
-                });
-                
-                await qrCode.save();
-                qrCodes.push(qrCode);
+                try {
+                    // Generar un ID único para el QR
+                    const qrId = require('uuid').v4();
+                    
+                    // Generar el QR con opciones mejoradas
+                    const qrImage = await generateQRImage(qrId);
+                    
+                    const qrCode = new QRModel({
+                        qrId,
+                        qrImage,
+                        userId: order.userId,
+                        orderId: order._id,
+                        isActive: true,
+                        isLinked: false,
+                        createdAt: new Date()
+                    });
+                    
+                    await qrCode.save();
+                    qrCodes.push(qrCode);
+                    console.log(`QR #${i+1} generado exitosamente con ID: ${qrId}`);
+                } catch (qrError) {
+                    console.error(`Error al generar QR #${i+1}:`, qrError);
+                }
             }
 
             // Actualizar la orden con los códigos QR
             order.qrCodes = qrCodes.map(qr => qr._id);
             await order.save();
+            console.log(`Orden actualizada con ${qrCodes.length} códigos QR`);
+
+            // Generar el PDF con los códigos QR
+            let pdfBuffer;
+            try {
+                pdfBuffer = await generateQRCode(qrCodes);
+                console.log('PDF generado exitosamente');
+            } catch (pdfError) {
+                console.error('Error al generar PDF:', pdfError);
+            }
 
             // Enviar correo de confirmación
-            const user = await UserModel.findById(order.userId);
-            await sendEmail({
-                to: user.email,
-                subject: 'Confirmación de compra - PetConnect',
-                text: `¡Gracias por tu compra! Tu pago ha sido procesado exitosamente.\n\nPuedes acceder a tus códigos QR desde tu cuenta en PetConnect.\n\nNúmero de orden: ${order._id}\nCantidad de códigos QR: ${order.qrCount}`
-            });
+            try {
+                const user = await UserModel.findById(order.userId);
+                const emailData = {
+                    to: user.email,
+                    subject: 'Confirmación de compra - PetConnect',
+                    text: `¡Gracias por tu compra! Tu pago ha sido procesado exitosamente.\n\nPuedes acceder a tus códigos QR desde tu cuenta en PetConnect.\n\nNúmero de orden: ${order._id}\nCantidad de códigos QR: ${order.qrCount}`,
+                    attachments: pdfBuffer ? [
+                        {
+                            filename: 'codigos-qr.pdf',
+                            content: pdfBuffer,
+                            contentType: 'application/pdf'
+                        }
+                    ] : []
+                };
+                
+                await sendEmail(emailData);
+                console.log('Correo enviado a:', user.email);
+            } catch (emailError) {
+                console.error('Error al enviar email:', emailError);
+            }
 
             res.json({
                 success: true,
-                message: 'Pago confirmado y códigos QR generados'
+                message: 'Pago confirmado y códigos QR generados',
+                order,
+                qrCodes: qrCodes.map(qr => qr._id)
             });
         } catch (error) {
             console.error('Error al confirmar pago:', error);
