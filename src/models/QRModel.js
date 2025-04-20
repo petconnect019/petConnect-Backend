@@ -1,46 +1,40 @@
 const mongoose = require('mongoose');
 
 const qrSchema = new mongoose.Schema({
-    userId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        required: true
-    },
     orderId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Order',
         required: true
     },
-    qrId: {
-        type: String,
-        required: true,
-        unique: true
-    },
-    qrImage: {
+    content: {
         type: String,
         required: true
     },
-    status: {
+    dataUrl: {
         type: String,
-        enum: ['active', 'inactive', 'used'],
-        default: 'active'
+        required: true
+    },
+    qrNumber: {
+        type: Number,
+        required: true
+    },
+    isActive: {
+        type: Boolean,
+        default: true
     },
     createdAt: {
         type: Date,
         default: Date.now
-    },
-    updatedAt: {
-        type: Date,
-        default: Date.now
     }
+}, {
+    timestamps: true
 });
 
-// Middleware para actualizar updatedAt antes de guardar
-qrSchema.pre('save', function(next) {
-    this.updatedAt = new Date();
-    next();
-});
+// Índices para mejorar el rendimiento de las consultas
+qrSchema.index({ orderId: 1 });
+qrSchema.index({ isActive: 1 });
 
-const QRModel = mongoose.model('QR', qrSchema);
+// Crear un nuevo modelo QR en lugar de modificar uno existente
+const QRModel = mongoose.models.QR || mongoose.model('QR', qrSchema);
 
 module.exports = QRModel;  
