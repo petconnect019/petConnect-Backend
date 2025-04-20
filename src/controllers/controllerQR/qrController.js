@@ -1,4 +1,5 @@
 const qrData = require('../../data/qrData');
+const QRModel = require('../../models/QRModel');
 
 const qrController = {
     /**
@@ -28,28 +29,62 @@ const qrController = {
      */
     generateMultipleQRs: async (req, res) => {
         try {
-            const { count } = req.body;
-            const userId = req.user.id;
+            const { quantity, orderId } = req.body;
             
-            if (!count || count < 1 || count > 100) {
+            if (!quantity || quantity <= 0) {
                 return res.status(400).json({
                     success: false,
-                    message: 'La cantidad debe estar entre 1 y 100'
+                    message: 'La cantidad debe ser un número positivo'
                 });
             }
             
-            const qrCodes = await qrData.generateMultipleQRs(userId, count);
+            if (!orderId) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Se requiere un ID de orden válido'
+                });
+            }
             
-            res.status(201).json({
+            console.log(`Generando ${quantity} códigos QR...`);
+            
+            const qrPromises = [];
+            const qrReferences = [];
+            
+            for (let i = 1; i <= quantity; i++) {
+                console.log(`Generando QR ${i} con contenido: OrderId: ${orderId} - QR number: ${i}`);
+                
+                // Crear el QR con la estructura correcta - Eliminando referencias a qrId
+                const newQR = new QRModel({
+                    orderId,
+                    content: `OrderId: ${orderId} - QR number: ${i}`,
+                    dataUrl: await qrUtils.generateQRUrl(`OrderId: ${orderId} - QR number: ${i}`),
+                    qrNumber: i
+                });
+                
+                // Guardar el QR
+                qrPromises.push(newQR.save());
+                qrReferences.push(newQR._id);
+            }
+            
+            // Esperar a que todos los QR se guarden
+            await Promise.all(qrPromises);
+            
+            console.log(`Se generaron ${quantity} códigos QR con éxito`);
+            
+            return res.status(201).json({
                 success: true,
-                message: `${count} códigos QR generados`,
-                qrCodes
+                message: `Se generaron ${quantity} códigos QR con éxito`,
+                data: {
+                    quantity,
+                    orderId,
+                    qrReferences
+                }
             });
         } catch (error) {
-            console.error('Error al generar QRs:', error);
-            res.status(500).json({
+            console.error('Error al generar códigos QR:', error);
+            return res.status(500).json({
                 success: false,
-                message: 'Error al generar los QRs',
+                message: 'Error al generar códigos QR',
                 error: error.message
             });
         }

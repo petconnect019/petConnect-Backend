@@ -20,7 +20,7 @@ const orderData = {
                 userId,
                 quantity,
                 totalAmount,
-                status: 'PENDING',
+                status: 'pending',
                 paymentStatus: 'PENDING',
                 shippingDetails,
                 customerName,
@@ -30,7 +30,7 @@ const orderData = {
             });
 
             // Generar QRs inmediatamente
-            const generatedQRs = await qrData.generateMultipleQRs(userId, quantity);
+            const generatedQRs = await qrData.generateMultipleQRs(userId, quantity, order._id);
             
             // Actualizar los QRs con el orderId
             for (const qr of generatedQRs) {

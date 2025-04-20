@@ -1,14 +1,29 @@
 const orderData = require('../../data/orderData');
+const EpaycoService = require('../../services/epaycoService');
 
 class OrderController {
     async createOrder(req, res) {
         try {
             console.log('Iniciando creación de orden con datos:', JSON.stringify(req.body, null, 2));
-            const result = await orderData.createOrder(req.body, req.user.id);
+            
+            // Crear la orden primero
+            const order = await orderData.createOrder(req.body, req.user.id);
+            
+            // Preparar datos para ePayco
+            const paymentData = {
+                ...req.body,
+                orderId: order._id,
+                userId: req.user.id,
+                ip: req.ip
+            };
+
+            // Crear el pago en ePayco
+            const payment = await EpaycoService.createPayment(paymentData);
             
             res.status(201).json({
                 success: true,
-                ...result
+                order,
+                payment
             });
         } catch (error) {
             console.error('Error al crear orden:', error);

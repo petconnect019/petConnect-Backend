@@ -37,8 +37,9 @@ const qrData = {
      * Generar múltiples códigos QR
      * @param {string} userId - ID del usuario
      * @param {number} count - Cantidad de QRs a generar
+     * @param {string} orderId - ID de la orden asociada
      */
-    generateMultipleQRs: async (userId, count) => {
+    generateMultipleQRs: async (userId, count, orderId) => {
         const qrCodes = [];
         
         for (let i = 0; i < count; i++) {
@@ -53,7 +54,11 @@ const qrData = {
                 userId,
                 isLinked: false,
                 isActive: true,
-                qrImage
+                qrImage,
+                qrNumber: i + 1,
+                content: `OrderId: ${orderId} - QR number: ${i + 1}`,
+                dataUrl: qrImage,
+                orderId: orderId
             });
             
             qrCodes.push(qr);
