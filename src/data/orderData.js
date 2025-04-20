@@ -83,6 +83,31 @@ const orderData = {
         return await OrderModel.find({ userId })
             .sort({ createdAt: -1 })
             .populate('qrCodes', 'qrId qrImage isLinked isActive');
+    },
+
+    // Actualizar la información de pago de una orden
+    updateOrderPayment: async function(orderId, paymentInfo) {
+        try {
+            // Actualizar la orden con la información de pago
+            const updatedOrder = await OrderModel.findByIdAndUpdate(
+                orderId,
+                {
+                    paymentStatus: paymentInfo.paymentStatus,
+                    epaycoRef: paymentInfo.epaycoRef,
+                    paymentData: paymentInfo.paymentData
+                },
+                { new: true }
+            );
+            
+            if (!updatedOrder) {
+                throw new Error(`Orden ${orderId} no encontrada para actualizar pago`);
+            }
+            
+            return updatedOrder;
+        } catch (error) {
+            console.error(`Error al actualizar información de pago para orden ${orderId}:`, error);
+            throw error;
+        }
     }
 };
 

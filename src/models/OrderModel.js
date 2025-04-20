@@ -64,6 +64,19 @@ const orderSchema = new mongoose.Schema({
     updatedAt: {
         type: Date,
         default: Date.now
+    },
+    epaycoRef: {
+        type: String,
+        default: null
+    },
+    paymentData: {
+        transactionId: String,
+        approvalCode: String,
+        amount: Number,
+        transactionDate: Date,
+        responseCode: String,
+        paymentMethod: String,
+        last4: String
     }
 }, {
     timestamps: true

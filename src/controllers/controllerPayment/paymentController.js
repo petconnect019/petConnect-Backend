@@ -4,26 +4,28 @@ class PaymentController {
     // Webhook para recibir notificaciones de ePayco
     async confirmPayment(req, res) {
         try {
-            console.log('Recibida confirmación de pago de ePayco:', JSON.stringify(req.body, null, 2));
+            console.log('Recibida confirmación de pago de ePayco:', JSON.stringify(req.query, null, 2));
             
             // Obtener datos del pago
             const { 
-                ref_payco,    // Referencia de pago de ePayco
-                x_ref_payco,  // Alternativa para la referencia
-                x_transaction_state, // Estado de la transacción
-                x_id_invoice, // ID de la factura (orderId)
-                x_amount,     // Monto pagado
-                x_response    // Respuesta del pago
-            } = req.body;
+                x_ref_payco,           // Referencia de pago
+                x_transaction_state,   // Estado de la transacción
+                x_response,            // Respuesta del pago (Aceptada, Rechazada, etc.)
+                x_approval_code,       // Código de aprobación
+                x_id_invoice,          // ID de la factura
+                x_amount,              // Monto pagado
+                x_extra1,              // Campo extra donde enviamos el orderId
+                x_cod_transaction_state // Código del estado de la transacción
+            } = req.query;
             
             // Obtener la referencia del pago
-            const referencia = ref_payco || x_ref_payco;
+            const referencia = x_ref_payco;
             if (!referencia) {
                 throw new Error('Referencia de pago no proporcionada');
             }
             
             // Obtener ID de la orden (puede estar en diferentes campos según la configuración)
-            const orderId = req.body.extra1 || x_id_invoice;
+            const orderId = x_extra1 || x_id_invoice;
             if (!orderId) {
                 throw new Error('ID de orden no proporcionado');
             }
@@ -37,14 +39,46 @@ class PaymentController {
             console.log(`Procesando pago para orden ${orderId} con referencia ${referencia} y estado ${estadoPago}`);
             
             // Si el pago es exitoso, confirmar la orden
-            if (estadoPago === 'Aceptada' || estadoPago === '1' || x_response === 'Aceptada') {
-                // Confirmar la orden y generar QRs
-                const result = await orderData.confirmOrder(orderId);
-                
-                console.log(`Orden ${orderId} confirmada exitosamente a través de webhook ePayco`);
-                
-                // Responder a ePayco
-                return res.status(200).send('OK');
+            if (estadoPago === 'Aceptada' || estadoPago === '1' || x_response === 'Aceptada' || x_cod_transaction_state === '1') {
+                try {
+                    // Obtener la orden primero para verificar su existencia
+                    const order = await orderData.getOrderById(orderId);
+                    
+                    if (!order) {
+                        console.error(`Orden ${orderId} no encontrada.`);
+                        return res.status(200).send('OK'); // Siempre responder 200 a ePayco
+                    }
+                    
+                    console.log(`Orden encontrada: ${order._id}`);
+                    
+                    // Actualizar la orden con los datos de pago de ePayco antes de confirmarla
+                    await orderData.updateOrderPayment(orderId, {
+                        epaycoRef: referencia,
+                        paymentStatus: 'COMPLETED',
+                        paymentData: {
+                            transactionId: referencia,
+                            approvalCode: x_approval_code,
+                            amount: x_amount,
+                            transactionDate: new Date(),
+                            responseCode: x_response,
+                            paymentMethod: req.query.x_franchise || 'N/A',
+                            last4: req.query.x_cardnumber ? req.query.x_cardnumber.slice(-4) : 'N/A'
+                        }
+                    });
+                    
+                    console.log(`Información de pago actualizada para orden ${orderId}`);
+                    
+                    // Confirmar la orden y generar QRs
+                    const result = await orderData.confirmOrder(orderId);
+                    
+                    console.log(`Orden ${orderId} confirmada exitosamente a través de webhook ePayco`);
+                    
+                    // Responder a ePayco
+                    return res.status(200).send('OK');
+                } catch (error) {
+                    console.error(`Error al confirmar la orden ${orderId}:`, error);
+                    return res.status(200).send('OK'); // Siempre responder 200 a ePayco
+                }
             } else {
                 console.log(`Pago rechazado o pendiente para la orden ${orderId}: ${estadoPago}`);
                 return res.status(200).send('OK'); // Siempre responder 200 a ePayco
