@@ -1,11 +1,12 @@
 const express = require('express');
 const router = express.Router();
-const PaymentController = require('../controllers/controllerOrder/paymentController');
+const paymentController = require('../controllers/controllerPayment/paymentController');
+const auth = require('../middlewares/authMiddleware');
 
-// Ruta para confirmación de pago desde ePayco
-router.post('/confirmation', PaymentController.handlePaymentConfirmation);
+// Ruta para la confirmación de pago (webhook) - No requiere autenticación
+router.post('/confirmation', paymentController.confirmPayment);
 
-// Ruta para verificar estado de pago
-router.get('/verify/:paymentId', PaymentController.verifyPayment);
+// Ruta para la respuesta de pago (redirección del usuario) - No requiere autenticación
+router.get('/response', paymentController.paymentResponse);
 
 module.exports = router; 
