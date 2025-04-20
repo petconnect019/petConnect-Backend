@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const epaycoController = require('../controllers/epayco.controller');
 const orderController = require('../controllers/controllerOrder/orderController');
-const authMiddleware = require('../middleware/authMiddleware');
+const { verifyToken } = require('../middlewares/authMiddleware');
 
 // Manejar solicitudes OPTIONS para todas las rutas
 router.options('*', (req, res) => {
@@ -10,9 +10,9 @@ router.options('*', (req, res) => {
 });
 
 // Rutas protegidas que requieren autenticación
-router.post('/epayco/create', authMiddleware, epaycoController.createPayment);
-router.get('/orders/user/:userId', authMiddleware, orderController.getUserOrders);
-router.get('/orders/:orderId', authMiddleware, orderController.getOrderById);
+router.post('/epayco/create', verifyToken, epaycoController.createPayment);
+router.get('/orders/user/:userId', verifyToken, orderController.getUserOrders);
+router.get('/orders/:orderId', verifyToken, orderController.getOrderById);
 
 // Rutas públicas para webhook de ePayco
 router.post('/epayco/confirmation', epaycoController.handleConfirmation);
