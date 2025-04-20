@@ -6,8 +6,6 @@ const Epayco = require('epayco-sdk-node')({
 });
 
 const QRCode = require('qrcode');
-const PDFDocument = require('pdfkit');
-const streamifier = require('streamifier');
 const nodemailer = require('nodemailer');
 const qrData = require('../data/qrData');
 const orderController = require('./orderController');
@@ -144,13 +142,13 @@ const epaycoController = {
 
     handleConfirmation: async (req, res) => {
         try {
-            console.log('Recibida confirmación de pago:', req.body); // Para depuración
+            console.log('Recibida confirmación de pago:', req.body);
             
             const { x_ref_payco, x_cod_response, x_extra1 } = req.body;
             
             // Validar datos de entrada
             if (!x_ref_payco || !x_cod_response || !x_extra1) {
-                console.log('Faltan datos en la confirmación:', req.body); // Para depuración
+                console.log('Faltan datos en la confirmación:', req.body);
                 return res.status(400).json({
                     success: false,
                     message: 'Faltan datos requeridos en la confirmación'
@@ -159,7 +157,7 @@ const epaycoController = {
 
             // Verificar el estado del pago con ePayco
             const paymentInfo = await Epayco.charge.get(x_ref_payco);
-            console.log('Información del pago:', paymentInfo); // Para depuración
+            console.log('Información del pago:', paymentInfo);
 
             if (!paymentInfo || paymentInfo.x_cod_response !== 1) {
                 return res.status(400).json({
@@ -171,7 +169,7 @@ const epaycoController = {
             // Buscar la orden
             const order = await OrderModel.findById(x_extra1);
             if (!order) {
-                console.log('Orden no encontrada:', x_extra1); // Para depuración
+                console.log('Orden no encontrada:', x_extra1);
                 return res.status(404).json({
                     success: false,
                     message: 'Orden no encontrada'
@@ -204,19 +202,12 @@ const epaycoController = {
             order.qrCodes = qrCodes.map(qr => qr._id);
             await order.save();
 
-            // Generar PDF con los códigos QR
-            const pdfBuffer = await generateQRCode(qrCodes);
-            
-            // Enviar correo
+            // Enviar correo de confirmación
             const user = await UserModel.findById(order.userId);
             await sendEmail({
                 to: user.email,
-                subject: 'Tus códigos QR de PetConnect',
-                text: 'Gracias por tu compra. Adjunto encontrarás tus códigos QR.',
-                attachments: [{
-                    filename: 'qr-codes.pdf',
-                    content: pdfBuffer
-                }]
+                subject: 'Confirmación de compra - PetConnect',
+                text: `¡Gracias por tu compra! Tu pago ha sido procesado exitosamente.\n\nPuedes acceder a tus códigos QR desde tu cuenta en PetConnect.\n\nNúmero de orden: ${order._id}\nCantidad de códigos QR: ${order.qrCount}`
             });
 
             res.json({
@@ -250,26 +241,12 @@ const epaycoController = {
                 });
             }
 
-            // Obtener todos los códigos QR de las órdenes
-            const qrCodes = orders.flatMap(order => order.qrCodes);
-
-            // Generar imágenes QR para cada código
-            const qrImages = await Promise.all(
-                qrCodes.map(async (qr) => {
-                    const qrImage = await generateQRImage(qr.qrId);
-                    return {
-                        ...qr.toObject(),
-                        qrImage
-                    };
-                })
-            );
-
             res.json({
                 success: true,
-                qrCodes: qrImages
+                orders
             });
         } catch (error) {
-            console.error('Error al obtener códigos QR del cliente:', error);
+            console.error('Error al obtener códigos QR:', error);
             res.status(500).json({
                 success: false,
                 message: 'Error al obtener los códigos QR',
