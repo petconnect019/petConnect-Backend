@@ -22,6 +22,16 @@ router.get('/health', (req, res) => {
   });
 });
 
+// Endpoint directo para pruebas de confirmación cliente ePayco
+router.post('/payments/epayco/client-confirmation-test', (req, res) => {
+  console.log('Test de confirmación cliente recibido:', req.body);
+  res.status(200).json({
+    success: true,
+    message: 'Test de confirmación recibido correctamente',
+    body: req.body
+  });
+});
+
 // Configuración de rutas
 router.use('/auth', authRoutes);
 router.use('/users', userRoutes);

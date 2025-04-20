@@ -3,7 +3,34 @@ const PetModel = require('../models/PetModel');
 const crypto = require('crypto');
 const QRCode = require('qrcode');
 const QRScanModel = require('../models/QRScanModel');
-const { generateQRImage } = require('../utils/qrData');
+
+// Función para generar imagen QR (implementada directamente aquí)
+const generateQRImage = async (data) => {
+    try {
+        // Opciones mejoradas para generar QRs más robustos
+        const options = {
+            errorCorrectionLevel: 'H', // Alta corrección de errores
+            margin: 2, // Margen alrededor del QR
+            width: 300, // Tamaño del QR
+            color: {
+                dark: '#000000', // Color del QR
+                light: '#FFFFFF' // Color de fondo
+            }
+        };
+        
+        // Obtener la URL base adecuada
+        const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5175';
+        
+        // Agregamos el dominio del frontend a la URL para asegurar que funcione correctamente
+        const qrContent = typeof data === 'string' ? `${baseUrl}/qr/scan/${data}` : JSON.stringify(data);
+        
+        const qrImage = await QRCode.toDataURL(qrContent, options);
+        return qrImage;
+    } catch (error) {
+        console.error('Error al generar código QR:', error);
+        throw error;
+    }
+};
 
 const qrData = {
     /**

@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const epaycoController = require('../controllers/epayco.controller');
-const orderController = require('../controllers/orderController');
+const orderController = require('../controllers/controllerOrder/orderController');
 const authMiddleware = require('../middleware/authMiddleware');
 
 // Manejar solicitudes OPTIONS para todas las rutas
@@ -14,10 +14,24 @@ router.post('/epayco/create', authMiddleware, epaycoController.createPayment);
 router.get('/orders/user/:userId', authMiddleware, orderController.getUserOrders);
 router.get('/orders/:orderId', authMiddleware, orderController.getOrderById);
 
-// Ruta pública para webhook de ePayco
+// Rutas públicas para webhook de ePayco
 router.post('/epayco/confirmation', epaycoController.handleConfirmation);
+router.post('/epayco/client-confirmation', epaycoController.handleClientConfirmation);
+
+// Endpoint directo para depuración
+router.post('/epayco/debug-client-confirmation', (req, res) => {
+    console.log('Debug client confirmation:', req.body);
+    res.json({
+        success: true,
+        message: 'Debug confirmation received',
+        body: req.body
+    });
+});
 
 // Ruta para obtener códigos QR de un cliente
 router.get('/epayco/qrcodes/:customerId', epaycoController.getCustomerQRCodes);
+
+// Ruta para crear órdenes de prueba con códigos QR (sólo para desarrollo)
+router.post('/test/create-order', epaycoController.createTestOrder);
 
 module.exports = router; 
