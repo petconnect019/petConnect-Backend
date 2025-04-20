@@ -18,9 +18,18 @@ const qrSchema = new mongoose.Schema({
         type: Number,
         required: true
     },
+    isLinked: {
+        type: Boolean,
+        default: false
+    },
     isActive: {
         type: Boolean,
         default: true
+    },
+    petId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Pet',
+        default: null
     },
     createdAt: {
         type: Date,
