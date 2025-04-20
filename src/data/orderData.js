@@ -3,7 +3,7 @@ const QRModel = require('../models/QRModel');
 const qrData = require('./qrData');
 
 const orderData = {
-    async createOrder(orderInfo, userId) {
+    createOrder: async function(orderInfo, userId) {
         try {
             const { quantity, shippingDetails, customerName, customerEmail, customerLastName, docNumber } = orderInfo;
 
@@ -29,19 +29,33 @@ const orderData = {
                 docNumber
             });
 
-            // Generar QRs inmediatamente
-            const generatedQRs = await qrData.generateMultipleQRs(userId, quantity, order._id);
+            return order;
+        } catch (error) {
+            console.error('Error al crear orden:', error);
+            throw error;
+        }
+    },
+
+    confirmOrder: async function(orderId) {
+        try {
+            // Generar QRs
+            const order = await OrderModel.findById(orderId);
+            if (!order) {
+                throw new Error('Orden no encontrada');
+            }
+
+            const generatedQRs = await qrData.generateMultipleQRs(order.userId, order.quantity, order._id);
             
             // Actualizar los QRs con el orderId
             for (const qr of generatedQRs) {
                 await QRModel.findByIdAndUpdate(qr._id, { orderId: order._id });
             }
 
-            // Actualizar orden con los QRs
+            // Actualizar orden con los QRs y cambiar estado
             const updatedOrder = await OrderModel.findByIdAndUpdate(
                 order._id,
                 {
-                    status: 'COMPLETED',
+                    status: 'completed',
                     paymentStatus: 'COMPLETED',
                     qrCodes: generatedQRs.map(qr => qr._id)
                 },
@@ -49,80 +63,22 @@ const orderData = {
                     new: true,
                     populate: {
                         path: 'qrCodes',
-                        select: 'qrId qrImage isLinked isActive'
+                        select: 'code status'
                     }
                 }
             );
 
             return {
                 order: updatedOrder,
-                qrCodes: updatedOrder.qrCodes
+                qrCodes: generatedQRs
             };
         } catch (error) {
-            console.error('Error en createOrder:', error);
+            console.error('Error al confirmar orden:', error);
             throw error;
         }
     },
 
-    async confirmOrder(orderId) {
-        try {
-            // Buscar la orden
-            const order = await OrderModel.findById(orderId);
-            if (!order) {
-                throw new Error('Orden no encontrada');
-            }
-
-            if (order.status === 'COMPLETED') {
-                return {
-                    message: 'La orden ya fue completada anteriormente',
-                    order
-                };
-            }
-
-            // Generar QRs si aún no se han generado
-            if (!order.qrCodes || order.qrCodes.length === 0) {
-                const generatedQRs = await qrData.generateMultipleQRs(order.userId, order.quantity);
-                
-                // Actualizar los QRs con el orderId
-                for (const qr of generatedQRs) {
-                    await QRModel.findByIdAndUpdate(qr._id, { orderId: order._id });
-                }
-
-                // Actualizar orden con los QRs
-                const updatedOrder = await OrderModel.findByIdAndUpdate(
-                    order._id,
-                    {
-                        status: 'COMPLETED',
-                        paymentStatus: 'COMPLETED',
-                        qrCodes: generatedQRs.map(qr => qr._id)
-                    },
-                    { 
-                        new: true,
-                        populate: {
-                            path: 'qrCodes',
-                            select: 'qrId qrImage isLinked isActive'
-                        }
-                    }
-                );
-
-                return {
-                    message: 'Orden confirmada y códigos QR generados',
-                    order: updatedOrder,
-                    qrCodes: updatedOrder.qrCodes
-                };
-            }
-
-            return {
-                message: 'No se realizó ninguna acción, la orden ya está procesada',
-                order
-            };
-        } catch (error) {
-            console.error('Error en confirmOrder:', error);
-            throw error;
-        }
-    },
-
-    async getOrderById(orderId) {
+    getOrderById: async function(orderId) {
         const order = await OrderModel.findById(orderId)
             .populate('qrCodes', 'qrId qrImage isLinked isActive');
         
@@ -133,7 +89,7 @@ const orderData = {
         return order;
     },
 
-    async getUserOrders(userId) {
+    getUserOrders: async function(userId) {
         return await OrderModel.find({ userId })
             .sort({ createdAt: -1 })
             .populate('qrCodes', 'qrId qrImage isLinked isActive');
