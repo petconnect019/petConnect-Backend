@@ -20,8 +20,8 @@ const server = http.createServer(app);
 const io = socketIo(server, {
     cors: {
         origin: [
-            process.env.FRONTEND_URL || 'http://localhost:5175',
-            process.env.NGROK_FRONTEND_URL || 'https://16a9-2800-e2-9880-939-ed32-2207-c906-f2c9.ngrok-free.app'
+            process.env.FRONTEND_URL,
+            process.env.NGROK_FRONTEND_URL,
         ],
         methods: ['GET', 'POST'],
         credentials: true

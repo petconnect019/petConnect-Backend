@@ -19,7 +19,7 @@ const generateQRImage = async (data) => {
         };
         
         // Obtener la URL base adecuada
-        const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5175';
+        const baseUrl = process.env.FRONTEND_URL;
         
         // Agregamos el dominio del frontend a la URL para asegurar que funcione correctamente
         const qrContent = typeof data === 'string' ? `${baseUrl}/qr/scan/${data}` : JSON.stringify(data);
@@ -33,28 +33,6 @@ const generateQRImage = async (data) => {
 };
 
 const qrData = {
-    /**
-     * Generar un código QR
-     * @param {string} userId - ID del usuario
-     */
-    generateQR: async (userId) => {
-        // Generar un ID único para el QR
-        const qrId = crypto.randomBytes(8).toString('hex');
-        
-        // Generar la imagen del QR usando la función mejorada
-        const qrImage = await generateQRImage(qrId);
-        
-        const qr = await QRModel.create({
-            qrId,
-            userId,
-            isLinked: false,
-            isActive: true,
-            qrImage
-        });
-        
-        return qr;
-    },
-    
     /**
      * Generar múltiples códigos QR
      * @param {string} userId - ID del usuario

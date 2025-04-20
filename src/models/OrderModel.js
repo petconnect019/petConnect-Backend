@@ -6,24 +6,48 @@ const orderSchema = new mongoose.Schema({
         ref: 'User',
         required: true
     },
-    amount: {
-        type: Number,
-        required: true,
-        min: 0
-    },
-    qrCount: {
+    quantity: {
         type: Number,
         required: true,
         min: 1
     },
+    totalAmount: {
+        type: Number,
+        required: true,
+        min: 0
+    },
     status: {
         type: String,
-        enum: ['pending', 'completed', 'failed'],
+        enum: ['pending', 'completed', 'failed', 'CREATED', 'ACCEPTED', 'REJECTED'],
         default: 'pending'
     },
-    paymentId: {
+    paymentStatus: {
+        type: String,
+        enum: ['PENDING', 'COMPLETED', 'FAILED', 'PROCESSING'],
+        default: 'PENDING'
+    },
+    customerName: {
         type: String,
         required: false
+    },
+    customerEmail: {
+        type: String,
+        required: false
+    },
+    customerLastName: {
+        type: String,
+        required: false
+    },
+    docNumber: {
+        type: String,
+        required: false
+    },
+    shippingDetails: {
+        address: String,
+        city: String,
+        state: String,
+        postalCode: String,
+        country: String
     },
     qrCodes: [{
         type: mongoose.Schema.Types.ObjectId,
@@ -49,10 +73,10 @@ orderSchema.index({ createdAt: -1 });
 // Middleware para validaciones
 orderSchema.pre('save', function(next) {
     // Validar que el monto sea correcto según la cantidad de QRs
-    const unitPrice = 10000; // Precio unitario en COP
-    const expectedAmount = this.qrCount * unitPrice;
+    const unitPrice = 15000; // Precio unitario en COP
+    const expectedAmount = this.quantity * unitPrice;
     
-    if (this.amount !== expectedAmount) {
+    if (this.totalAmount !== expectedAmount) {
         next(new Error('El monto no coincide con la cantidad de códigos QR'));
         return;
     }

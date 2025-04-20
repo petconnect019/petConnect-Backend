@@ -8,7 +8,7 @@ router.use(verifyToken);
 
 // Rutas de órdenes
 router.post('/', OrderController.createOrder);
-router.post('/:orderId/confirm', OrderController.confirmPayment);
+router.post('/:orderId/confirm', OrderController.confirmOrder);
 router.get('/', OrderController.getUserOrders);
 router.get('/:orderId', OrderController.getOrderById);
 

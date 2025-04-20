@@ -19,17 +19,18 @@ class OrderController {
         }
     }
 
-    async confirmPayment(req, res) {
+    async confirmOrder(req, res) {
         try {
-            console.log('Datos de confirmación recibidos:', req.body);
-            const result = await orderData.confirmPayment(req.body);
+            const orderId = req.params.orderId;
+            console.log('Confirmando orden:', orderId);
+            const result = await orderData.confirmOrder(orderId);
             
             res.status(200).json({
                 success: true,
                 ...result
             });
         } catch (error) {
-            console.error('Error al confirmar pago:', error);
+            console.error('Error al confirmar orden:', error);
             res.status(error.message.includes('no encontrada') ? 404 : 500).json({
                 success: false,
                 error: error.message
