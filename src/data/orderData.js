@@ -3,7 +3,7 @@ const QRModel = require('../models/QRModel');
 const qrData = require('./qrData');
 
 const orderData = {
-    createOrder: async function(orderInfo, userId) {
+    createOrder: async function(orderInfo) {
         try {
             const { quantity, shippingDetails, customerName, customerEmail, customerLastName, docNumber } = orderInfo;
 
@@ -16,18 +16,8 @@ const orderData = {
             const totalAmount = quantity * unitPrice;
 
             // Crear orden
-            const order = await OrderModel.create({
-                userId,
-                quantity,
-                totalAmount,
-                status: 'pending',
-                paymentStatus: 'PENDING',
-                shippingDetails,
-                customerName,
-                customerEmail,
-                customerLastName,
-                docNumber
-            });
+            const order = new OrderModel(orderInfo);
+            await order.save();
 
             return order;
         } catch (error) {
