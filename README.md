@@ -171,8 +171,8 @@ src/
 
 ### Códigos QR
 - `POST /api/qr/generate` - Generar código QR (admin)
-- `POST /api/qr/generate-multiple` - Generar múltiples QRs (admin)
-- `GET /api/qr/scan/:qrId` - Escanear código QR (público)
+- `POST /api/qr/generate-multiple` - Generar múltiples QRs ✅
+- `GET /api/qr/scan/:qrId` - Escanear código QR (público) ✅
 // crear validador de qr
 - `POST /api/qr/link` - Vincular QR a mascota
 - `GET /api/qr/user` - Obtener QRs del usuario
@@ -182,15 +182,17 @@ src/
 - `GET /api/qr/stats` - Estadísticas de QRs (admin)
 
 ### Órdenes
-- `POST /api/orders` - Crear una orden de compra
-- `POST /api/orders/:orderId/confirm` - Confirmar pago de orden
-- `GET /api/orders/user` - Obtener órdenes del usuario
-- `GET /api/orders/:orderId` - Obtener detalles de una orden
-- `POST /api/orders/:orderId/cancel` - Cancelar una orden
-- `GET /api/orders/:orderId/invoice` - Descargar factura de una orden
-- `GET /api/orders` - Listar todas las órdenes (admin)
-- `PUT /api/orders/:orderId/status` - Actualizar estado de una orden (admin)
-- `GET /api/orders/stats` - Estadísticas de órdenes (admin)
+- `POST /api/orders` - Crear una orden de compra ✅
+- `POST /api/orders/:orderId/confirm` - Confirmar pago de orden ✅
+- `GET /api/orders` - Obtener órdenes del usuario ✅
+- `GET /api/orders/:orderId` - Obtener detalles de una orden ✅
+- `POST /api/payments/confirmation` - Webhook de ePayco para confirmación automática de pagos ✅
+- `GET /api/payments/response` - Redirección después del pago en ePayco ✅
+- `POST /api/orders/:orderId/cancel` - Cancelar una orden ❌falta
+- `GET /api/orders/:orderId/invoice` - Descargar factura de una orden ❌falta
+- `GET /api/orders` - Listar todas las órdenes (admin) ❌falta
+- `PUT /api/orders/:orderId/status` - Actualizar estado de una orden (admin) ❌falta
+- `GET /api/orders/stats` - Estadísticas de órdenes (admin) ❌falta
 
 ### Mensajes
 - `POST /api/messages/send` - Enviar mensaje al dueño de una mascota
