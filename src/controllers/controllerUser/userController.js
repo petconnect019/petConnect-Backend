@@ -213,6 +213,32 @@ const UserController = {
     },
     
     /**
+     * Eliminar foto de perfil
+     */
+    removeProfilePicture: async (req, res) => {
+        try {
+            const userId = req.user.id;
+            
+            // Delegar la lógica de negocio a userData
+            await UserData.removeProfilePicture(userId);
+            
+            // Respuesta HTTP
+            return res.status(200).json({
+                ok: true,
+                message: 'Foto de perfil eliminada exitosamente'
+            });
+        } catch (error) {
+            console.error('Error al eliminar foto de perfil:', error);
+            const statusCode = determineStatusCode(error);
+            return res.status(statusCode).json({
+                ok: false,
+                message: 'Error al eliminar foto de perfil',
+                error: error.message
+            });
+        }
+    },
+    
+    /**
      * Eliminar cuenta de usuario
      */
     deleteUser: async (req, res) => {

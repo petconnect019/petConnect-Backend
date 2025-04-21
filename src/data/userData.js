@@ -213,6 +213,31 @@ const UserData = {
         } catch (error) {
             throw error;
         }
+    },
+
+    /**
+     * Elimina la foto de perfil de un usuario
+     * @param {string} userId - ID del usuario
+     * @returns {boolean} true si se eliminó correctamente
+     */
+    removeProfilePicture: async (userId) => {
+        try {
+            const user = await UserModel.findById(userId);
+            
+            if (!user) {
+                throw new Error('Usuario no encontrado');
+            }
+            
+            if (user.profile_picture) {
+                await deleteFromCloudinary(user.profile_picture);
+                user.profile_picture = null;
+                await user.save();
+            }
+            
+            return true;
+        } catch (error) {
+            throw error;
+        }
     }
 };
 

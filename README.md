@@ -133,10 +133,10 @@ src/
 - `PUT /api/users/privacy` - Actualizar configuración de privacidad ✅
 - `GET /api/users/:id` - Obtener perfil de otro usuario (público) ✅
 - `PUT /api/users/profile/picture` - Cambiar foto de perfil ✅
-- `DELETE /api/users/profile/picture` - Eliminar foto de perfil   ❌falta
+- `DELETE /api/users/profile/picture` - Eliminar foto de perfil   ✅
 
 ### Admin (Usuarios)
-- `GET /api/admin/users` - Listar todos los usuarios ❌falta
+- `GET /api/admin/users` - Listar todos los usuarios ✅
 - `GET /api/admin/users/:id` - Obtener detalles de un usuario ❌falta
 - `PUT /api/admin/users/:id` - Actualizar usuario  ❌falta
 - `DELETE /api/admin/users/:id` - Eliminar usuario ❌falta

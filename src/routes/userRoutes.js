@@ -31,6 +31,11 @@ router.put('/profile/picture',
     UserController.updateProfilePicture
 );
 
+router.delete('/profile/picture', 
+    verifyToken,
+    UserController.removeProfilePicture
+);
+
 // Ruta pública (debe ir al final para evitar conflictos con otras rutas)
 router.get('/:id', UserController.getUserById);
 
