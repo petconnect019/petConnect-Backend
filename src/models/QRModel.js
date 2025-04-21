@@ -6,15 +6,6 @@ const qrSchema = new mongoose.Schema({
         ref: 'Order',
         required: true
     },
-    qrId: {
-        type: String,
-        required: true,
-        unique: true
-    },
-    dataUrl: {
-        type: String,
-        required: true
-    },
     userId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
@@ -48,7 +39,6 @@ const qrSchema = new mongoose.Schema({
 // Índices para mejorar el rendimiento de las consultas
 qrSchema.index({ orderId: 1 });
 qrSchema.index({ isActive: 1 });
-qrSchema.index({ qrId: 1 }, { unique: true });
 
 // Crear un nuevo modelo QR en lugar de modificar uno existente
 const QRModel = mongoose.models.QR || mongoose.model('QR', qrSchema);

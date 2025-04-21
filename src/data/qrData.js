@@ -44,20 +44,18 @@ const qrData = {
         const qrCodes = [];
         
         for (let i = 0; i < count; i++) {
-            // Generar un ID único para cada QR
-            const qrId = crypto.randomBytes(8).toString('hex');
+            // Generar un ID único para generar la imagen del QR
+            const uniqueId = crypto.randomBytes(8).toString('hex');
             
             // Generar la imagen del QR usando la función mejorada
-            const qrImage = await generateQRImage(qrId);
+            const qrImage = await generateQRImage(uniqueId);
             
             // Crear el registro en la base de datos
             const qr = await QRModel.create({
-                qrId,
                 userId,
                 isLinked: false,
                 isActive: true,
                 qrImage,
-                dataUrl: qrImage,
                 orderId: orderId
             });
             
@@ -73,8 +71,8 @@ const qrData = {
      * @param {string} scannerUserId - ID del usuario que escanea el QR
      */
     scanQR: async (qrId, scannerUserId = null) => {
-        // Buscar el QR (ahora solo verificamos que exista, ya no comprobamos isActive)
-        const qr = await QRModel.findOne({ qrId });
+        // Buscar el QR por su ID de MongoDB
+        const qr = await QRModel.findById(qrId);
         
         if (!qr || !qr.isActive) {
             throw new Error('QR no encontrado o ha sido eliminado');
@@ -98,7 +96,7 @@ const qrData = {
             };
         } else {
             return {
-                qrId: qr.qrId,
+                qrId: qr._id.toString(),
                 isLinked: false,
                 message: 'Este QR no está vinculado a ninguna mascota. Por favor, redirige a vincular una mascota.'  
             };
@@ -107,14 +105,14 @@ const qrData = {
     
     /**
      * Vincular un QR a una mascota
-     * @param {string} qrId - ID del QR
+     * @param {string} qrId - ID del QR (ID de MongoDB)
      * @param {string} petId - ID de la mascota
      * @param {string} userId - ID del usuario
      * @param {string} userRole - Rol del usuario
      */
     linkQRToPet: async (qrId, petId, userId, userRole) => {
         // Verificar si el QR existe
-        const qr = await QRModel.findOne({ qrId });
+        const qr = await QRModel.findById(qrId);
         
         if (!qr || !qr.isActive) {
             throw new Error('QR no encontrado o ha sido eliminado');
@@ -144,8 +142,8 @@ const qrData = {
         }
         
         // Actualizar el QR
-        const updatedQR = await QRModel.findOneAndUpdate(
-            { qrId },
+        const updatedQR = await QRModel.findByIdAndUpdate(
+            qrId,
             { petId, isLinked: true },
             { new: true }
         );
@@ -172,13 +170,13 @@ const qrData = {
     
     /**
      * Desactivar un QR (ahora solo para administradores)
-     * @param {string} qrId - ID del QR
+     * @param {string} qrId - ID del QR (ID de MongoDB)
      * @param {string} userId - ID del usuario
      * @param {string} userRole - Rol del usuario
     */
     deactivateQR: async (qrId, userId, userRole) => {
         // Verificar si el QR existe
-        const qr = await QRModel.findOne({ qrId });
+        const qr = await QRModel.findById(qrId);
         
         if (!qr) {
             throw new Error('QR no encontrado');
@@ -190,8 +188,8 @@ const qrData = {
         }
         
         // Actualizar el QR
-        const updatedQR = await QRModel.findOneAndUpdate(
-            { qrId },
+        const updatedQR = await QRModel.findByIdAndUpdate(
+            qrId,
             { isActive: false },
             { new: true }
         );
@@ -201,12 +199,12 @@ const qrData = {
     
     /**
      * Eliminar un QR (para usuarios normales)
-     * @param {string} qrId - ID del QR
+     * @param {string} qrId - ID del QR (ID de MongoDB)
      * @param {string} userId - ID del usuario
      */
     deleteQR: async (qrId, userId) => {
         // Verificar si el QR existe
-        const qr = await QRModel.findOne({ qrId });
+        const qr = await QRModel.findById(qrId);
         
         if (!qr) {
             throw new Error('QR no encontrado');
@@ -218,14 +216,14 @@ const qrData = {
         }
         
         // Eliminar el QR
-        await QRModel.findOneAndDelete({ qrId });
+        await QRModel.findByIdAndDelete(qrId);
         
         return { message: 'QR eliminado exitosamente' };
     },
     
     /**
      * Obtiene un QR específico por su ID
-     * @param {string} qrId - ID del QR a obtener
+     * @param {string} qrId - ID del QR a obtener (ID de MongoDB)
      * @returns {Object} Datos del QR
      */
     getQRById: async (qrId) => {
@@ -239,12 +237,11 @@ const qrData = {
             return {
                 id: qr._id,
                 orderId: qr.orderId,
-                qrId: qr.qrId,
-                dataUrl: qr.dataUrl,
                 isActive: qr.isActive,
                 isLinked: qr.isLinked,
                 petId: qr.petId,
-                createdAt: qr.createdAt
+                createdAt: qr.createdAt,
+                qrImage: qr.qrImage
             };
         } catch (error) {
             console.error(`Error al obtener QR por ID ${qrId}:`, error);
@@ -264,7 +261,7 @@ const qrData = {
                 userId,
                 status: 'completed',
                 paymentStatus: 'COMPLETED'
-            }).populate('qrCodes', 'qrId qrImage isLinked isActive userId petId');
+            }).populate('qrCodes', 'qrImage isLinked isActive userId petId');
             
             if (!orders || orders.length === 0) {
                 return [];

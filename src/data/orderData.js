@@ -61,7 +61,7 @@ const orderData = {
                         new: true,
                         populate: {
                             path: 'qrCodes',
-                            select: 'qrId qrImage isLinked isActive'
+                            select: 'qrImage isLinked isActive'
                         }
                     }
                 );
@@ -93,7 +93,7 @@ const orderData = {
 
     getOrderById: async function(orderId) {
         const order = await OrderModel.findById(orderId)
-            .populate('qrCodes', 'qrId qrImage isLinked isActive');
+            .populate('qrCodes', 'qrImage isLinked isActive');
         
         if (!order) {
             throw new Error('Orden no encontrada');
@@ -105,7 +105,7 @@ const orderData = {
     getUserOrders: async function(userId) {
         return await OrderModel.find({ userId })
             .sort({ createdAt: -1 })
-            .populate('qrCodes', 'qrId qrImage isLinked isActive');
+            .populate('qrCodes', 'qrImage isLinked isActive');
     },
 
     // Actualizar la información de pago de una orden
