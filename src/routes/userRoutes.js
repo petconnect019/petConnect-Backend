@@ -13,7 +13,8 @@ router.use(verifyToken);
 
 // Rutas de administrador
 router.get('/admin/users', isAdmin, UserController.getAllUsers);
-router.delete('/admin/users/:id', isAdmin, UserController.deleteUser);
+router.get('/admin/users/:id', isAdmin, UserController.getUserById);
+router.put('/admin/users/:id/status', isAdmin, UserController.toggleUserStatus);
 
 // Rutas de perfil de usuario
 router.get('/profile', UserController.getProfile);
@@ -36,7 +37,10 @@ router.delete('/profile/picture',
     UserController.removeProfilePicture
 );
 
+// Ruta para desactivar la cuenta del propio usuario
+router.delete('/profile', UserController.deactivateAccount);
+
 // Ruta pública (debe ir al final para evitar conflictos con otras rutas)
-router.get('/:id', UserController.getUserById);
+router.get('/:id', UserController.getPublicUserProfile);
 
 module.exports = router;

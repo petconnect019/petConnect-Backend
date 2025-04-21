@@ -1,4 +1,6 @@
 const UserData = require('../../data/userData');
+const UserModel = require('../../models/UserModel');
+const bcrypt = require('bcrypt');
 
 /**
  * Determina el código de estado HTTP basado en el tipo de error
@@ -239,7 +241,7 @@ const UserController = {
     },
     
     /**
-     * Eliminar cuenta de usuario
+     * Desactivar cuenta de usuario
      */
     deleteUser: async (req, res) => {
         try {
@@ -251,14 +253,76 @@ const UserController = {
             // Respuesta HTTP
             return res.status(200).json({
                 ok: true,
-                message: 'Usuario eliminado exitosamente'
+                message: 'Cuenta desactivada exitosamente'
             });
         } catch (error) {
-            console.error('Error al eliminar usuario:', error);
+            console.error('Error al desactivar cuenta:', error);
             const statusCode = determineStatusCode(error);
             return res.status(statusCode).json({
                 ok: false,
-                message: 'Error al eliminar usuario',
+                message: 'Error al desactivar cuenta',
+                error: error.message
+            });
+        }
+    },
+    
+    /**
+     * Cambiar estado de activación de un usuario (activar/desactivar) - Solo admin
+     */
+    toggleUserStatus: async (req, res) => {
+        try {
+            const { id } = req.params;
+            const { active } = req.body; // true para activar, false para desactivar
+            
+            // Verificar permisos de administrador
+            if (req.user.role !== 'admin') {
+                return res.status(403).json({
+                    ok: false,
+                    message: 'No tienes permiso para realizar esta acción'
+                });
+            }
+            
+            // Buscar usuario
+            const targetUser = await UserModel.findById(id);
+            
+            if (!targetUser) {
+                return res.status(404).json({
+                    ok: false,
+                    message: 'Usuario no encontrado'
+                });
+            }
+            
+            // Prevenir cambios en cuentas de administradores
+            if (targetUser.role === 'admin' && !active) {
+                return res.status(403).json({
+                    ok: false,
+                    message: 'No se puede desactivar la cuenta de un administrador'
+                });
+            }
+            
+            // Verificar si el estado actual es el mismo que se solicita
+            if (targetUser.is_active === active) {
+                return res.status(400).json({
+                    ok: false,
+                    message: `El usuario ya está ${active ? 'activado' : 'desactivado'}`
+                });
+            }
+            
+            // Actualizar estado
+            targetUser.is_active = active;
+            await targetUser.save();
+            
+            // Respuesta HTTP
+            return res.status(200).json({
+                ok: true,
+                message: `Usuario ${active ? 'activado' : 'desactivado'} exitosamente`
+            });
+        } catch (error) {
+            console.error('Error al cambiar estado del usuario:', error);
+            const statusCode = determineStatusCode(error);
+            return res.status(statusCode).json({
+                ok: false,
+                message: 'Error al cambiar estado del usuario',
                 error: error.message
             });
         }
@@ -301,6 +365,103 @@ const UserController = {
             return res.status(statusCode).json({
                 ok: false,
                 message: 'Error al obtener usuario',
+                error: error.message
+            });
+        }
+    },
+    
+    /**
+     * Obtener perfil público de un usuario
+     */
+    getPublicUserProfile: async (req, res) => {
+        try {
+            const { id } = req.params;
+            
+            // Delegar la lógica de negocio a userData
+            const user = await UserData.getUserById(id);
+            
+            // Verificar si el usuario existe
+            if (!user) {
+                return res.status(404).json({
+                    ok: false,
+                    message: 'Usuario no encontrado'
+                });
+            }
+            
+            // Filtrar información para perfil público
+            const publicProfile = {
+                _id: user._id,
+                name: user.name,
+                profile_picture: user.profile_picture,
+                // Solo incluir información de contacto si el usuario lo permite
+                phone: user.show_contact ? user.phone : undefined,
+                email: user.show_contact ? user.email : undefined,
+                city: user.city,
+                state: user.state,
+                country: user.country
+            };
+            
+            // Respuesta HTTP
+            return res.status(200).json({
+                ok: true,
+                profile: publicProfile
+            });
+        } catch (error) {
+            console.error('Error al obtener perfil público:', error);
+            const statusCode = determineStatusCode(error);
+            return res.status(statusCode).json({
+                ok: false,
+                message: 'Error al obtener perfil público',
+                error: error.message
+            });
+        }
+    },
+    
+    /**
+     * Desactivar cuenta del propio usuario
+     */
+    deactivateAccount: async (req, res) => {
+        try {
+            const userId = req.user.id;
+            
+            // Verificar si la contraseña es correcta (seguridad adicional)
+            const { password } = req.body;
+            
+            if (password) {
+                // Obtener usuario con contraseña incluida
+                const user = await UserModel.findById(userId).select('+password');
+                
+                if (!user) {
+                    return res.status(404).json({
+                        ok: false,
+                        message: 'Usuario no encontrado'
+                    });
+                }
+                
+                // Verificar contraseña
+                const isMatch = await bcrypt.compare(password, user.password);
+                if (!isMatch) {
+                    return res.status(400).json({
+                        ok: false,
+                        message: 'Contraseña incorrecta'
+                    });
+                }
+            }
+            
+            // Desactivar cuenta
+            await UserData.deleteUser(userId);
+            
+            // Respuesta HTTP
+            return res.status(200).json({
+                ok: true,
+                message: 'Tu cuenta ha sido desactivada exitosamente'
+            });
+        } catch (error) {
+            console.error('Error al desactivar cuenta:', error);
+            const statusCode = determineStatusCode(error);
+            return res.status(statusCode).json({
+                ok: false,
+                message: 'Error al desactivar tu cuenta',
                 error: error.message
             });
         }

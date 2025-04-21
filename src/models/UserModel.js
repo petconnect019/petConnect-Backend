@@ -64,6 +64,10 @@ const userSchema = new mongoose.Schema({
     },
     phone: { 
         type: String 
+    },
+    is_active: {
+        type: Boolean,
+        default: true
     }
 }, { timestamps: true });
 

@@ -41,11 +41,13 @@ const UserData = {
     
     /**
      * Obtiene todos los usuarios
+     * @param {boolean} includeInactive - Si es true, incluye usuarios inactivos
      * @returns {Array} Lista de usuarios
      */
-    getAllUsers: async () => {
+    getAllUsers: async (includeInactive = false) => {
         try {
-            const users = await UserModel.find({}, '-password');
+            const query = includeInactive ? {} : { is_active: true };
+            const users = await UserModel.find(query, '-password');
             return users;
         } catch (error) {
             throw error;
@@ -59,7 +61,7 @@ const UserData = {
      */
     getProfile: async (userId) => {
         try {
-            const user = await UserModel.findById(userId, '-password');
+            const user = await UserModel.findOne({ _id: userId, is_active: true }, '-password');
             
             if (!user) {
                 throw new Error('Usuario no encontrado');
@@ -183,12 +185,9 @@ const UserData = {
                 throw new Error('Usuario no encontrado');
             }
             
-            // Eliminar foto de perfil si existe
-            if (user.profile_picture) {
-                await deleteFromCloudinary(user.profile_picture);
-            }
-            
-            await UserModel.findByIdAndDelete(userId);
+            // Marcar como inactivo en lugar de eliminar
+            user.is_active = false;
+            await user.save();
             
             return true;
         } catch (error) {
@@ -199,11 +198,17 @@ const UserData = {
     /**
      * Obtiene un usuario por ID
      * @param {string} userId - ID del usuario
+     * @param {boolean} includeInactive - Si es true, incluye usuarios inactivos
      * @returns {Object} Datos del usuario
      */
-    getUserById: async (userId) => {
+    getUserById: async (userId, includeInactive = false) => {
         try {
-            const user = await UserModel.findById(userId, '-password');
+            const query = { _id: userId };
+            if (!includeInactive) {
+                query.is_active = true;
+            }
+            
+            const user = await UserModel.findOne(query, '-password');
             
             if (!user) {
                 throw new Error('Usuario no encontrado');
