@@ -11,6 +11,9 @@ router.use(verifyToken, isAdmin);
 router.get('/users', AdminController.getAllUsers);
 router.delete('/users/:id', AdminController.deleteUser);
 router.post('/register', AdminController.registerUser);
+router.put('/users/:id', AdminController.updateUser);
+router.put('/users/:id/role', AdminController.changeUserRole);
+router.get('/status/users', AdminController.getUserStats);
 
 // Gestión de mascotas
 router.get('/pets', PetController.getAllPets);

@@ -139,10 +139,10 @@ src/
 ### Admin (Usuarios)
 - `GET /api/admin/users` - Listar todos los usuarios ✅
 - `GET /api/admin/users/:id` - Obtener detalles de un usuario ✅
-- `PUT /api/admin/users/:id` - Actualizar usuario  ❌falta
+- `PUT /api/admin/users/:id` - Actualizar usuario  ✅
 - `PUT /api/admin/users/:id/status` - Activar/Desactivar usuario ✅
-- `PUT /api/admin/users/:id/role` - Cambiar rol de usuario ❌falta
-- `GET /api/admin/stats/users` - Estadísticas de usuarios ❌falta
+- `PUT /api/admin/users/:id/role` - Cambiar rol de usuario ✅
+- `GET /api/admin/status/users` - Estadísticas de usuarios ✅
 - `GET /api/admin/pets` - Listar Todas las mascotas  ✅
 
 ### Reportes ADMIN
@@ -319,9 +319,7 @@ Al iniciar la aplicación por primera vez, se crea
 
 **Importante**: Cambiar la contraseña después del primer inicio de sesión.
 
-## 🧪 Pruebas
 
-Para probar el sistema sin necesidad de configurar pagos reales, se han implementado rutas de prueba en `/api/test/` que permiten simular todo el flujo del sistema.
 
 ## 📊 Monitoreo y Logs
 
