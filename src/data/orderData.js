@@ -131,6 +131,38 @@ const orderData = {
             console.error(`Error al actualizar información de pago para orden ${orderId}:`, error);
             throw error;
         }
+    },
+
+    /**
+     * Cancela una orden existente
+     * @param {string} orderId - ID de la orden a cancelar
+     * @param {string} userId - ID del usuario que realiza la cancelación
+     * @returns {Object} Orden actualizada
+     */
+    cancelOrder: async function(orderId, userId) {
+        try {
+            // Verificar que la orden existe y pertenece al usuario
+            const order = await OrderModel.findOne({ _id: orderId, userId });
+            if (!order) {
+                throw new Error('Orden no encontrada o no tienes permiso para cancelarla');
+            }
+
+            // Actualizar el estado de la orden
+            const updatedOrder = await OrderModel.findByIdAndUpdate(
+                orderId,
+                {
+                    status: 'failed',
+                    paymentStatus: 'FAILED',
+                    updatedAt: new Date()
+                },
+                { new: true }
+            );
+
+            return updatedOrder;
+        } catch (error) {
+            console.error(`Error al cancelar orden ${orderId}:`, error);
+            throw error;
+        }
     }
 };
 
