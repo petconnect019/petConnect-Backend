@@ -70,7 +70,7 @@ const qrData = {
      * @param {string} qrId - ID del QR
      * @param {string} scannerUserId - ID del usuario que escanea el QR
      */
-    scanQR: async (qrId, scannerUserId = null) => {
+    scanQR: async (qrId, scannerUserId = null, locationData = null) => {
         // Buscar el QR por su ID de MongoDB
         const qr = await QRModel.findById(qrId);
         
@@ -79,20 +79,32 @@ const qrData = {
         }
         
         // Registrar el escaneo
-        await QRScanModel.create({
+        const scanRecord = await QRScanModel.create({
             qrId: qr._id,
             scannedBy: scannerUserId,
             scanDate: new Date(),
-            location: null // Se podría añadir la ubicación si se proporciona
+            location: locationData ? {
+                latitude: locationData.latitude,
+                longitude: locationData.longitude,
+                address: locationData.address
+            } : null
         });
         
         // Verificar si el QR está vinculado a una mascota
         if (qr.isLinked && qr.petId) {
             const petData = require('./petData');
             const petProfile = await petData.getPublicProfile(qr.petId);
+            
+            // Si se proporcionó ubicación, actualizar la ubicación de la mascota
+            if (locationData) {
+                await petData.updatePetLocation(qr.petId, locationData);
+            }
+            
             return {
                 message: 'Hola Estoy perdido, me puedes ayudar a encontrar a mi dueño?',
-                pet: petProfile
+                pet: petProfile,
+                scanId: scanRecord._id,
+                requiresLocation: !locationData
             };
         } else {
             return {

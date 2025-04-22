@@ -240,6 +240,54 @@ const PetController = {
                 error: error.message
             });
         }
+    },
+
+    /**
+     * Actualiza la ubicación de una mascota cuando se escanea su QR
+     * Esta ruta es pública y no requiere autenticación
+     */
+    scanQRCode: async (req, res) => {
+        try {
+            const petId = req.params.id;
+            const locationData = req.body;
+
+            // Verificar que la mascota existe
+            const pet = await PetData.getPetById(petId);
+            if (!pet) {
+                return res.status(404).json({
+                    ok: false,
+                    message: 'Mascota no encontrada'
+                });
+            }
+
+            // Validar datos de ubicación
+            if (!locationData.latitude || !locationData.longitude) {
+                return res.status(400).json({
+                    ok: false,
+                    message: 'La latitud y longitud son requeridas'
+                });
+            }
+
+            // Actualizar la ubicación de la mascota
+            const updatedPet = await PetData.updatePetLocation(petId, locationData);
+
+            res.status(200).json({
+                ok: true,
+                message: 'Ubicación actualizada exitosamente',
+                pet: {
+                    id: updatedPet._id,
+                    name: updatedPet.name,
+                    lastSeenLocation: updatedPet.lastSeenLocation
+                }
+            });
+        } catch (error) {
+            console.error('Error al escanear QR:', error);
+            res.status(500).json({
+                ok: false,
+                message: 'Error al actualizar la ubicación',
+                error: error.message
+            });
+        }
     }
 };
 

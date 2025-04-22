@@ -20,6 +20,9 @@ router.get('/:id/photos/download', PhotoController.downloadAllPhotos);
 router.get('/:id', PetController.getPetById); // Ver detalles de una mascota específica
 router.get('/public/:petId', optionalAuth, PetController.getPublicProfile);
 
+// Ruta pública para escanear QR y actualizar ubicación
+router.put('/:id/scan-qr', PetController.scanQRCode);
+
 // Middleware de autenticación para rutas protegidas
 router.use(verifyToken);
 
@@ -39,6 +42,14 @@ router.put('/:id',
     handleUploadError,
     PetController.updatePet
 ); 
+
+// Actualizar ubicación de mascota
+router.put('/:id/location', 
+    verifyToken,
+    isPetOwnerOrAdmin,
+    PetController.updatePetLocation
+);
+
 router.delete('/:id', PetController.deletePet); // Eliminar mascota
 
 // Rutas para manejo de fotos de perfil
@@ -65,8 +76,5 @@ router.post('/:id/photos',
     PhotoController.addPetPhotos
 ); 
 router.delete('/:id/photos/:photoId', PhotoController.deletePetPhoto); // Eliminar una foto específica
-
-// Rutas para estados especiales de mascotas
-router.put('/:id/location', PetController.updatePetLocation); // Actualizar ubicación
 
 module.exports = router;

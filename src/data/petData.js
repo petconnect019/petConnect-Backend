@@ -271,23 +271,29 @@ const PetData = {
         }
     },
     
-   
-    
     /**
      * Actualiza la ubicación de una mascota
      */
     updatePetLocation: async (petId, locationData) => {
         try {
-            const pet = await PetModel.findByIdAndUpdate(
-                petId,
-                { location: locationData },
-                { new: true }
-            );
-            
+            const pet = await PetModel.findById(petId);
             if (!pet) {
                 throw new Error('Mascota no encontrada');
             }
             
+            // Validar datos de ubicación
+            if (!locationData.latitude || !locationData.longitude) {
+                throw new Error('La latitud y longitud son requeridas');
+            }
+
+            pet.lastSeenLocation = {
+                latitude: locationData.latitude,
+                longitude: locationData.longitude,
+                address: locationData.address || '',
+                lastUpdateTime: new Date()
+            };
+
+            await pet.save();
             return pet;
         } catch (error) {
             throw error;

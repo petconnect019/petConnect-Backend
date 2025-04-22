@@ -56,7 +56,11 @@ const petSchema = new mongoose.Schema({
     lastSeenLocation: {
         latitude: Number,
         longitude: Number,
-        address: String
+        address: String,
+        lastUpdateTime: {
+            type: Date,
+            default: Date.now
+        }
     },
     lostDate: Date,
     createdAt: {
