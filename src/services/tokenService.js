@@ -15,7 +15,8 @@ const tokenService = {
                 is_profile_public: user.is_profile_public,
                 show_contact: user.show_contact,
                 city: user.city,
-                phone: user.phone
+                phone: user.phone,
+                is_active: user.is_active
             },
             process.env.JWT_SECRET,
             { expiresIn: '15m' } 

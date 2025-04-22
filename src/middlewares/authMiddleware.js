@@ -8,14 +8,42 @@ const verifyToken = async (req, res, next) => {
         const token = req.headers.authorization?.split(' ')[1];
         
         if (!token) {
-            return res.status(401).json({ message: 'Token no proporcionado' });
+            return res.status(401).json({ 
+                ok: false,
+                message: 'Token no proporcionado' 
+            });
         }
 
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        req.user = decoded;
+        
+        // Verificar si el usuario existe y está activo
+        const user = await UserModel.findById(decoded.id);
+        if (!user) {
+            return res.status(401).json({ 
+                ok: false,
+                message: 'Usuario no encontrado' 
+            });
+        }
+
+        if (!user.is_active) {
+            return res.status(403).json({ 
+                ok: false,
+                message: 'Tu cuenta está desactivada. Por favor, contacta al administrador.' 
+            });
+        }
+
+        // Agregar información del usuario a la solicitud
+        req.user = {
+            ...decoded,
+            is_active: user.is_active
+        };
+        
         next();
     } catch (error) {
-        return res.status(401).json({ message: 'Token inválido' });
+        return res.status(401).json({ 
+            ok: false,
+            message: 'Token inválido' 
+        });
     }
 };
 

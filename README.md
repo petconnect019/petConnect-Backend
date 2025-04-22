@@ -137,6 +137,7 @@ src/
 - `GET /api/users/:id` - Obtener perfil de otro usuario (público) ✅
 
 ### Admin (Usuarios)
+-  `POST /api/admin/register`  Crear un usuario - requiere token admin. ✅
 - `GET /api/admin/users` - Listar todos los usuarios ✅
 - `GET /api/admin/users/:id` - Obtener detalles de un usuario ✅
 - `PUT /api/admin/users/:id` - Actualizar usuario  ✅
@@ -144,13 +145,6 @@ src/
 - `PUT /api/admin/users/:id/role` - Cambiar rol de usuario ✅
 - `GET /api/admin/status/users` - Estadísticas de usuarios ✅
 - `GET /api/admin/pets` - Listar Todas las mascotas  ✅
-
-### Reportes ADMIN
-- `POST /api/reports/pet/:petId` - Reportar una mascota ❌falta
-- `POST /api/reports/user/:userId` - Reportar un usuario❌falta
-- `GET /api/reports` - Listar reportes (admin)❌falta
-- `PUT /api/reports/:reportId/status` - Actualizar estado de un reporte (admin)❌falta
-- `DELETE /api/reports/:reportId` - Eliminar un reporte (admin)❌falta
 -  `POST /api/admin/register`  Crear un usuario - requiere token admin. ✅
 
 ### Mascotas  Requieren token  
