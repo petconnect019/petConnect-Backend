@@ -93,16 +93,61 @@ class PaymentController {
     // Endpoint para recibir al usuario después del pago
     async paymentResponse(req, res) {
         try {
-            // Aquí se puede redirigir al usuario a una página de éxito/error
-            const referencia = req.query.ref_payco || '';
-            
-            // Redirigir a una página de resumen o éxito
-            const frontendUrl = process.env.FRONTEND_URL ;
-            res.redirect(`${frontendUrl}/payment/success?ref_payco=${referencia}`);
+            const {
+                ref_payco,              // Referencia del pago
+                x_transaction_state,    // Estado de la transacción
+                x_response,             // Respuesta del pago
+                x_extra1,               // ID de la orden
+                x_amount,               // Monto pagado
+                x_approval_code         // Código de aprobación
+            } = req.query;
+
+            const frontendUrl = process.env.FRONTEND_URL;
+
+            // Si no hay referencia de pago, redirigir a error
+            if (!ref_payco) {
+                console.error('No se recibió referencia de pago');
+                return res.redirect(`${frontendUrl}/payment/error?message=No se recibió referencia de pago`);
+            }
+
+            // Verificar el estado del pago
+            const estadoPago = x_transaction_state;
+            const respuestaPago = x_response;
+
+            // Determinar la URL de redirección según el estado del pago
+            let redirectUrl;
+            let queryParams = `ref_payco=${ref_payco}`;
+
+            if (estadoPago === 'Aceptada' || estadoPago === 'Aprobada') {
+                // Pago exitoso
+                redirectUrl = '/payment/success';
+                if (x_approval_code) {
+                    queryParams += `&approval_code=${x_approval_code}`;
+                }
+                if (x_amount) {
+                    queryParams += `&amount=${x_amount}`;
+                }
+            } else if (estadoPago === 'Pendiente') {
+                // Pago pendiente
+                redirectUrl = '/payment/pending';
+            } else if (estadoPago === 'Rechazada' || estadoPago === 'Fallida') {
+                // Pago fallido
+                redirectUrl = '/payment/error';
+                if (respuestaPago) {
+                    queryParams += `&message=${encodeURIComponent(respuestaPago)}`;
+                }
+            } else {
+                // Estado desconocido
+                redirectUrl = '/payment/error';
+                queryParams += `&message=${encodeURIComponent('Estado de pago desconocido')}`;
+            }
+
+            // Redirigir al usuario
+            res.redirect(`${frontendUrl}${redirectUrl}?${queryParams}`);
         } catch (error) {
             console.error('Error en respuesta de pago:', error);
             const frontendUrl = process.env.FRONTEND_URL;
-            res.redirect(`${frontendUrl}/payment/error`);
+            res.redirect(`${frontendUrl}/payment/error?message=${encodeURIComponent('Error al procesar la respuesta del pago')}`);
         }
     }
 }

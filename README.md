@@ -152,7 +152,7 @@ src/
 - `GET /api/pets/user/pets ` - Obtener mascotas del usuario autenticado ✅
 - `PUT /api/pets/:id` - Actualizar mascota  ✅
 - `DELETE /api/pets/:id` - Eliminar mascota ✅
-- `PUT /api/pets/:id/location` - Actualizar ubicación ❌falta
+- `PUT /api/pets/:id/location` - Actualizar ubicación ✅
 
 ### Rutas para fotos de perfil mascota
 - `PUT /api/pets/:id/profile-picture` - Actualizar foto de perfil mascota✅
