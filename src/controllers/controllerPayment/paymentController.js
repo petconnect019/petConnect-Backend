@@ -50,24 +50,6 @@ class PaymentController {
             });
         }
     }
-
-    async verifyPayment(req, res) {
-        try {
-            const { paymentId } = req.params;
-            const isVerified = await EpaycoService.verifyPayment(paymentId);
-            
-            res.status(200).json({
-                success: true,
-                verified: isVerified
-            });
-        } catch (error) {
-            console.error('Error al verificar pago:', error);
-            res.status(500).json({
-                success: false,
-                error: error.message
-            });
-        }
-    }
 }
 
 module.exports = new PaymentController(); 
