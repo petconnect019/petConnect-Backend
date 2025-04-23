@@ -2,6 +2,12 @@ const session = require('express-session');
 const MongoStore = require('connect-mongo');
 const tokenService = require('../services/tokenService');
 
+// Verificar que la variable de entorno esté disponible
+if (!process.env.MONGODB_URI) {
+    console.error('Error: MONGODB_URI no está definida en las variables de entorno');
+    console.log('Variables de entorno disponibles:', Object.keys(process.env));
+}
+
 // Configuración base de la sesión
 const sessionConfig = {
     secret: process.env.SESSION_SECRET || 'tu_secreto_aqui',
@@ -9,6 +15,7 @@ const sessionConfig = {
     saveUninitialized: false,
     store: MongoStore.create({
         mongoUrl: process.env.MONGODB_URI,
+        dbName: 'petconnect',
         collectionName: 'sessions',
         ttl: 24 * 60 * 60, // 1 día en segundos
         autoRemove: 'native',
