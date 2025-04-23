@@ -5,13 +5,11 @@ const router = express.Router();
 const AuthController = require('../controllers/controllerAuth/authController');
 const { verifyToken } = require('../middlewares/authMiddleware');
 
-// Rutas públicas de autenticación
+// Rutas públicas de autenticación (NO requieren token)
+router.post('/register', AuthController.registerUser);
 router.post('/login', AuthController.loginUser);
 router.post('/logout', AuthController.logout);
-router.post('/register', AuthController.registerUser);
 router.post('/refresh', AuthController.refreshToken);
-
-// Rutas públicas de gestión de contraseñas
 router.post('/request-password-reset', AuthController.requestPasswordReset);
 router.post('/reset-password', AuthController.resetPassword);
 
@@ -28,12 +26,10 @@ router.get('/google/callback',
     AuthController.googleAuthCallback
 );
 
-// Middleware para rutas protegidas
+// Middleware para rutas protegidas (todo lo que sigue requiere token)
 router.use(verifyToken);
 
-// Rutas protegidas que usan verificación de token:
-// - /change-password
-// - /validate
+// Rutas protegidas
 router.post('/change-password', AuthController.changePassword);
 router.get('/validate', (req, res) => {
     const token = req.header('Authorization')?.replace('Bearer ', '');
