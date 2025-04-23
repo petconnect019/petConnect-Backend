@@ -42,7 +42,8 @@ app.use(morgan('dev'));
 const getAllowedOrigins = () => {
     const origins = [
         'http://localhost:5175', 
-        'http://localhost:3000'
+        'http://localhost:3000',
+        'https://pet-connect-front-nu.vercel.app'
     ];
     
     // Añadir URLs de ngrok si están definidas
