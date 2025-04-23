@@ -2,8 +2,6 @@ const paymentData = require('../../data/paymentData');
 const orderData = require('../../data/orderData');
 
 class PaymentController {
-   
-
     // Webhook para recibir notificaciones de ePayco
     async confirmPayment(req, res) {
         let orderId;
