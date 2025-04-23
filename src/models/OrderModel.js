@@ -20,12 +20,12 @@ const orderSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['PENDING', 'COMPLETED', 'CANCELLED'],
+        enum: ['PENDING', 'COMPLETED', 'CANCELLED', 'pending', 'completed', 'cancelled'],
         default: 'PENDING'
     },
     paymentStatus: {
         type: String,
-        enum: ['PENDING', 'COMPLETED', 'FAILED'],
+        enum: ['PENDING', 'COMPLETED', 'FAILED', 'pending', 'completed', 'failed'],
         default: 'PENDING'
     },
     customerName: {
