@@ -14,7 +14,7 @@ app.use(cors({
   origin: [
     'http://localhost:5175',
     'http://localhost:5173', 
-    'https://3e1c-2800-e2-9880-939-38ee-462-d817-2350.ngrok-free.app'
+    'https://petconnect-backend-production.up.railway.app'
   ],
   credentials: true
 })); 
