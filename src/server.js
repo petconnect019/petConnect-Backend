@@ -189,6 +189,9 @@ const gracefulShutdown = async () => {
         process.exit(1);
     }
 };
+//comprobar de prueba
+
+
 
 // Manejar señales de terminación
 process.on('SIGTERM', gracefulShutdown);
