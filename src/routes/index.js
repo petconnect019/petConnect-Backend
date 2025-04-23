@@ -20,7 +20,7 @@ router.use('/qr', qrRoutes);
 router.use('/orders', orderRoutes);
 router.use('/chat', chatRoutes);
 router.use('/admin', adminRoutes);
-router.use('/payments', paymentRoutes);
-router.use('/api/health', healthRoutes);
+router.use('/payment', paymentRoutes);
+router.use('/health', healthRoutes);
 
 module.exports = router; 

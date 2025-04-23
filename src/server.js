@@ -127,11 +127,6 @@ app.post('/api/direct-test', (req, res) => {
     });
 });
 
-// Endpoint de healthcheck simple
-app.get('/health', (req, res) => {
-    res.status(200).json({ status: 'ok' });
-});
-
 // Rutas API
 app.use('/api', routes);
 
