@@ -16,6 +16,8 @@ const jwt = require('jsonwebtoken');
 const socketService = require('./services/socketService');
 const QRModel = require('./models/QRModel');
 const QRCode = require('qrcode');
+const session = require('express-session');
+const MongoStore = require('connect-mongo');
 
 const app = express();
 const server = http.createServer(app);
@@ -90,7 +92,7 @@ app.options('*', (req, res) => {
 });
 
 // Configuración de sesión y autenticación
-app.use(sessionConfig);
+app.use(session(sessionConfig));
 app.use(passport.initialize());
 app.use(passport.session());
 
@@ -147,3 +149,36 @@ const startServer = async () => {
 };
 
 startServer();
+
+// Manejo de errores
+app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).json({
+        success: false,
+        error: 'Error interno del servidor'
+    });
+});
+
+// Función para cerrar conexiones
+const gracefulShutdown = async () => {
+    console.log('Recibida señal de apagado. Cerrando conexiones...');
+    
+    try {
+        // Cerrar conexión a MongoDB
+        await mongoose.connection.close();
+        console.log('Conexión a MongoDB cerrada');
+        
+        // Cerrar el servidor
+        server.close(() => {
+            console.log('Servidor HTTP cerrado');
+            process.exit(0);
+        });
+    } catch (error) {
+        console.error('Error durante el cierre:', error);
+        process.exit(1);
+    }
+};
+
+// Manejar señales de terminación
+process.on('SIGTERM', gracefulShutdown);
+process.on('SIGINT', gracefulShutdown);
