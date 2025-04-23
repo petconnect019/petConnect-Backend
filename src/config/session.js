@@ -9,14 +9,14 @@ const sessionConfig = {
     saveUninitialized: false,
     store: MongoStore.create({
         mongoUrl: process.env.MONGODB_URI,
-        collectionName: 'sessions'
+        collectionName: 'sessions',
+        ttl: 24 * 60 * 60 // 1 día en segundos
     }),
     cookie: {
         secure: process.env.NODE_ENV === 'production',
         httpOnly: true,
         maxAge: 24 * 60 * 60 * 1000, // 1 día
-        sameSite: 'lax',
-        domain: 'localhost'
+        sameSite: 'lax'
     }
 };
 
