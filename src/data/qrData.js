@@ -293,6 +293,36 @@ const qrData = {
             console.error(`Error al obtener QRs del usuario ${userId}:`, error);
             throw error;
         }
+    },
+
+    /**
+     * Obtiene el historial de escaneos de un QR
+     * @param {string} qrId - ID del QR
+     * @param {string} userId - ID del usuario que solicita el historial
+     * @returns {Array} Historial de escaneos del QR
+     */
+    getQRHistory: async (qrId, userId) => {
+        try {
+            // Verificar que el QR existe y pertenece al usuario
+            const qr = await QRModel.findById(qrId);
+            if (!qr) {
+                throw new Error('QR no encontrado');
+            }
+
+            if (qr.userId.toString() !== userId) {
+                throw new Error('No tienes permiso para ver el historial de este QR');
+            }
+
+            // Obtener el historial de escaneos
+            const history = await QRScanModel.find({ qrId })
+                .sort({ scanDate: -1 })
+                .populate('scannedBy', 'name email');
+
+            return history;
+        } catch (error) {
+            console.error(`Error al obtener historial del QR ${qrId}:`, error);
+            throw error;
+        }
     }
 };
 

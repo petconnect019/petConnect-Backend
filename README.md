@@ -168,10 +168,9 @@ src/
 - `POST /api/qr/generate-multiple` - Generar múltiples QRs ✅
 - `GET /api/qr/scan/:qrId` - Escanear código QR (público) ✅
 // crear validador de qr
-- `POST /api/qr/link` - Vincular QR a mascota
-- `GET /api/qr/user` - Obtener QRs del usuario
-- `GET /api/qr` - Obtener todos los QRs (admin)
-- `DELETE /api/qr/:qrId` - Desactivar un QR
+- `POST /api/qr/link` - Vincular QR a mascota ✅
+- `GET /api/qr/user` - Obtener QRs del usuario ✅
+- `DELETE /api/qr/:qrId` - Eliminar un QR ✅
 - `GET /api/qr/:qrId/history` - Ver historial de escaneos de un QR
 - `GET /api/qr/stats` - Estadísticas de QRs (admin)
 
@@ -182,7 +181,7 @@ src/
 - `GET /api/orders/:orderId` - Obtener detalles de una orden ✅
 - `POST /api/payments/confirmation` - Webhook de ePayco para confirmación automática de pagos ✅
 - `GET /api/payments/response` - Redirección después del pago en ePayco ✅
-- `POST /api/orders/:orderId/cancel` - Cancelar una orden ❌falta
+- `POST /api/orders/:orderId/cancel` - Cancelar una orden ✅
 - `GET /api/orders/:orderId/invoice` - Descargar factura de una orden ❌falta
 - `GET /api/orders` - Listar todas las órdenes (admin) ❌falta
 - `PUT /api/orders/:orderId/status` - Actualizar estado de una orden (admin) ❌falta

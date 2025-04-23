@@ -314,6 +314,34 @@ const qrController = {
                 error: error.message
             });
         }
+    },
+
+    /**
+     * Obtiene el historial de escaneos de un QR
+     */
+    getQRHistory: async (req, res) => {
+        try {
+            const { qrId } = req.params;
+            const userId = req.user.id;
+            
+            // Delegación de la lógica de negocio a qrData
+            const history = await qrData.getQRHistory(qrId, userId);
+            
+            // Respuesta HTTP
+            return res.status(200).json({
+                success: true,
+                message: `Se encontraron ${history.length} escaneos para este QR`,
+                history
+            });
+        } catch (error) {
+            console.error('Error al obtener historial de QR:', error);
+            const statusCode = determineStatusCode(error);
+            return res.status(statusCode).json({
+                success: false,
+                message: 'Error al obtener historial de QR',
+                error: error.message
+            });
+        }
     }
 };
 

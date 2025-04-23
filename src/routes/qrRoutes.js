@@ -16,6 +16,7 @@ router.get('/user', QRController.getUserQRs);
 router.delete('/:qrId', QRController.deleteQR);
 router.get('/user/my-codes', QRController.getUserQRCodes);
 router.get('/:id', QRController.getQRById);
+router.get('/:qrId/history', QRController.getQRHistory);
 
 // Rutas para administradores
 router.use(isAdmin);
