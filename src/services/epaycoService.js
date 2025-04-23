@@ -6,6 +6,8 @@ const Epayco = require('epayco-sdk-node')({
 });
 
 class EpaycoService {
+
+    
     static async createPayment(paymentInfo) {
         try {
             console.log('Iniciando proceso de pago con ePayco:', JSON.stringify(paymentInfo, null, 2));

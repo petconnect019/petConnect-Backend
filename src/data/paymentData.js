@@ -1,6 +1,7 @@
 const OrderModel = require('../models/OrderModel');
 const QRModel = require('../models/QRModel');
 const orderData = require('./orderData');
+const EpaycoService = require('../services/epaycoService');
 
 const paymentData = {
     /**
@@ -10,60 +11,47 @@ const paymentData = {
      */
     processPaymentConfirmation: async (paymentInfo) => {
         try {
-            const { 
-                x_ref_payco,           // Referencia de pago
-                x_transaction_state,   // Estado de la transacción
-                x_response,            // Respuesta del pago
-                x_approval_code,       // Código de aprobación
-                x_id_invoice,          // ID de la factura
-                x_amount,              // Monto pagado
-                x_extra1,              // Campo extra donde enviamos el orderId
-                x_cod_transaction_state // Código del estado de la transacción
-            } = paymentInfo;
+            const { x_ref_payco, x_cod_response, x_response } = paymentInfo;
 
-            // Validar datos requeridos
-            if (!x_ref_payco) {
-                return { success: false, message: 'Referencia de pago no proporcionada' };
+            // Verificar el estado del pago
+            const paymentStatus = await EpaycoService.getPaymentStatus(x_ref_payco);
+            
+            if (!paymentStatus.success) {
+                throw new Error('Pago no encontrado');
             }
 
-            const orderId = x_extra1 || x_id_invoice;
+            // Obtener el ID de la orden desde los extras
+            const orderId = paymentStatus.data.extras?.extra1;
             if (!orderId) {
-                return { success: false, message: 'ID de orden no proporcionado' };
+                throw new Error('ID de orden no encontrado en el pago');
             }
 
-            console.log(`Procesando pago para orden ${orderId} con referencia ${x_ref_payco} y estado ${x_transaction_state}`);
+            // Obtener la orden
+            const order = await orderData.getOrderById(orderId);
+            if (!order) {
+                throw new Error('Orden no encontrada');
+            }
 
-            // Determinar el estado del pago
-            const estadoPago = x_transaction_state;
-            const esPagoExitoso = estadoPago === 'Aceptada' || estadoPago === '1' || x_response === 'Aceptada' || x_cod_transaction_state === '1';
-            const esPagoRechazado = estadoPago === 'Rechazada' || estadoPago === '2' || x_response === 'Rechazada' || x_cod_transaction_state === '2';
-            const esPagoCancelado = estadoPago === 'Cancelada' || estadoPago === '3' || x_response === 'Cancelada' || x_cod_transaction_state === '3';
-
-            if (esPagoExitoso) {
-                return await paymentData.processSuccessfulPayment(orderId, {
-                    referencia: x_ref_payco,
-                    approvalCode: x_approval_code,
-                    amount: x_amount,
-                    response: x_response,
-                    additionalData: paymentInfo
-                });
-            } else if (esPagoRechazado || esPagoCancelado) {
-                return await paymentData.processFailedPayment(orderId, {
-                    referencia: x_ref_payco,
-                    amount: x_amount,
-                    response: x_response,
-                    additionalData: paymentInfo
-                });
+            // Si el pago es exitoso y la orden está pendiente, confirmarla
+            if (paymentStatus.status === 'approved' && order.status === 'pending') {
+                const result = await orderData.confirmOrder(orderId);
+                
+                return {
+                    success: true,
+                    message: 'Pago confirmado y orden completada',
+                    order: result.order,
+                    qrCodes: result.qrCodes
+                };
             } else {
-                return { 
-                    success: true, 
-                    message: `Pago pendiente para la orden ${orderId}`,
-                    status: 'PENDING'
+                return {
+                    success: true,
+                    message: 'Pago ya procesado anteriormente',
+                    order
                 };
             }
         } catch (error) {
             console.error('Error al procesar confirmación de pago:', error);
-            return { success: false, message: error.message };
+            throw error;
         }
     },
 
@@ -174,12 +162,12 @@ const paymentData = {
         const {
             ref_payco,
             x_transaction_state,
+            x_response,
             x_approval_code,
-            x_amount,
-            x_response_reason_text
+            x_amount
         } = paymentResponse;
 
-        // Validación básica
+        // Si no hay referencia de pago, redirigir a error
         if (!ref_payco) {
             return {
                 success: false,
@@ -188,16 +176,17 @@ const paymentData = {
             };
         }
 
-        // Configuración base de redirección
-        const baseParams = `ref_payco=${ref_payco}`;
+        // Determinar la URL de redirección según el estado del pago
+        let redirectUrl;
+        let queryParams = `ref_payco=${ref_payco}`;
 
-        // Mapeo simplificado de estados
+        // Mapeo de estados de ePayco
         const estados = {
             'Aceptada': {
                 type: 'success',
                 message: 'Pago exitoso',
                 params: () => {
-                    let params = baseParams;
+                    let params = queryParams;
                     if (x_approval_code) params += `&approval_code=${x_approval_code}`;
                     if (x_amount) params += `&amount=${x_amount}`;
                     return params;
@@ -207,7 +196,7 @@ const paymentData = {
                 type: 'success',
                 message: 'Pago aprobado',
                 params: () => {
-                    let params = baseParams;
+                    let params = queryParams;
                     if (x_approval_code) params += `&approval_code=${x_approval_code}`;
                     if (x_amount) params += `&amount=${x_amount}`;
                     return params;
@@ -215,11 +204,11 @@ const paymentData = {
             },
             'Rechazada': {
                 type: 'error',
-                message: x_response_reason_text || 'Pago rechazado por el banco'
+                message: 'Pago rechazado por el banco'
             },
             'Fallida': {
                 type: 'error',
-                message: x_response_reason_text || 'Error en el procesamiento del pago'
+                message: 'Error en el procesamiento del pago'
             },
             'Cancelada': {
                 type: 'error',
@@ -242,10 +231,10 @@ const paymentData = {
         };
 
         // Construir URL y parámetros
-        const redirectUrl = `/payment/${estado.type}`;
-        const queryParams = estado.params 
+        redirectUrl = `/payment/${estado.type}`;
+        queryParams = estado.params 
             ? estado.params() 
-            : `${baseParams}&message=${encodeURIComponent(estado.message)}`;
+            : `${queryParams}&message=${encodeURIComponent(estado.message)}`;
 
         return {
             success: true,
