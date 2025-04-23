@@ -172,14 +172,14 @@ const paymentData = {
      */
     processPaymentResponse: (paymentResponse) => {
         const {
-            ref_payco,              // Referencia del pago
-            x_transaction_state,    // Estado de la transacción
-            x_response,             // Respuesta del pago
-            x_approval_code,        // Código de aprobación
-            x_amount                // Monto pagado
+            ref_payco,
+            x_transaction_state,
+            x_approval_code,
+            x_amount,
+            x_response_reason_text
         } = paymentResponse;
 
-        // Si no hay referencia de pago, redirigir a error
+        // Validación básica
         if (!ref_payco) {
             return {
                 success: false,
@@ -188,42 +188,71 @@ const paymentData = {
             };
         }
 
-        // Verificar el estado del pago
-        const estadoPago = x_transaction_state;
-        const respuestaPago = x_response;
+        // Configuración base de redirección
+        const baseParams = `ref_payco=${ref_payco}`;
 
-        // Determinar la URL de redirección según el estado del pago
-        let redirectUrl;
-        let queryParams = `ref_payco=${ref_payco}`;
+        // Mapeo simplificado de estados
+        const estados = {
+            'Aceptada': {
+                type: 'success',
+                message: 'Pago exitoso',
+                params: () => {
+                    let params = baseParams;
+                    if (x_approval_code) params += `&approval_code=${x_approval_code}`;
+                    if (x_amount) params += `&amount=${x_amount}`;
+                    return params;
+                }
+            },
+            'Aprobada': {
+                type: 'success',
+                message: 'Pago aprobado',
+                params: () => {
+                    let params = baseParams;
+                    if (x_approval_code) params += `&approval_code=${x_approval_code}`;
+                    if (x_amount) params += `&amount=${x_amount}`;
+                    return params;
+                }
+            },
+            'Rechazada': {
+                type: 'error',
+                message: x_response_reason_text || 'Pago rechazado por el banco'
+            },
+            'Fallida': {
+                type: 'error',
+                message: x_response_reason_text || 'Error en el procesamiento del pago'
+            },
+            'Cancelada': {
+                type: 'error',
+                message: 'Pago cancelado por el usuario'
+            },
+            'Abandonada': {
+                type: 'error',
+                message: 'Proceso de pago abandonado'
+            },
+            'Pendiente': {
+                type: 'pending',
+                message: 'El pago está pendiente de confirmación'
+            }
+        };
 
-        if (estadoPago === 'Aceptada' || estadoPago === 'Aprobada') {
-            // Pago exitoso
-            redirectUrl = '/payment/success';
-            if (x_approval_code) {
-                queryParams += `&approval_code=${x_approval_code}`;
-            }
-            if (x_amount) {
-                queryParams += `&amount=${x_amount}`;
-            }
-        } else if (estadoPago === 'Pendiente') {
-            // Pago pendiente
-            redirectUrl = '/payment/pending';
-        } else if (estadoPago === 'Rechazada' || estadoPago === 'Fallida') {
-            // Pago fallido
-            redirectUrl = '/payment/error';
-            if (respuestaPago) {
-                queryParams += `&message=${encodeURIComponent(respuestaPago)}`;
-            }
-        } else {
-            // Estado desconocido
-            redirectUrl = '/payment/error';
-            queryParams += `&message=${encodeURIComponent('Estado de pago desconocido')}`;
-        }
+        // Obtener configuración del estado o usar valores por defecto
+        const estado = estados[x_transaction_state] || {
+            type: 'error',
+            message: 'Estado de pago no reconocido'
+        };
+
+        // Construir URL y parámetros
+        const redirectUrl = `/payment/${estado.type}`;
+        const queryParams = estado.params 
+            ? estado.params() 
+            : `${baseParams}&message=${encodeURIComponent(estado.message)}`;
 
         return {
             success: true,
             redirectUrl,
-            queryParams
+            queryParams,
+            status: x_transaction_state,
+            message: estado.message
         };
     }
 };

@@ -1,12 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const paymentController = require('../controllers/controllerPayment/paymentController');
-const auth = require('../middlewares/authMiddleware');
 
-// Ruta para la confirmación de pago (webhook) - No requiere autenticación
-router.post('/confirmation', paymentController.confirmPayment);
+// Ruta para manejar la confirmación del pago
+router.post('/confirmation', paymentController.handlePaymentConfirmation);
 
-// Ruta para la respuesta de pago (redirección del usuario) - No requiere autenticación
-router.get('/response', paymentController.paymentResponse);
+// Ruta para verificar el estado de un pago
+router.get('/verify/:paymentId', paymentController.verifyPayment);
 
 module.exports = router; 

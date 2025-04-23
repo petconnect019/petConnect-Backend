@@ -1,38 +1,71 @@
-const paymentData = require('../../data/paymentData');
+const orderData = require('../../data/orderData');
+const EpaycoService = require('../../services/epaycoService');
 
 class PaymentController {
-    // Webhook para recibir notificaciones de ePayco
-    async confirmPayment(req, res) {
+    async handlePaymentConfirmation(req, res) {
         try {
-            console.log('Recibida confirmación de pago de ePayco:', JSON.stringify(req.query, null, 2));
+            const { x_ref_payco, x_cod_response, x_response } = req.body;
+
+            // Verificar el estado del pago
+            const paymentInfo = await EpaycoService.getPaymentInfo(x_ref_payco);
             
-            // Procesar la confirmación del pago
-            const result = await paymentData.processPaymentConfirmation(req.query);
-            res.status(200).send('OK');
+            if (!paymentInfo.success) {
+                throw new Error('Pago no encontrado');
+            }
+
+            // Obtener el ID de la orden desde los extras
+            const orderId = paymentInfo.data.extras?.extra1;
+            if (!orderId) {
+                throw new Error('ID de orden no encontrado en el pago');
+            }
+
+            // Obtener la orden
+            const order = await orderData.getOrderById(orderId);
+            if (!order) {
+                throw new Error('Orden no encontrada');
+            }
+
+            // Si el pago es exitoso y la orden está pendiente, confirmarla
+            if (paymentInfo.status === 'approved' && order.status === 'pending') {
+                const result = await orderData.confirmOrder(orderId);
+                
+                res.status(200).json({
+                    success: true,
+                    message: 'Pago confirmado y orden completada',
+                    order: result.order,
+                    qrCodes: result.qrCodes
+                });
+            } else {
+                res.status(200).json({
+                    success: true,
+                    message: 'Pago ya procesado anteriormente',
+                    order
+                });
+            }
         } catch (error) {
             console.error('Error al procesar confirmación de pago:', error);
-            res.status(200).send('OK');
+            res.status(500).json({
+                success: false,
+                error: error.message
+            });
         }
     }
-    
-    // Endpoint para recibir al usuario después del pago
-    async paymentResponse(req, res) {
+
+    async verifyPayment(req, res) {
         try {
-            const frontendUrl = process.env.FRONTEND_URL;
+            const { paymentId } = req.params;
+            const isVerified = await EpaycoService.verifyPayment(paymentId);
             
-            // Procesar la respuesta del pago
-            const result = paymentData.processPaymentResponse(req.query);
-            
-            if (!result.success) {
-                return res.redirect(`${frontendUrl}${result.redirectUrl}?${result.queryParams}`);
-            }
-            
-            // Redirigir al usuario
-            res.redirect(`${frontendUrl}${result.redirectUrl}?${result.queryParams}`);
+            res.status(200).json({
+                success: true,
+                verified: isVerified
+            });
         } catch (error) {
-            console.error('Error en respuesta de pago:', error);
-            const frontendUrl = process.env.FRONTEND_URL;
-            res.redirect(`${frontendUrl}/payment/error?message=${encodeURIComponent('Error al procesar la respuesta del pago')}`);
+            console.error('Error al verificar pago:', error);
+            res.status(500).json({
+                success: false,
+                error: error.message
+            });
         }
     }
 }
