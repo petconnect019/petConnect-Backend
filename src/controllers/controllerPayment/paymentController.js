@@ -21,6 +21,7 @@ class PaymentController {
 
     // Webhook para recibir notificaciones de ePayco
     async confirmPayment(req, res) {
+        let orderId;
         try {
             console.log('Recibida confirmación de pago de ePayco:', JSON.stringify(req.query, null, 2));
 
@@ -43,7 +44,7 @@ class PaymentController {
             }
 
             // Obtener ID de la orden
-            const orderId = x_extra1 || x_id_invoice;
+            orderId = x_extra1 || x_id_invoice;
             if (!orderId) {
                 throw new Error('ID de orden no proporcionado');
             }
@@ -83,7 +84,7 @@ class PaymentController {
                 return res.status(200).send('OK'); // Siempre responder 200 a ePayco
             }
         } catch (error) {
-            console.error(`Error al confirmar la orden ${orderId}:`, error);
+            console.error(`Error al confirmar la orden ${orderId || 'desconocida'}:`, error);
             return res.status(200).send('OK'); // Siempre responder 200 a ePayco
         }
     }
