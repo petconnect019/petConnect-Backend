@@ -109,6 +109,11 @@ app.post('/api/direct-test', (req, res) => {
     });
 });
 
+// Endpoint de healthcheck para Railway
+app.get('/api/health', (req, res) => {
+    res.status(200).json({ status: 'ok' });
+});
+
 // Rutas API
 app.use('/api', routes);
 

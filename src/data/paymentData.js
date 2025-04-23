@@ -11,13 +11,52 @@ const paymentData = {
      */
     processPaymentConfirmation: async (paymentInfo) => {
         try {
+            console.log('Procesando confirmación de pago con datos:', JSON.stringify(paymentInfo, null, 2));
+            
             const { x_ref_payco, x_cod_response, x_response } = paymentInfo;
 
             // Verificar el estado del pago
+            console.log('Consultando estado del pago con referencia:', x_ref_payco);
             const paymentStatus = await EpaycoService.getPaymentStatus(x_ref_payco);
             
             if (!paymentStatus.success) {
-                throw new Error('Pago no encontrado');
+                console.log('Estado del pago no exitoso:', paymentStatus);
+                // Si el pago no se encuentra, intentar obtener el ID de la orden directamente de los parámetros
+                const orderId = paymentInfo.x_extra1;
+                if (!orderId) {
+                    throw new Error('Pago no encontrado y no se pudo obtener el ID de la orden');
+                }
+                
+                // Obtener la orden
+                const order = await orderData.getOrderById(orderId);
+                if (!order) {
+                    throw new Error('Orden no encontrada');
+                }
+
+                // Actualizar el estado de la orden basado en la respuesta de ePayco
+                if (x_cod_response === '1' && x_response === 'Aceptada') {
+                    const result = await orderData.confirmOrder(orderId);
+                    return {
+                        success: true,
+                        message: 'Pago confirmado y orden completada',
+                        order: result.order,
+                        qrCodes: result.qrCodes
+                    };
+                } else {
+                    await orderData.updateOrderPayment(orderId, {
+                        paymentStatus: 'FAILED',
+                        paymentData: {
+                            transactionId: x_ref_payco,
+                            responseCode: x_cod_response,
+                            transactionDate: new Date()
+                        }
+                    });
+                    return {
+                        success: false,
+                        message: 'Pago fallido',
+                        order
+                    };
+                }
             }
 
             // Obtener el ID de la orden desde los extras
