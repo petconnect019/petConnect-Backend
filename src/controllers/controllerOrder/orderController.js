@@ -188,6 +188,48 @@ class OrderController {
             });
         }
     }
+
+    /**
+     * Redirige al usuario a la factura de ePayco
+     */
+    async downloadInvoice(req, res) {
+        try {
+            const { orderId } = req.params;
+            const userId = req.user.id;
+
+            // Obtener la orden
+            const order = await orderData.getOrderById(orderId);
+            
+            if (!order) {
+                throw new Error('Orden no encontrada');
+            }
+
+            // Verificar que el usuario tenga acceso a la orden
+            if (order.userId.toString() !== userId) {
+                throw new Error('No tienes permiso para ver esta factura');
+            }
+
+            // Verificar que la orden esté completada
+            if (order.status !== 'completed' || order.paymentStatus !== 'COMPLETED') {
+                throw new Error('La orden debe estar completada y pagada para ver la factura');
+            }
+
+            // Verificar que exista la referencia de ePayco
+            if (!order.epaycoRef) {
+                throw new Error('No se encontró la referencia de pago');
+            }
+
+           
+
+        } catch (error) {
+            console.error('Error al redirigir a la factura:', error);
+            const statusCode = error.message.includes('no encontrada') ? 404 : 500;
+            res.status(statusCode).json({
+                success: false,
+                error: error.message
+            });
+        }
+    }
 }
 
 module.exports = new OrderController();

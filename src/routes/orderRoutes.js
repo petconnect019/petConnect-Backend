@@ -11,5 +11,6 @@ router.post('/', OrderController.createOrder);
 router.post('/:orderId/confirm', OrderController.confirmOrder);
 router.get('/', OrderController.getUserOrders);
 router.get('/:orderId', OrderController.getOrderById);
+router.get('/:orderId/invoice', OrderController.downloadInvoice);
 
 module.exports = router; 
