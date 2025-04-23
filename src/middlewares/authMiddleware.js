@@ -5,6 +5,22 @@ const tokenService = require('../services/tokenService');
 
 const verifyToken = async (req, res, next) => {
     try {
+        // Lista de rutas públicas que no requieren token
+        const publicRoutes = [
+            '/register',
+            '/login',
+            '/api/auth/register',
+            '/api/auth/login'
+        ];
+
+        // Verificar si la ruta actual es pública
+        const currentPath = req.path;
+        if (publicRoutes.some(route => currentPath.includes(route))) {
+            return next();
+        }
+
+        //
+
         const token = req.headers.authorization?.split(' ')[1];
         
         if (!token) {
@@ -40,6 +56,7 @@ const verifyToken = async (req, res, next) => {
         
         next();
     } catch (error) {
+        console.error('Error en verificación de token:', error);
         return res.status(401).json({ 
             ok: false,
             message: 'Token inválido' 

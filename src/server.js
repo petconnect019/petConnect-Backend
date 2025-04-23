@@ -119,15 +119,6 @@ if (process.env.NODE_ENV === 'development') {
     app.use(sessionLogger);
 }
 
-// Endpoint directo para pruebas
-app.post('/api/direct-test', (req, res) => {
-    console.log('Direct test endpoint called with:', req.body);
-    res.json({
-        success: true,
-        message: 'Direct test endpoint working!',
-        body: req.body
-    });
-});
 
 // Rutas API
 app.use('/api', routes);
