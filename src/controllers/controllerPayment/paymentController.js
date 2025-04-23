@@ -2,22 +2,7 @@ const paymentData = require('../../data/paymentData');
 const orderData = require('../../data/orderData');
 
 class PaymentController {
-    // Endpoint para recibir al usuario después del pago
-    async paymentResponse(req, res) {
-        try {
-            const frontendUrl = process.env.FRONTEND_URL;
-            
-            // Procesar la respuesta del pago
-            const result = paymentData.processPaymentResponse(req.query);
-            
-            // Redirigir al usuario
-            res.redirect(`${frontendUrl}${result.redirectUrl}?${result.queryParams}`);
-        } catch (error) {
-            console.error('Error en respuesta de pago:', error);
-            const frontendUrl = process.env.FRONTEND_URL;
-            res.redirect(`${frontendUrl}/payment/error?message=${encodeURIComponent('Error al procesar la respuesta del pago')}`);
-        }
-    }
+   
 
     // Webhook para recibir notificaciones de ePayco
     async confirmPayment(req, res) {
@@ -88,6 +73,24 @@ class PaymentController {
             return res.status(200).send('OK'); // Siempre responder 200 a ePayco
         }
     }
+
+ // Endpoint para recibir al usuario después del pago
+ async paymentResponse(req, res) {
+    try {
+        const frontendUrl = process.env.FRONTEND_URL;
+        
+        // Procesar la respuesta del pago
+        const result = paymentData.processPaymentResponse(req.query);
+        
+        // Redirigir al usuario
+        res.redirect(`${frontendUrl}${result.redirectUrl}?${result.queryParams}`);
+    } catch (error) {
+        console.error('Error en respuesta de pago:', error);
+        const frontendUrl = process.env.FRONTEND_URL;
+        res.redirect(`${frontendUrl}/payment/error?message=${encodeURIComponent('Error al procesar la respuesta del pago')}`);
+    }
+}
+
 }
 
 module.exports = new PaymentController(); 
