@@ -5,7 +5,7 @@ const paymentController = require('../controllers/controllerPayment/paymentContr
 // Ruta para la respuesta de pago (redirección del usuario)
 router.get('/response', paymentController.paymentResponse);
 
-// Ruta para manejar la confirmación del pago
-router.post('/confirmation', paymentController.handlePaymentConfirmation);
+// Ruta para el webhook de ePayco
+router.post('/confirmation', paymentController.confirmPayment);
 
 module.exports = router; 

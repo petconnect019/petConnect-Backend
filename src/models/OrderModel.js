@@ -6,24 +6,26 @@ const orderSchema = new mongoose.Schema({
         ref: 'User',
         required: true
     },
+    qrCodes: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'QRCode'
+    }],
     quantity: {
         type: Number,
-        required: true,
-        min: 1
+        required: true
     },
     totalAmount: {
         type: Number,
-        required: true,
-        min: 0
+        required: true
     },
     status: {
         type: String,
-        enum: ['pending', 'completed', 'failed', 'CREATED', 'ACCEPTED', 'REJECTED'],
-        default: 'pending'
+        enum: ['PENDING', 'COMPLETED', 'CANCELLED'],
+        default: 'PENDING'
     },
     paymentStatus: {
         type: String,
-        enum: ['PENDING', 'COMPLETED', 'FAILED', 'PROCESSING'],
+        enum: ['PENDING', 'COMPLETED', 'FAILED'],
         default: 'PENDING'
     },
     customerName: {
@@ -53,10 +55,6 @@ const orderSchema = new mongoose.Schema({
         postalCode: String,
         country: String
     },
-    qrCodes: [{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'QR'
-    }],
     createdAt: {
         type: Date,
         default: Date.now
