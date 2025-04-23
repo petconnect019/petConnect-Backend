@@ -9,6 +9,7 @@ const orderRoutes = require('./orderRoutes');
 const chatRoutes = require('./chatRoutes');
 const adminRoutes = require('./adminRoutes');
 const paymentRoutes = require('./paymentRoutes');
+const healthRoutes = require('./healthRoutes');
 const AdminData = require('../data/adminData');
 
 // Configuración de rutas
@@ -20,5 +21,6 @@ router.use('/orders', orderRoutes);
 router.use('/chat', chatRoutes);
 router.use('/admin', adminRoutes);
 router.use('/payments', paymentRoutes);
+router.use('/health', healthRoutes);
 
 module.exports = router; 
