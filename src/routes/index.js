@@ -21,6 +21,6 @@ router.use('/orders', orderRoutes);
 router.use('/chat', chatRoutes);
 router.use('/admin', adminRoutes);
 router.use('/payments', paymentRoutes);
-router.use('/health', healthRoutes);
+router.use('/api/health', healthRoutes);
 
 module.exports = router; 
