@@ -95,7 +95,7 @@ const paymentData = {
      * @param {Object} paymentResponse - Datos de respuesta del pago
      * @returns {Object} Datos para la redirección
      */
-    processPaymentResponse: (paymentResponse) => {
+    processPaymentResponse: async (paymentResponse) => {
         const {
             ref_payco,
             x_transaction_state,
@@ -111,6 +111,43 @@ const paymentData = {
                 redirectUrl: '/payment/error',
                 queryParams: 'message=No se recibió referencia de pago'
             };
+        }
+
+        // Si no tenemos suficiente información del estado, intentar obtenerla de la base de datos
+        if (!x_response && !x_transaction_state) {
+            try {
+                console.log('No se recibieron parámetros de estado, consultando orden por ref_payco:', ref_payco);
+                
+                // Buscar orden por referencia de ePayco
+                const order = await orderData.getOrderByEpaycoRef(ref_payco);
+                
+                if (order) {
+                    console.log('Orden encontrada por ref_payco:', order);
+                    
+                    // Determinar estado basado en la información de la orden
+                    let type = 'pending';
+                    let message = 'Estado del pago pendiente';
+                    
+                    if (order.paymentStatus === 'COMPLETED') {
+                        type = 'success';
+                        message = 'Pago completado exitosamente';
+                    } else if (order.paymentStatus === 'FAILED') {
+                        type = 'error';
+                        message = 'El pago ha fallado';
+                    }
+                    
+                    return {
+                        success: true,
+                        type: type,
+                        message: message,
+                        queryParams: `ref_payco=${ref_payco}&order_id=${order._id}&amount=${order.totalAmount}`
+                    };
+                } else {
+                    console.log('No se encontró orden con ref_payco:', ref_payco);
+                }
+            } catch (error) {
+                console.error('Error al consultar orden por ref_payco:', error);
+            }
         }
 
         // Determinar la URL de redirección según el estado del pago
@@ -217,11 +254,12 @@ const paymentData = {
         const estado = estadoMap[stateKey];
         
         if (!estado) {
+            // Si no podemos determinar el estado, usamos pending por defecto
             return {
                 success: true,
-                type: 'error',
-                message: 'Estado de pago no reconocido',
-                queryParams: `${queryParams}&message=Estado de pago no reconocido`
+                type: 'pending',
+                message: 'Estado del pago pendiente de confirmación',
+                queryParams: `${queryParams}&message=Estado pendiente de confirmación`
             };
         }
 

@@ -108,27 +108,44 @@ const orderData = {
             .populate('qrCodes', 'qrImage isLinked isActive');
     },
 
-    // Actualizar la información de pago de una orden
-    updateOrderPayment: async function(orderId, paymentInfo) {
+    // Actualizar el pago de una orden
+    updateOrderPayment: async (orderId, paymentInfo) => {
         try {
-            // Actualizar la orden con la información de pago
+            console.log(`Actualizando pago para orden ${orderId} con datos:`, JSON.stringify(paymentInfo, null, 2));
+            
+            const updateData = {};
+            
+            // Actualizar solo los campos proporcionados
+            if (paymentInfo.paymentStatus) {
+                updateData.paymentStatus = paymentInfo.paymentStatus;
+            }
+            
+            if (paymentInfo.epaycoRef) {
+                console.log(`Actualizando epaycoRef a: ${paymentInfo.epaycoRef}`);
+                updateData.epaycoRef = paymentInfo.epaycoRef;
+            }
+            
+            if (paymentInfo.paymentData) {
+                updateData.paymentData = paymentInfo.paymentData;
+            }
+            
+            console.log(`Datos finales de actualización:`, JSON.stringify(updateData, null, 2));
+            
             const updatedOrder = await OrderModel.findByIdAndUpdate(
-                orderId,
-                {
-                    paymentStatus: paymentInfo.paymentStatus,
-                    epaycoRef: paymentInfo.epaycoRef,
-                    paymentData: paymentInfo.paymentData
-                },
+                orderId, 
+                { $set: updateData },
                 { new: true }
             );
             
-            if (!updatedOrder) {
-                throw new Error(`Orden ${orderId} no encontrada para actualizar pago`);
+            if (updatedOrder) {
+                console.log(`Orden ${orderId} actualizada correctamente con epaycoRef: ${updatedOrder.epaycoRef}`);
+            } else {
+                console.log(`No se encontró la orden ${orderId} para actualizar`);
             }
             
             return updatedOrder;
         } catch (error) {
-            console.error(`Error al actualizar información de pago para orden ${orderId}:`, error);
+            console.error('Error al actualizar pago de orden:', error);
             throw error;
         }
     },
@@ -161,6 +178,23 @@ const orderData = {
             return updatedOrder;
         } catch (error) {
             console.error(`Error al cancelar orden ${orderId}:`, error);
+            throw error;
+        }
+    },
+
+    // Obtener una orden por referencia de ePayco
+    getOrderByEpaycoRef: async (epaycoRef) => {
+        try {
+            console.log('Buscando orden con epaycoRef:', epaycoRef);
+            const order = await OrderModel.findOne({ epaycoRef });
+            if (!order) {
+                console.log('No se encontró orden con epaycoRef:', epaycoRef);
+            } else {
+                console.log('Orden encontrada con epaycoRef:', epaycoRef);
+            }
+            return order;
+        } catch (error) {
+            console.error('Error al obtener orden por referencia de ePayco:', error);
             throw error;
         }
     }

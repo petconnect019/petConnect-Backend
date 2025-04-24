@@ -8,10 +8,19 @@ const PaymentController = require('../controllers/controllerPayment/paymentContr
 router.get('/response', async (req, res) => {
     try {
         console.log('Recibida respuesta de pago:', req.query);
+        
+        // Procesar la respuesta del pago (ahora asíncrono)
         const result = await paymentController.processPaymentResponse(req.query);
+        
+        if (!result.type) {
+            console.error('Error: type no definido en la respuesta de processPaymentResponse', result);
+            // Si no hay tipo definido, usamos pending por defecto
+            result.type = 'pending';
+        }
         
         // Redirigir al frontend con los parámetros
         const redirectUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/payment/${result.type}?${result.queryParams}`;
+        console.log('Redirigiendo a:', redirectUrl);
         res.redirect(redirectUrl);
     } catch (error) {
         console.error('Error procesando respuesta de pago:', error);
