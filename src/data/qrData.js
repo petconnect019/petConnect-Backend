@@ -38,9 +38,8 @@ const qrData = {
      * Generar múltiples códigos QR
      * @param {string} userId - ID del usuario
      * @param {number} count - Cantidad de QRs a generar
-     * @param {string} orderId - ID de la orden asociada
      */
-    generateMultipleQRs: async (userId, count, orderId) => {
+    generateMultipleQRs: async (userId, count) => {
         const qrCodes = [];
         
         for (let i = 0; i < count; i++) {
@@ -56,7 +55,6 @@ const qrData = {
                 isLinked: false,
                 isActive: true,
                 qrImage,
-                orderId: orderId,
                 qrId: uniqueId
             });
             
@@ -64,6 +62,29 @@ const qrData = {
         }
         
         return qrCodes;
+    },
+    
+    /**
+     * Generar un código QR individual
+     * @param {string} userId - ID del usuario
+     */
+    generateQR: async (userId) => {
+        // Generar un ID único para el QR
+        const uniqueId = crypto.randomBytes(8).toString('hex');
+        
+        // Generar la imagen del QR
+        const qrImage = await generateQRImage(uniqueId);
+        
+        // Crear el registro en la base de datos
+        const qr = await QRModel.create({
+            userId,
+            isLinked: false,
+            isActive: true,
+            qrImage,
+            qrId: uniqueId
+        });
+        
+        return qr;
     },
     
     /**
@@ -80,54 +101,68 @@ const qrData = {
             // Buscar el QR por su ID de MongoDB
             qr = await QRModel.findById(qrId);
         } else {
-            // Buscar por qrCode
-            qr = await QRModel.findOne({ qrCode: qrId });
-            
-            // Si no se encuentra, intentar en el otro modelo de QR
-            if (!qr) {
-                const QRCodeModel = require('../models/QRCodeModel');
-                qr = await QRCodeModel.findOne({ qrId: qrId });
-            }
+            // Buscar por qrId en lugar de qrCode (que no existe en el modelo)
+            qr = await QRModel.findOne({ qrId: qrId });
         }
         
         if (!qr || !qr.isActive) {
             throw new Error('QR no encontrado o ha sido eliminado');
         }
         
-        // Registrar el escaneo
-        const scanRecord = await QRScanModel.create({
-            qrId: qr._id,
-            scannedBy: scannerUserId,
-            scanDate: new Date(),
-            location: locationData ? {
-                latitude: locationData.latitude,
-                longitude: locationData.longitude,
-                address: locationData.address
-            } : null
-        });
-        
-        // Verificar si el QR está vinculado a una mascota
-        if (qr.isLinked && qr.petId) {
-            const petData = require('./petData');
-            const petProfile = await petData.getPublicProfile(qr.petId);
+        try {
+            // Registrar el escaneo - aseguramos que qrId sea un ObjectId
+            const scanRecord = await QRScanModel.create({
+                qrId: qr._id, // Usamos el _id que es un ObjectId válido
+                scannedBy: scannerUserId,
+                scanDate: new Date(),
+                location: locationData ? {
+                    latitude: locationData.latitude,
+                    longitude: locationData.longitude,
+                    address: locationData.address
+                } : null
+            });
             
-            // Si se proporcionó ubicación, actualizar la ubicación de la mascota
-            if (locationData) {
-                await petData.updatePetLocation(qr.petId, locationData);
+            // Verificar si el QR está vinculado a una mascota
+            if (qr.isLinked && qr.petId) {
+                const petData = require('./petData');
+                const petProfile = await petData.getPublicProfile(qr.petId);
+                
+                // Si se proporcionó ubicación, actualizar la ubicación de la mascota
+                if (locationData) {
+                    await petData.updatePetLocation(qr.petId, locationData);
+                }
+                
+                return {
+                    message: 'Hola Estoy perdido, me puedes ayudar a encontrar a mi dueño?',
+                    pet: petProfile,
+                    scanId: scanRecord._id,
+                    requiresLocation: !locationData
+                };
+            } else {
+                return {
+                    qrId: qr._id.toString(),
+                    isLinked: false,
+                    message: 'Este QR no está vinculado a ninguna mascota. Por favor, redirige a vincular una mascota.'  
+                };
             }
-            
-            return {
-                message: 'Hola Estoy perdido, me puedes ayudar a encontrar a mi dueño?',
-                pet: petProfile,
-                scanId: scanRecord._id,
-                requiresLocation: !locationData
-            };
-        } else {
-            return {
-                qrId: qr._id.toString(),
-                isLinked: false,
-                message: 'Este QR no está vinculado a ninguna mascota. Por favor, redirige a vincular una mascota.'  
-            };
+        } catch (error) {
+            console.error('Error al registrar escaneo de QR:', error);
+            // Si hay error al registrar el escaneo, aún así devolvemos la info del QR
+            if (qr.isLinked && qr.petId) {
+                const petData = require('./petData');
+                const petProfile = await petData.getPublicProfile(qr.petId);
+                return {
+                    message: 'Hola Estoy perdido, me puedes ayudar a encontrar a mi dueño?',
+                    pet: petProfile,
+                    requiresLocation: !locationData
+                };
+            } else {
+                return {
+                    qrId: qr._id.toString(),
+                    isLinked: false,
+                    message: 'Este QR no está vinculado a ninguna mascota. Por favor, redirige a vincular una mascota.'  
+                };
+            }
         }
     },
     
@@ -148,15 +183,8 @@ const qrData = {
         if (isValidObjectId) {
             qr = await QRModel.findById(qrId);
         } else {
-            // Buscar por un campo alternativo - aquí asumimos que hay un campo qrId o código
-            // Si no existe este campo, deberás ajustar según tu modelo
-            qr = await QRModel.findOne({ qrCode: qrId });
-            
-            // Si no se encuentra, puedes intentar buscar en otros modelos
-            if (!qr) {
-                const QRCodeModel = require('../models/QRCodeModel');
-                qr = await QRCodeModel.findOne({ qrId: qrId });
-            }
+            // Buscar por qrId en lugar de qrCode (que no existe en el modelo)
+            qr = await QRModel.findOne({ qrId: qrId });
         }
         
         if (!qr || !qr.isActive) {
@@ -346,8 +374,8 @@ const qrData = {
                 throw new Error('No tienes permiso para ver el historial de este QR');
             }
 
-            // Obtener el historial de escaneos
-            const history = await QRScanModel.find({ qrId })
+            // Obtener el historial de escaneos usando el ObjectId del QR
+            const history = await QRScanModel.find({ qrId: qr._id })
                 .sort({ scanDate: -1 })
                 .populate('scannedBy', 'name email');
 

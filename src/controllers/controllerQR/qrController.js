@@ -19,53 +19,54 @@ const determineStatusCode = (error) => {
 
 const qrController = {
     /**
+     * Genera un nuevo código QR
+     */
+    generateQR: async (req, res) => {
+        try {
+            const userId = req.user.id;
+            const qr = await qrData.generateQR(userId);
+            
+            res.status(201).json({
+                success: true,
+                qr
+            });
+        } catch (error) {
+            console.error('Error al generar QR:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Error al generar el QR',
+                error: error.message
+            });
+        }
+    },
+    
+    /**
      * Genera múltiples códigos QR
      */
     generateMultipleQRs: async (req, res) => {
         try {
-            const { userId, quantity, orderId } = req.body;
+            const { count } = req.body;
+            const userId = req.user.id;
             
-            // Validación de datos de entrada
-            if (!quantity || quantity <= 0) {
+            if (!count || count < 1 || count > 100) {
                 return res.status(400).json({
                     success: false,
-                    message: 'La cantidad debe ser un número positivo'
+                    message: 'La cantidad debe estar entre 1 y 100'
                 });
             }
             
-            if (!orderId) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Se requiere un ID de orden válido'
-                });
-            }
+            const qrCodes = await qrData.generateMultipleQRs(userId, count);
             
-            if (!userId) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Se requiere un ID de usuario válido'
-                });
-            }
-            
-            // Delegación de la lógica de negocio a qrData
-            const qrCodes = await qrData.generateMultipleQRs(userId, quantity, orderId);
-            
-            // Respuesta HTTP
-            return res.status(201).json({
+            res.status(201).json({
                 success: true,
-                message: `Se generaron ${quantity} códigos QR con éxito`,
-                data: {
-                    quantity,
-                    orderId,
-                    qrCodes
-                }
+                message: `${count} códigos QR generados`,
+                qrCodes
             });
         } catch (error) {
-            console.error('Error al generar códigos QR:', error);
-            const statusCode = determineStatusCode(error);
-            return res.status(statusCode).json({
+            console.error('Error al generar QRs:', error);
+            res.status(500).json({
                 success: false,
-                message: 'Error al generar códigos QR',
+                message: 'Error al generar los QRs',
                 error: error.message
             });
         }
@@ -78,38 +79,31 @@ const qrController = {
         try {
             const { qrId } = req.params;
             const scannerUserId = req.user ? req.user.id : null;
-            const locationData = req.body.location || null;
             
-            // Validar que se proporcionó un qrId
-            if (!qrId) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Se requiere un ID de QR'
-                });
-            }
+            const qrInfo = await qrData.scanQR(qrId, scannerUserId);
             
-            // Delegación de la lógica de negocio a qrData
-            const qrInfo = await qrData.scanQR(qrId, scannerUserId, locationData);
-            
-            // Si requiere ubicación y no se proporcionó, devolver un mensaje específico
-            if (qrInfo.requiresLocation) {
-                return res.status(200).json({
-                    success: true,
-                    qr: qrInfo,
-                    message: 'Por favor, comparte tu ubicación para ayudar a encontrar a esta mascota'
-                });
-            }
-            
-            // Respuesta HTTP
-            return res.status(200).json({
+            res.json({
                 success: true,
-                qr: qrInfo,
-                message: locationData ? '¡Gracias por compartir la ubicación!' : 'QR escaneado exitosamente'
+                qr: qrInfo
             });
         } catch (error) {
             console.error('Error al escanear QR:', error);
-            const statusCode = determineStatusCode(error);
-            return res.status(statusCode).json({
+            
+            if (error.message === 'QR no encontrado o ha sido eliminado') {
+                return res.status(404).json({
+                    success: false,
+                    message: 'QR no encontrado o ha sido eliminado'
+                });
+            }
+            
+            if (error.message === 'Mascota no encontrada') {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Mascota no encontrada'
+                });
+            }
+            
+            res.status(500).json({
                 success: false,
                 message: 'Error al escanear el QR',
                 error: error.message
@@ -122,33 +116,48 @@ const qrController = {
      */
     linkQRToPet: async (req, res) => {
         try {
-            console.log(req.body);
-            // Obtener qrId de la consulta o del cuerpo
-            const qrId = req.query.qrId || req.body.qrId;
-            const { petId } = req.body;
+            const { qrId, petId } = req.body;
             const userId = req.user.id;
             const userRole = req.user.role;
             
-            // Validación de datos de entrada
-            if (!qrId || !petId) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Se requieren qrId y petId'
-                });
-            }
-            
-            // Delegación de la lógica de negocio a qrData
             const updatedQR = await qrData.linkQRToPet(qrId, petId, userId, userRole);
             
-            // Respuesta HTTP
-            return res.status(200).json({
+            res.json({
                 success: true,
                 qr: updatedQR
             });
         } catch (error) {
             console.error('Error al vincular QR:', error);
-            const statusCode = determineStatusCode(error);
-            return res.status(statusCode).json({
+            
+            if (error.message === 'QR no encontrado o ha sido eliminado') {
+                return res.status(404).json({
+                    success: false,
+                    message: 'QR no encontrado o ha sido eliminado'
+                });
+            }
+            
+            if (error.message === 'Este QR ya está vinculado a una mascota') {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Este QR ya está vinculado a una mascota'
+                });
+            }
+            
+            if (error.message === 'Mascota no encontrada') {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Mascota no encontrada'
+                });
+            }
+            
+            if (error.message === 'No tienes permiso para vincular este QR a esta mascota') {
+                return res.status(403).json({
+                    success: false,
+                    message: 'No tienes permiso para vincular este QR a esta mascota'
+                });
+            }
+            
+            res.status(500).json({
                 success: false,
                 message: 'Error al vincular el QR',
                 error: error.message
@@ -160,29 +169,26 @@ const qrController = {
      * Obtiene todos los códigos QR (solo administradores)
      */
     getAllQRs: async (req, res) => {
+        const userRole = req.user.role;
+
+        // Verificar si el usuario es administrador
+        if (userRole !== 'admin') {
+            return res.status(403).json({
+                success: false,
+                message: 'No tienes permiso para acceder a esta información'
+            });
+        }
+
         try {
-            const userRole = req.user.role;
-
-            // Verificación de permisos
-            if (userRole !== 'admin') {
-                return res.status(403).json({
-                    success: false,
-                    message: 'No tienes permiso para acceder a esta información'
-                });
-            }
-
-            // Delegación de la lógica de negocio a qrData
             const qrs = await qrData.getAllQRs();
             
-            // Respuesta HTTP
-            return res.status(200).json({
+            res.json({
                 success: true,
                 qrs
             });
         } catch (error) {
             console.error('Error al obtener QRs:', error);
-            const statusCode = determineStatusCode(error);
-            return res.status(statusCode).json({
+            res.status(500).json({
                 success: false,
                 message: 'Error al obtener los QRs',
                 error: error.message
@@ -196,20 +202,21 @@ const qrController = {
     getUserQRs: async (req, res) => {
         try {
             const userId = req.user.id;
-            
-            // Delegación de la lógica de negocio a qrData
             const qrs = await qrData.getUserQRs(userId);
             
-            // Respuesta HTTP
-            return res.status(200).json({
+            if (!qrs || qrs.length === 0) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'No tienes QRs en lista'
+                });
+            }
+            res.json({
                 success: true,
-                message: qrs.length > 0 ? `Se encontraron ${qrs.length} códigos QR` : 'No tienes QRs en lista',
-                qrs: qrs || []
+                qrs
             });
         } catch (error) {
             console.error('Error al obtener QRs del usuario:', error);
-            const statusCode = determineStatusCode(error);
-            return res.status(statusCode).json({
+            res.status(500).json({
                 success: false,
                 message: 'Error al obtener los QRs del usuario',
                 error: error.message
@@ -226,19 +233,31 @@ const qrController = {
             const userId = req.user.id;
             const userRole = req.user.role;
             
-            // Delegación de la lógica de negocio a qrData
             const updatedQR = await qrData.deactivateQR(qrId, userId, userRole);
             
-            // Respuesta HTTP
-            return res.status(200).json({
+            res.json({
                 success: true,
                 message: 'QR desactivado exitosamente',
                 qr: updatedQR
             });
         } catch (error) {
             console.error('Error al desactivar QR:', error);
-            const statusCode = determineStatusCode(error);
-            return res.status(statusCode).json({
+            
+            if (error.message === 'QR no encontrado') {
+                return res.status(404).json({
+                    success: false,
+                    message: 'QR no encontrado'
+                });
+            }
+            
+            if (error.message === 'Solo los administradores pueden desactivar códigos QR') {
+                return res.status(403).json({
+                    success: false,
+                    message: 'Solo los administradores pueden desactivar códigos QR'
+                });
+            }
+            
+            res.status(500).json({
                 success: false,
                 message: 'Error al desactivar el QR',
                 error: error.message
@@ -254,18 +273,37 @@ const qrController = {
             const { qrId } = req.params;
             const userId = req.user.id;
             
-            // Delegación de la lógica de negocio a qrData
             const result = await qrData.deleteQR(qrId, userId);
             
-            // Respuesta HTTP
-            return res.status(200).json({
+            res.json({
                 success: true,
                 message: result.message
             });
         } catch (error) {
             console.error('Error al eliminar QR:', error);
-            const statusCode = determineStatusCode(error);
-            return res.status(statusCode).json({
+            
+            if (error.message === 'QR no encontrado') {
+                return res.status(404).json({
+                    success: false,
+                    message: 'QR no encontrado'
+                });
+            }
+            
+            if (error.message === 'No tienes permiso para eliminar este QR') {
+                return res.status(403).json({
+                    success: false,
+                    message: 'No tienes permiso para eliminar este QR'
+                });
+            }
+            
+            if (error.message === 'No se puede eliminar un QR que está vinculado a una mascota. Desvincúlalo primero.') {
+                return res.status(400).json({
+                    success: false,
+                    message: 'No se puede eliminar un QR que está vinculado a una mascota. Desvincúlalo primero.'
+                });
+            }
+            
+            res.status(500).json({
                 success: false,
                 message: 'Error al eliminar el QR',
                 error: error.message
