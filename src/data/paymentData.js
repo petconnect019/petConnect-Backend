@@ -13,79 +13,52 @@ const paymentData = {
         try {
             console.log('Procesando confirmación de pago con datos:', JSON.stringify(paymentInfo, null, 2));
             
-            const { x_ref_payco, x_cod_response, x_response } = paymentInfo;
+            // Extraer información relevante
+            const { 
+                x_ref_payco, 
+                x_transaction_id,
+                x_amount,
+                x_approval_code,
+                x_cod_response,
+                x_response,
+                x_transaction_state,
+                x_extra1, // ID de la orden
+                x_franchise,
+                x_cardnumber
+            } = paymentInfo;
 
-            // Verificar el estado del pago
-            console.log('Consultando estado del pago con referencia:', x_ref_payco);
-            const paymentStatus = await EpaycoService.getPaymentStatus(x_ref_payco);
-            
-            if (!paymentStatus.success) {
-                console.log('Estado del pago no exitoso:', paymentStatus);
-                // Si el pago no se encuentra, intentar obtener el ID de la orden directamente de los parámetros
-                const orderId = paymentInfo.x_extra1;
-                if (!orderId) {
-                    throw new Error('Pago no encontrado y no se pudo obtener el ID de la orden');
-                }
-                
-                // Obtener la orden
-                const order = await orderData.getOrderById(orderId);
-                if (!order) {
-                    throw new Error('Orden no encontrada');
-                }
-
-                // Actualizar el estado de la orden basado en la respuesta de ePayco
-                if (x_cod_response === '1' && x_response === 'Aceptada') {
-                    // Primero actualizamos la referencia de ePayco
-                    await orderData.updateOrderPayment(orderId, {
-                        epaycoRef: x_ref_payco,
-                        paymentStatus: 'COMPLETED',
-                        paymentData: {
-                            transactionId: x_ref_payco,
-                            responseCode: x_cod_response,
-                            transactionDate: new Date()
-                        }
-                    });
-                    
-                    // Luego confirmamos la orden y generamos los QRs
-                    const result = await orderData.confirmOrder(orderId);
-                    return {
-                        success: true,
-                        message: 'Pago confirmado y orden completada',
-                        order: result.order,
-                        qrCodes: result.qrCodes
-                    };
-                } else {
-                    await orderData.updateOrderPayment(orderId, {
-                        paymentStatus: 'FAILED',
-                        paymentData: {
-                            transactionId: x_ref_payco,
-                            responseCode: x_cod_response,
-                            transactionDate: new Date()
-                        }
-                    });
-                    return {
-                        success: false,
-                        message: 'Pago fallido',
-                        order
-                    };
-                }
-            }
-
-            // Obtener el ID de la orden desde los extras
-            const orderId = paymentStatus.data.extras?.extra1;
-            if (!orderId) {
-                throw new Error('ID de orden no encontrado en el pago');
+            // Primero intentamos obtener el ID de la orden desde x_extra1
+            if (!x_extra1) {
+                throw new Error('ID de orden no encontrado en la confirmación de pago');
             }
 
             // Obtener la orden
-            const order = await orderData.getOrderById(orderId);
+            const order = await orderData.getOrderById(x_extra1);
             if (!order) {
-                throw new Error('Orden no encontrada');
+                throw new Error(`Orden ${x_extra1} no encontrada`);
             }
 
-            // Si el pago es exitoso y la orden está pendiente, confirmarla
-            if (paymentStatus.status === 'approved' && order.status === 'pending') {
-                const result = await orderData.confirmOrder(orderId);
+            console.log('Orden encontrada:', order);
+
+            // Si el pago es aceptado
+            if (x_cod_response === '1' && x_response === 'Aceptada') {
+                // Actualizar la orden con la información del pago
+                await orderData.updateOrderPayment(x_extra1, {
+                    epaycoRef: x_ref_payco,
+                    paymentStatus: 'COMPLETED',
+                    paymentData: {
+                        transactionId: x_transaction_id,
+                        approvalCode: x_approval_code,
+                        amount: parseFloat(x_amount),
+                        transactionDate: new Date(),
+                        responseCode: x_cod_response,
+                        paymentMethod: x_franchise || 'N/A',
+                        last4: x_cardnumber ? x_cardnumber.slice(-4) : 'N/A'
+                    }
+                });
+
+                // Confirmar la orden y generar QRs
+                const result = await orderData.confirmOrder(x_extra1);
                 
                 return {
                     success: true,
@@ -94,9 +67,22 @@ const paymentData = {
                     qrCodes: result.qrCodes
                 };
             } else {
+                // Si el pago no es aceptado, actualizar el estado
+                await orderData.updateOrderPayment(x_extra1, {
+                    epaycoRef: x_ref_payco,
+                    paymentStatus: 'FAILED',
+                    paymentData: {
+                        transactionId: x_transaction_id,
+                        responseCode: x_cod_response,
+                        transactionDate: new Date(),
+                        paymentMethod: x_franchise || 'N/A',
+                        last4: x_cardnumber ? x_cardnumber.slice(-4) : 'N/A'
+                    }
+                });
+
                 return {
-                    success: true,
-                    message: 'Pago ya procesado anteriormente',
+                    success: false,
+                    message: `Pago no aceptado: ${x_response}`,
                     order
                 };
             }

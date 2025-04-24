@@ -34,7 +34,20 @@ const io = socketIo(server, {
 const PORT = process.env.PORT || 5000;
 
 // Middlewares esenciales
-app.use(express.json());
+// Remover esta línea ya que está causando conflicto
+// app.use(express.json());
+
+// Middleware para manejar diferentes tipos de contenido
+app.use((req, res, next) => {
+    if (req.path === '/api/payments/confirmation') {
+        // Para el webhook de ePayco, usar raw body
+        express.raw({ type: 'application/json' })(req, res, next);
+    } else {
+        // Para otras rutas, usar JSON parser normal
+        express.json()(req, res, next);
+    }
+});
+
 app.use(cookieParser());
 app.use(morgan('dev'));
 
@@ -44,19 +57,15 @@ const getAllowedOrigins = () => {
         'http://localhost:5175', 
         'http://localhost:3000',
         'https://pet-connect-front-nu.vercel.app',
-        'https://petconnect-backend-production.up.railway.app'
+        'https://petconnect-backend-production.up.railway.app',
+        'https://pruebadesplieguebackend-production.up.railway.app',
+        'https://secure.epayco.co',
+        'https://epayco.co'
     ];
     
     // Añadir URLs de ngrok si están definidas
     if (process.env.NGROK_FRONTEND_URL) {
         origins.push(process.env.NGROK_FRONTEND_URL);
-    }
-    
-    if (process.env.NGROK_DOMAIN) {
-        const ngrokUrl = `https://${process.env.NGROK_DOMAIN}`;
-        if (!origins.includes(ngrokUrl)) {
-            origins.push(ngrokUrl);
-        }
     }
     
     return origins;
@@ -118,15 +127,6 @@ app.use(passport.session());
 if (process.env.NODE_ENV === 'development') {
     app.use(sessionLogger);
 }
-
-// Middleware para parsear JSON, excepto para la ruta de confirmación de ePayco
-app.use((req, res, next) => {
-    if (req.path === '/api/payments/confirmation') {
-        next();
-    } else {
-        express.json()(req, res, next);
-    }
-});
 
 // Rutas API
 app.use('/api', routes);

@@ -2,38 +2,79 @@ const express = require('express');
 const router = express.Router();
 const paymentController = require('../data/paymentData');
 const { verifyToken } = require('../middlewares/authMiddleware');
+const PaymentController = require('../controllers/PaymentController');
+const { authenticateToken } = require('../middleware/auth');
 
 // Rutas públicas para Epayco (no requieren autenticación)
 // Ruta para la respuesta de pago (redirección del usuario)
-router.get('/payments/response', async (req, res, next) => {
+router.get('/payments/response', async (req, res) => {
     try {
+        console.log('Recibida respuesta de pago:', req.query);
         const result = await paymentController.processPaymentResponse(req.query);
-        res.status(200).json(result);
+        
+        // Redirigir al frontend con los parámetros
+        const redirectUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/payment/${result.type}?${result.queryParams}`;
+        res.redirect(redirectUrl);
     } catch (error) {
-        next(error);
+        console.error('Error procesando respuesta de pago:', error);
+        res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/payment/error?message=${encodeURIComponent(error.message)}`);
     }
 });
 
 // Ruta para recibir la confirmación de pago (webhook de ePayco)
 router.post('/payments/confirmation', express.raw({type: 'application/json'}), async (req, res) => {
     try {
-        console.log('Webhook de ePayco recibido:', {
-            body: req.body,
-            query: req.query,
-            headers: req.headers
-        });
+        console.log('=== WEBHOOK EPAYCO RECIBIDO ===');
+        console.log('Headers:', JSON.stringify(req.headers, null, 2));
+        console.log('Query:', JSON.stringify(req.query, null, 2));
+        console.log('Body raw:', req.body.toString());
+        
+        // Parsear el body si es necesario
+        let paymentInfo;
+        try {
+            if (Buffer.isBuffer(req.body)) {
+                paymentInfo = JSON.parse(req.body.toString());
+            } else if (typeof req.body === 'string') {
+                paymentInfo = JSON.parse(req.body);
+            } else {
+                paymentInfo = req.body;
+            }
+            
+            console.log('Body parseado:', JSON.stringify(paymentInfo, null, 2));
+        } catch (parseError) {
+            console.error('Error al parsear el body:', parseError);
+            console.log('Body que causó el error:', req.body);
+            throw new Error('Error al parsear la información del pago');
+        }
+
+        // Validar que tengamos la información necesaria
+        if (!paymentInfo.x_ref_payco) {
+            throw new Error('Referencia de pago (x_ref_payco) no encontrada');
+        }
+
+        if (!paymentInfo.x_transaction_id) {
+            throw new Error('ID de transacción (x_transaction_id) no encontrado');
+        }
+
+        if (!paymentInfo.x_extra1) {
+            throw new Error('ID de orden (x_extra1) no encontrado');
+        }
 
         // Procesar la confirmación
-        const result = await paymentController.processPaymentConfirmation(
-            typeof req.body === 'string' ? JSON.parse(req.body) : req.body
-        );
+        const result = await paymentController.processPaymentConfirmation(paymentInfo);
+        console.log('Resultado del procesamiento:', JSON.stringify(result, null, 2));
 
-        // Responder con código 200 y el resultado
-        res.status(200).json(result);
-    } catch (error) {
-        console.error('Error en webhook de ePayco:', error);
-        // Siempre responder con 200 al webhook, incluso en caso de error
+        // Responder siempre con 200
         res.status(200).json({
+            received: true,
+            success: true,
+            data: result
+        });
+    } catch (error) {
+        console.error('Error procesando webhook de ePayco:', error);
+        // Siempre responder con 200 aunque haya error
+        res.status(200).json({
+            received: true,
             success: false,
             error: error.message
         });
@@ -42,6 +83,15 @@ router.post('/payments/confirmation', express.raw({type: 'application/json'}), a
 
 // Otras rutas de pago que requieren autenticación
 router.use(verifyToken);
+
+// Crear un nuevo pago
+router.post('/', authenticateToken, PaymentController.createPayment);
+
+// Obtener pagos por ID de orden
+router.get('/order/:orderId', authenticateToken, PaymentController.getPaymentByOrderId);
+
+// Actualizar estado del pago
+router.put('/:paymentId/status', authenticateToken, PaymentController.updatePaymentStatus);
 
 module.exports = router; 
 
