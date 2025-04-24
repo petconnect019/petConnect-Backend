@@ -53,7 +53,6 @@ class EpaycoService {
                 dues: '1',
                 invoice_guarantee: true,
                 invoice_display: true,
-                return_url: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/home`,
                 ip: paymentInfo.ip || '127.0.0.1'
             };
 
