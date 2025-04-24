@@ -1,5 +1,3 @@
-const OrderModel = require('../models/OrderModel');
-const QRModel = require('../models/QRModel');
 const orderData = require('./orderData');
 const EpaycoService = require('../services/epaycoService');
 
@@ -93,104 +91,6 @@ const paymentData = {
     },
 
     /**
-     * Procesa un pago exitoso
-     * @param {string} orderId - ID de la orden
-     * @param {Object} paymentInfo - Información del pago
-     */
-    processSuccessfulPayment: async (orderId, paymentInfo) => {
-        try {
-            const order = await orderData.getOrderById(orderId);
-            if (!order) {
-                return { success: false, message: `Orden ${orderId} no encontrada` };
-            }
-
-            // Actualizar información de pago con la referencia de ePayco
-            await orderData.updateOrderPayment(orderId, {
-                epaycoRef: paymentInfo.referencia,
-                paymentStatus: 'COMPLETED',
-                paymentData: {
-                    transactionId: paymentInfo.referencia,
-                    approvalCode: paymentInfo.approvalCode,
-                    amount: paymentInfo.amount,
-                    transactionDate: new Date(),
-                    responseCode: paymentInfo.response,
-                    paymentMethod: paymentInfo.additionalData.x_franchise || 'N/A',
-                    last4: paymentInfo.additionalData.x_cardnumber ? paymentInfo.additionalData.x_cardnumber.slice(-4) : 'N/A'
-                }
-            });
-
-            // Confirmar la orden y generar QRs
-            const result = await orderData.confirmOrder(orderId);
-
-            return {
-                success: true,
-                message: `Orden ${orderId} confirmada exitosamente`,
-                order: result.order,
-                qrCodes: result.qrCodes
-            };
-        } catch (error) {
-            console.error(`Error al procesar pago exitoso para orden ${orderId}:`, error);
-            throw error;
-        }
-    },
-
-    /**
-     * Procesa un pago fallido o cancelado
-     * @param {string} orderId - ID de la orden
-     * @param {Object} paymentInfo - Información del pago
-     */
-    processFailedPayment: async (orderId, paymentInfo) => {
-        try {
-            const order = await orderData.getOrderById(orderId);
-            if (!order) {
-                return { success: false, message: `Orden ${orderId} no encontrada` };
-            }
-
-            // Actualizar información de pago
-            await orderData.updateOrderPayment(orderId, {
-                epaycoRef: paymentInfo.referencia,
-                paymentStatus: 'FAILED',
-                paymentData: {
-                    transactionId: paymentInfo.referencia,
-                    amount: paymentInfo.amount,
-                    transactionDate: new Date(),
-                    responseCode: paymentInfo.response,
-                    paymentMethod: paymentInfo.additionalData.x_franchise || 'N/A',
-                    last4: paymentInfo.additionalData.x_cardnumber ? paymentInfo.additionalData.x_cardnumber.slice(-4) : 'N/A'
-                }
-            });
-
-            // Cancelar la orden
-            await orderData.cancelOrder(orderId, order.userId);
-
-            return {
-                success: true,
-                message: `Orden ${orderId} cancelada debido a pago rechazado/cancelado`,
-                status: 'FAILED'
-            };
-        } catch (error) {
-            console.error(`Error al procesar pago fallido para orden ${orderId}:`, error);
-            throw error;
-        }
-    },
-    
-    /**
-     * Prepara los datos para la redirección después del pago
-     * @param {string} referencia - Referencia del pago de ePayco
-     * @returns {Object} Datos para la redirección
-     */
-    preparePaymentRedirection: (referencia) => {
-        if (!referencia) {
-            throw new Error('Referencia de pago no proporcionada');
-        }
-        
-        return {
-            frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
-            ref_payco: referencia
-        };
-    },
-
-    /**
      * Procesa la respuesta del pago y prepara los datos para redirección
      * @param {Object} paymentResponse - Datos de respuesta del pago
      * @returns {Object} Datos para la redirección
@@ -249,44 +149,17 @@ const paymentData = {
             },
             'Cancelada': {
                 type: 'error',
-                message: 'Pago cancelado por el usuario'
-            },
-            'Abandonada': {
-                type: 'error',
-                message: 'Proceso de pago abandonado'
-            },
-            'Pendiente': {
-                type: 'pending',
-                message: 'El pago está pendiente de confirmación'
-            },
-            'Expirada': {
-                type: 'error',
-                message: 'El pago ha expirado'
-            },
-            'Reversada': {
-                type: 'error',
-                message: 'El pago fue reversado'
+                message: 'Pago cancelado'
             }
         };
 
-        // Obtener configuración del estado o usar valores por defecto
-        const estado = estados[x_transaction_state] || {
-            type: 'error',
-            message: 'Estado de pago no reconocido'
-        };
-
-        // Construir URL y parámetros
-        redirectUrl = `/payment/${estado.type}`;
-        queryParams = estado.params 
-            ? estado.params() 
-            : `${queryParams}&message=${encodeURIComponent(estado.message)}`;
+        const estado = estados[x_response] || { type: 'error', message: 'Estado desconocido' };
 
         return {
             success: true,
-            redirectUrl,
-            queryParams,
-            status: x_transaction_state,
-            message: estado.message
+            type: estado.type,
+            message: estado.message,
+            queryParams: estado.params ? estado.params() : queryParams
         };
     }
 };
