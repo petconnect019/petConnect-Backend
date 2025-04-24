@@ -97,19 +97,6 @@ class PaymentController {
         }
     }
     
-    // Endpoint para recibir al usuario después del pago
-    async paymentResponse(req, res) {
-        try {
-            const frontendUrl = process.env.FRONTEND_URL;
-            const result = paymentData.processPaymentResponse(req.query);
-            res.redirect(`${frontendUrl}${result.redirectUrl}?${result.queryParams}`);
-        } catch (error) {
-            console.error('Error en respuesta de pago:', error);
-            const frontendUrl = process.env.FRONTEND_URL;
-            res.redirect(`${frontendUrl}/payment/error?message=${encodeURIComponent('Error al procesar la respuesta del pago')}`);
-        }
-    }
-
     // Procesar la confirmación del pago
     async processPaymentConfirmation(paymentInfo) {
         try {

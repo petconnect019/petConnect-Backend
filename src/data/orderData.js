@@ -180,23 +180,6 @@ const orderData = {
             console.error(`Error al cancelar orden ${orderId}:`, error);
             throw error;
         }
-    },
-
-    // Obtener una orden por referencia de ePayco
-    getOrderByEpaycoRef: async (epaycoRef) => {
-        try {
-            console.log('Buscando orden con epaycoRef:', epaycoRef);
-            const order = await OrderModel.findOne({ epaycoRef });
-            if (!order) {
-                console.log('No se encontró orden con epaycoRef:', epaycoRef);
-            } else {
-                console.log('Orden encontrada con epaycoRef:', epaycoRef);
-            }
-            return order;
-        } catch (error) {
-            console.error('Error al obtener orden por referencia de ePayco:', error);
-            throw error;
-        }
     }
 };
 
