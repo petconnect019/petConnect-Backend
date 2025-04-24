@@ -35,6 +35,18 @@ const paymentData = {
 
                 // Actualizar el estado de la orden basado en la respuesta de ePayco
                 if (x_cod_response === '1' && x_response === 'Aceptada') {
+                    // Primero actualizamos la referencia de ePayco
+                    await orderData.updateOrderPayment(orderId, {
+                        epaycoRef: x_ref_payco,
+                        paymentStatus: 'COMPLETED',
+                        paymentData: {
+                            transactionId: x_ref_payco,
+                            responseCode: x_cod_response,
+                            transactionDate: new Date()
+                        }
+                    });
+                    
+                    // Luego confirmamos la orden y generamos los QRs
                     const result = await orderData.confirmOrder(orderId);
                     return {
                         success: true,
