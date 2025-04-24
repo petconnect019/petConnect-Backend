@@ -117,9 +117,9 @@ const paymentData = {
         let redirectUrl;
         let queryParams = `ref_payco=${ref_payco}`;
 
-        // Mapeo de estados de ePayco
-        const estados = {
-            'Aceptada': {
+        // Mapeo de estados de ePayco (se soportan varios estados en minúsculas)
+        const estadoMap = {
+            'aceptada': {
                 type: 'success',
                 message: 'Pago exitoso',
                 params: () => {
@@ -129,9 +129,9 @@ const paymentData = {
                     return params;
                 }
             },
-            'Aprobada': {
+            'aceptadas': {
                 type: 'success',
-                message: 'Pago aprobado',
+                message: 'Pago exitoso',
                 params: () => {
                     let params = queryParams;
                     if (x_approval_code) params += `&approval_code=${x_approval_code}`;
@@ -139,21 +139,91 @@ const paymentData = {
                     return params;
                 }
             },
-            'Rechazada': {
-                type: 'error',
-                message: 'Pago rechazado por el banco'
+            'pendientes': {
+                type: 'pending',
+                message: 'El pago está pendiente de confirmación'
             },
-            'Fallida': {
+            'fallida': {
                 type: 'error',
                 message: 'Error en el procesamiento del pago'
             },
-            'Cancelada': {
+            'fallidas': {
+                type: 'error',
+                message: 'Error en el procesamiento del pago'
+            },
+            'rechazada': {
+                type: 'error',
+                message: 'Pago rechazado por el banco'
+            },
+            'rechazadas': {
+                type: 'error',
+                message: 'Pago rechazado por el banco'
+            },
+            'abandonada': {
+                type: 'error',
+                message: 'Proceso de pago abandonado'
+            },
+            'abandonadas': {
+                type: 'error',
+                message: 'Proceso de pago abandonado'
+            },
+            'cancelada': {
                 type: 'error',
                 message: 'Pago cancelado'
+            },
+            'canceladas': {
+                type: 'error',
+                message: 'Pago cancelado'
+            },
+            'reversada': {
+                type: 'error',
+                message: 'El pago fue revertido'
+            },
+            'reversadas': {
+                type: 'error',
+                message: 'El pago fue revertido'
+            },
+            'retenida': {
+                type: 'error',
+                message: 'El pago fue retenido'
+            },
+            'retenidas': {
+                type: 'error',
+                message: 'El pago fue retenido'
+            },
+            'iniciada': {
+                type: 'pending',
+                message: 'El proceso de pago ha iniciado'
+            },
+            'iniciadas': {
+                type: 'pending',
+                message: 'El proceso de pago ha iniciado'
+            },
+            'expirada': {
+                type: 'error',
+                message: 'El pago ha expirado'
+            },
+            'expiradas': {
+                type: 'error',
+                message: 'El pago ha expirado'
+            },
+            'antifraudes': {
+                type: 'error',
+                message: 'Pago rechazado por revisión antifraude'
             }
         };
 
-        const estado = estados[x_response] || { type: 'error', message: 'Estado desconocido' };
+        const stateKey = (x_response || x_transaction_state || '').toLowerCase().trim();
+        const estado = estadoMap[stateKey];
+        
+        if (!estado) {
+            return {
+                success: true,
+                type: 'error',
+                message: 'Estado de pago no reconocido',
+                queryParams: `${queryParams}&message=Estado de pago no reconocido`
+            };
+        }
 
         return {
             success: true,
