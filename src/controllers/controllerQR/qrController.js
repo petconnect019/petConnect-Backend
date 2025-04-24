@@ -80,6 +80,14 @@ const qrController = {
             const scannerUserId = req.user ? req.user.id : null;
             const locationData = req.body.location || null;
             
+            // Validar que se proporcionó un qrId
+            if (!qrId) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Se requiere un ID de QR'
+                });
+            }
+            
             // Delegación de la lógica de negocio a qrData
             const qrInfo = await qrData.scanQR(qrId, scannerUserId, locationData);
             
@@ -114,7 +122,9 @@ const qrController = {
      */
     linkQRToPet: async (req, res) => {
         try {
-            const { qrId, petId } = req.body;
+            // Obtener qrId de la consulta o del cuerpo
+            const qrId = req.query.qrId || req.body.qrId;
+            const { petId } = req.body;
             const userId = req.user.id;
             const userRole = req.user.role;
             

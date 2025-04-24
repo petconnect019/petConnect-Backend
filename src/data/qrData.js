@@ -56,7 +56,8 @@ const qrData = {
                 isLinked: false,
                 isActive: true,
                 qrImage,
-                orderId: orderId
+                orderId: orderId,
+                qrCode: uniqueId  // Guardar el ID único como qrCode
             });
             
             qrCodes.push(qr);
@@ -71,8 +72,23 @@ const qrData = {
      * @param {string} scannerUserId - ID del usuario que escanea el QR
      */
     scanQR: async (qrId, scannerUserId = null, locationData = null) => {
-        // Buscar el QR por su ID de MongoDB
-        const qr = await QRModel.findById(qrId);
+        // Verificar si el qrId parece un ObjectId (24 caracteres hex) o no
+        const isValidObjectId = /^[0-9a-fA-F]{24}$/.test(qrId);
+        
+        let qr;
+        if (isValidObjectId) {
+            // Buscar el QR por su ID de MongoDB
+            qr = await QRModel.findById(qrId);
+        } else {
+            // Buscar por qrCode
+            qr = await QRModel.findOne({ qrCode: qrId });
+            
+            // Si no se encuentra, intentar en el otro modelo de QR
+            if (!qr) {
+                const QRCodeModel = require('../models/QRCodeModel');
+                qr = await QRCodeModel.findOne({ qrId: qrId });
+            }
+        }
         
         if (!qr || !qr.isActive) {
             throw new Error('QR no encontrado o ha sido eliminado');
@@ -123,8 +139,25 @@ const qrData = {
      * @param {string} userRole - Rol del usuario
      */
     linkQRToPet: async (qrId, petId, userId, userRole) => {
-        // Verificar si el QR existe
-        const qr = await QRModel.findById(qrId);
+        // Verificar si el QR existe - Buscar por _id si parece un ObjectId válido, o buscar por otro campo si no
+        let qr;
+        
+        // Verificar si el qrId parece un ObjectId (24 caracteres hex) o no
+        const isValidObjectId = /^[0-9a-fA-F]{24}$/.test(qrId);
+        
+        if (isValidObjectId) {
+            qr = await QRModel.findById(qrId);
+        } else {
+            // Buscar por un campo alternativo - aquí asumimos que hay un campo qrId o código
+            // Si no existe este campo, deberás ajustar según tu modelo
+            qr = await QRModel.findOne({ qrCode: qrId });
+            
+            // Si no se encuentra, puedes intentar buscar en otros modelos
+            if (!qr) {
+                const QRCodeModel = require('../models/QRCodeModel');
+                qr = await QRCodeModel.findOne({ qrId: qrId });
+            }
+        }
         
         if (!qr || !qr.isActive) {
             throw new Error('QR no encontrado o ha sido eliminado');
@@ -155,7 +188,7 @@ const qrData = {
         
         // Actualizar el QR
         const updatedQR = await QRModel.findByIdAndUpdate(
-            qrId,
+            qr._id,
             { petId, isLinked: true },
             { new: true }
         );
