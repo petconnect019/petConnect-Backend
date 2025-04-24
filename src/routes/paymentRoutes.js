@@ -5,12 +5,6 @@ const { verifyToken } = require('../middlewares/authMiddleware');
 const PaymentController = require('../controllers/controllerPayment/paymentController');
 
 // Rutas públicas para Epayco (no requieren autenticación)
-router.get('/response', (req, res) => {
-    console.log('Recibida respuesta de pago:', req.query);
-    // Redirigir al usuario directamente al frontend
-    res.redirect('https://pet-connect-front-nu.vercel.app/home');
-});
-
 router.post('/confirmation', express.raw({type: 'application/json'}), async (req, res) => {
     try {
         console.log('=== WEBHOOK EPAYCO RECIBIDO ===');
