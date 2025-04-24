@@ -1,13 +1,18 @@
 const mongoose = require('mongoose');
 
 const qrSchema = new mongoose.Schema({
-    qrId: {
-        type: String,
-        unique: true
-    },
     orderId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Order',
+        required: true
+    },
+    qrId: {
+        type: String,
+        required: true,
+        unique: true
+    },
+    dataUrl: {
+        type: String,
         required: true
     },
     userId: {
