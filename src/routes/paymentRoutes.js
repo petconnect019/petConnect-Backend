@@ -5,29 +5,10 @@ const { verifyToken } = require('../middlewares/authMiddleware');
 const PaymentController = require('../controllers/controllerPayment/paymentController');
 
 // Rutas públicas para Epayco (no requieren autenticación)
-router.get('/response', async (req, res) => {
-    try {
-        console.log('Recibida respuesta de pago:', req.query);
-        
-        // Procesar la respuesta del pago (ahora asíncrono)
-        const result = await paymentController.processPaymentResponse(req.query);
-        
-        if (!result.type) {
-            console.error('Error: type no definido en la respuesta de processPaymentResponse', result);
-            // Si no hay tipo definido, usamos pending por defecto
-            result.type = 'pending';
-        }
-        
-        // Redireccionar siempre al home después de procesar el pago
-        // Este enfoque permite a ePayco mostrar su factura electrónica antes de la redirección
-        const homeUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/home?payment_status=${result.type}&${result.queryParams}`;
-        
-        console.log('Redirigiendo a:', homeUrl);
-        res.redirect(homeUrl);
-    } catch (error) {
-        console.error('Error procesando respuesta de pago:', error);
-        res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/home?payment_status=error&message=${encodeURIComponent(error.message)}`);
-    }
+router.get('/response', (req, res) => {
+    console.log('Recibida respuesta de pago:', req.query);
+    // Redirigir al usuario directamente al frontend
+    res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}`);
 });
 
 router.post('/confirmation', express.raw({type: 'application/json'}), async (req, res) => {
