@@ -106,12 +106,9 @@ const paymentData = {
                 return { success: false, message: `Orden ${orderId} no encontrada` };
             }
 
-            // Actualizar información de pago, asignando la referencia de ePayco en shippingDetails de forma segura
+            // Actualizar información de pago con la referencia de ePayco
             await orderData.updateOrderPayment(orderId, {
-                shippingDetails: {
-                    ...(order.shippingDetails || {}),
-                    epaycoRef: paymentInfo.referencia
-                },
+                epaycoRef: paymentInfo.referencia,
                 paymentStatus: 'COMPLETED',
                 paymentData: {
                     transactionId: paymentInfo.referencia,
