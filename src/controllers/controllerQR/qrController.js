@@ -122,6 +122,7 @@ const qrController = {
      */
     linkQRToPet: async (req, res) => {
         try {
+            console.log(req.body);
             // Obtener qrId de la consulta o del cuerpo
             const qrId = req.query.qrId || req.body.qrId;
             const { petId } = req.body;

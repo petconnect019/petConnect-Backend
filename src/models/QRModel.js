@@ -1,10 +1,9 @@
 const mongoose = require('mongoose');
 
 const qrSchema = new mongoose.Schema({
-    qrCode: {
+    qrId: {
         type: String,
-        unique: true,
-        sparse: true
+        unique: true
     },
     orderId: {
         type: mongoose.Schema.Types.ObjectId,
