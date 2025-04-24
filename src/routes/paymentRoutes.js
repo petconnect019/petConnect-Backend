@@ -18,13 +18,15 @@ router.get('/response', async (req, res) => {
             result.type = 'pending';
         }
         
-        // Redirigir al frontend con los parámetros
-        const redirectUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/payment/${result.type}?${result.queryParams}`;
-        console.log('Redirigiendo a:', redirectUrl);
-        res.redirect(redirectUrl);
+        // Redireccionar siempre al home después de procesar el pago
+        // Este enfoque permite a ePayco mostrar su factura electrónica antes de la redirección
+        const homeUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/home?payment_status=${result.type}&${result.queryParams}`;
+        
+        console.log('Redirigiendo a:', homeUrl);
+        res.redirect(homeUrl);
     } catch (error) {
         console.error('Error procesando respuesta de pago:', error);
-        res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/payment/error?message=${encodeURIComponent(error.message)}`);
+        res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/home?payment_status=error&message=${encodeURIComponent(error.message)}`);
     }
 });
 
