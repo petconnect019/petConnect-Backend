@@ -119,6 +119,14 @@ if (process.env.NODE_ENV === 'development') {
     app.use(sessionLogger);
 }
 
+// Middleware para parsear JSON, excepto para la ruta de confirmación de ePayco
+app.use((req, res, next) => {
+    if (req.path === '/api/payments/confirmation') {
+        next();
+    } else {
+        express.json()(req, res, next);
+    }
+});
 
 // Rutas API
 app.use('/api', routes);
@@ -159,7 +167,7 @@ app.use((err, req, res, next) => {
     console.error(err.stack);
     res.status(500).json({
         success: false,
-        error: 'Error interno del servidor'
+        error: err.message
     });
 });
 
