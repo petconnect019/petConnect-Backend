@@ -27,22 +27,9 @@ router.post('/confirmation', express.raw({type: 'application/json'}), async (req
         console.log('Body raw:', req.body.toString());
         
         // Parsear el body si es necesario
-        let paymentInfo;
-        try {
-            if (Buffer.isBuffer(req.body)) {
-                paymentInfo = JSON.parse(req.body.toString());
-            } else if (typeof req.body === 'string') {
-                paymentInfo = JSON.parse(req.body);
-            } else {
-                paymentInfo = req.body;
-            }
-            
-            console.log('Body parseado:', JSON.stringify(paymentInfo, null, 2));
-        } catch (parseError) {
-            console.error('Error al parsear el body:', parseError);
-            console.log('Body que causó el error:', req.body);
-            throw new Error('Error al parsear la información del pago');
-        }
+        let paymentInfo = Object.keys(req.body).length ? req.body : req.query;
+        
+        console.log('Body parseado:', JSON.stringify(paymentInfo, null, 2));
 
         // Validar que tengamos la información necesaria
         if (!paymentInfo.x_ref_payco) {

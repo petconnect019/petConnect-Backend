@@ -44,6 +44,7 @@ class EpaycoService {
                 phone: paymentInfo.customerPhone,
                 cell_phone: paymentInfo.customerPhone,
                 bill: paymentInfo.orderId,
+                x_extra1: paymentInfo.orderId,
                 description: `Orden de ${paymentInfo.quantity} códigos QR`,
                 value: paymentInfo.amount,
                 tax: '0',
