@@ -88,7 +88,7 @@ router.use(verifyToken);
 router.post('/', authenticateToken, PaymentController.createPayment);
 
 // Obtener pagos por ID de orden
-router.get('/order/:orderId', authenticateToken, PaymentController.getPaymentsByOrder);
+router.get('/order/:orderId', authenticateToken, PaymentController.getPaymentByOrderId);
 
 // Actualizar estado del pago
 router.put('/:paymentId/status', authenticateToken, PaymentController.updatePaymentStatus);

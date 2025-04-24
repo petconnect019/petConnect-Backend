@@ -1,5 +1,6 @@
 const paymentData = require('../../data/paymentData');
-const { Payment, Order } = require('../../models');
+const Payment = require('../../models/Payment');
+const Order = require('../../models/OrderModel');
 
 class PaymentController {
     // Crear un nuevo pago
@@ -35,7 +36,7 @@ class PaymentController {
     }
 
     // Obtener pagos por orden
-    async getPaymentsByOrder(req, res) {
+    async getPaymentByOrderId(req, res) {
         try {
             const { orderId } = req.params;
             
