@@ -8,7 +8,7 @@ const PaymentController = require('../controllers/controllerPayment/paymentContr
 router.get('/response', (req, res) => {
     console.log('Recibida respuesta de pago:', req.query);
     // Redirigir al usuario directamente al frontend
-    res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}`);
+    res.redirect('https://pet-connect-front-nu.vercel.app/home');
 });
 
 router.post('/confirmation', express.raw({type: 'application/json'}), async (req, res) => {

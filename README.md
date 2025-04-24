@@ -225,22 +225,6 @@ src/
 - `PUT /api/reports/:reportId/status` - Actualizar estado de un reporte (admin)
 - `DELETE /api/reports/:reportId` - Eliminar un reporte (admin)
 
-### Rutas de Prueba
-- `POST /api/test/order` - Crear orden de prueba
-- `POST /api/test/order/:orderId/confirm` - Confirmar orden de prueba
-- `GET /api/test/orders` - Obtener órdenes de prueba
-- `POST /api/test/pet` - Crear mascota de prueba
-- `GET /api/test/pets` - Obtener mascotas de prueba
-- `POST /api/test/qr` - Generar QR de prueba
-- `POST /api/test/qr/link` - Vincular QR de prueba
-- `GET /api/test/qr/:qrId` - Escanear QR de prueba
-- `GET /api/test/qrs` - Obtener QRs de prueba
-
-### Archivos y Medios
-- `POST /api/uploads/image` - Subir imagen
-- `POST /api/uploads/multiple` - Subir múltiples archivos
-- `GET /api/uploads/:fileId` - Obtener archivo
-- `DELETE /api/uploads/:fileId` - Eliminar archivo
 
 
 ### Escaneo de QR y Comunicación
