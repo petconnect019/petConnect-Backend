@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const paymentController = require('../data/paymentData');
 const { verifyToken } = require('../middlewares/authMiddleware');
-const PaymentController = require('../controllers/PaymentController');
+const PaymentController = require('../controllers/controllerPayment/paymentController');
 const { authenticateToken } = require('../middleware/auth');
 
 // Rutas públicas para Epayco (no requieren autenticación)
@@ -88,7 +88,7 @@ router.use(verifyToken);
 router.post('/', authenticateToken, PaymentController.createPayment);
 
 // Obtener pagos por ID de orden
-router.get('/order/:orderId', authenticateToken, PaymentController.getPaymentByOrderId);
+router.get('/order/:orderId', authenticateToken, PaymentController.getPaymentsByOrder);
 
 // Actualizar estado del pago
 router.put('/:paymentId/status', authenticateToken, PaymentController.updatePaymentStatus);
