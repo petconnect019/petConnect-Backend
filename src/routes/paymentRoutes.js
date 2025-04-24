@@ -5,8 +5,7 @@ const { verifyToken } = require('../middlewares/authMiddleware');
 const PaymentController = require('../controllers/controllerPayment/paymentController');
 
 // Rutas públicas para Epayco (no requieren autenticación)
-// Ruta para la respuesta de pago (redirección del usuario)
-router.get('/payments/response', async (req, res) => {
+router.get('/response', async (req, res) => {
     try {
         console.log('Recibida respuesta de pago:', req.query);
         const result = await paymentController.processPaymentResponse(req.query);
@@ -20,8 +19,7 @@ router.get('/payments/response', async (req, res) => {
     }
 });
 
-// Ruta para recibir la confirmación de pago (webhook de ePayco)
-router.post('/payments/confirmation', express.raw({type: 'application/json'}), async (req, res) => {
+router.post('/confirmation', express.raw({type: 'application/json'}), async (req, res) => {
     try {
         console.log('=== WEBHOOK EPAYCO RECIBIDO ===');
         console.log('Headers:', JSON.stringify(req.headers, null, 2));
@@ -80,17 +78,21 @@ router.post('/payments/confirmation', express.raw({type: 'application/json'}), a
     }
 });
 
-// Otras rutas de pago que requieren autenticación
-router.use(verifyToken);
+// Router para rutas protegidas
+const protectedRouter = express.Router();
+protectedRouter.use(verifyToken);
 
 // Crear un nuevo pago
-router.post('/', verifyToken, PaymentController.createPayment);
+protectedRouter.post('/', PaymentController.createPayment);
 
 // Obtener pagos por ID de orden
-router.get('/order/:orderId', verifyToken, PaymentController.getPaymentByOrderId);
+protectedRouter.get('/order/:orderId', PaymentController.getPaymentByOrderId);
 
 // Actualizar estado del pago
-router.put('/:paymentId/status', verifyToken, PaymentController.updatePaymentStatus);
+protectedRouter.put('/:paymentId/status', PaymentController.updatePaymentStatus);
+
+// Agregar las rutas protegidas bajo el prefijo /api/payments
+router.use('/', protectedRouter);
 
 module.exports = router; 
 
