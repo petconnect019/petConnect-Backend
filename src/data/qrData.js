@@ -57,7 +57,7 @@ const qrData = {
                 isActive: true,
                 qrImage,
                 orderId: orderId,
-                qrCode: uniqueId  // Guardar el ID único como qrCode
+                qrId: uniqueId
             });
             
             qrCodes.push(qr);
