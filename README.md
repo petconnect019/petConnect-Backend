@@ -182,6 +182,7 @@ src/
 - `POST /api/payments/confirmation` - Webhook de ePayco para confirmación automática de pagos ✅
 - `GET /api/payments/response` - Redirección después del pago en ePayco ✅
 - `POST /api/orders/:orderId/cancel` - Cancelar una orden ✅
+- `POST /api/admin/orders/:orderId/confirm` - Confirmar orden y generar QRs (admin) ✅
 - `GET /api/orders/:orderId/invoice` - Descargar factura de una orden ❌falta
 - `GET /api/orders` - Listar todas las órdenes (admin) ❌falta
 - `PUT /api/orders/:orderId/status` - Actualizar estado de una orden (admin) ❌falta

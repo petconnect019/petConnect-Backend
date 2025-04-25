@@ -241,6 +241,64 @@ const AdminController = {
                 error: error.message
             });
         }
+    },
+
+    /**
+     * Confirma una orden y genera QRs asociados (solo admin)
+     * @param {Object} req - Objeto de solicitud
+     * @param {Object} res - Objeto de respuesta
+     */
+    confirmOrderAndGenerateQR: async (req, res) => {
+        try {
+            const { orderId } = req.params;
+            const { epaycoRef } = req.body;
+            
+            console.log(`Admin confirma orden ${orderId} con referencia de Epayco: ${epaycoRef || 'N/A'}`);
+            
+            // Verificar que la orden existe
+            const orderData = require('../../data/orderData');
+            const order = await orderData.getOrderById(orderId);
+            
+            if (!order) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Orden no encontrada'
+                });
+            }
+            
+            // Si se proporciona una referencia de ePayco, actualizar la orden
+            if (epaycoRef) {
+                await orderData.updateOrderPayment(orderId, {
+                    epaycoRef,
+                    paymentStatus: 'COMPLETED',
+                    paymentData: {
+                        transactionId: epaycoRef,
+                        approvalCode: 'ADMIN_APPROVED',
+                        amount: order.totalAmount,
+                        transactionDate: new Date(),
+                        responseCode: '1',
+                        paymentMethod: 'Admin Manual',
+                    }
+                });
+            }
+            
+            // Confirmar la orden y generar QRs
+            const result = await orderData.confirmOrder(orderId);
+            
+            return res.status(200).json({
+                success: true,
+                message: 'Orden confirmada y QRs generados exitosamente',
+                order: result.order,
+                qrCodes: result.qrCodes
+            });
+        } catch (error) {
+            console.error('Error al confirmar orden desde admin:', error);
+            return res.status(500).json({
+                success: false,
+                message: 'Error al confirmar la orden',
+                error: error.message
+            });
+        }
     }
 };
 

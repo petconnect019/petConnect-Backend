@@ -20,4 +20,7 @@ router.get('/pets', PetController.getAllPets);
 router.delete('/pets/:id', PetController.deletePet);
 router.put('/pets/:id', PetController.updatePet);
 
+// Gestión de órdenes
+router.post('/orders/:orderId/confirm', AdminController.confirmOrderAndGenerateQR);
+
 module.exports = router; 
