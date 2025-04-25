@@ -19,28 +19,6 @@ const determineStatusCode = (error) => {
 
 const qrController = {
     /**
-     * Genera un nuevo código QR
-     */
-    generateQR: async (req, res) => {
-        try {
-            const userId = req.user.id;
-            const qr = await qrData.generateQR(userId);
-            
-            res.status(201).json({
-                success: true,
-                qr
-            });
-        } catch (error) {
-            console.error('Error al generar QR:', error);
-            res.status(500).json({
-                success: false,
-                message: 'Error al generar el QR',
-                error: error.message
-            });
-        }
-    },
-    
-    /**
      * Genera múltiples códigos QR
      */
     generateMultipleQRs: async (req, res) => {
