@@ -5,37 +5,10 @@ const QRCode = require('qrcode');
 const QRScanModel = require('../models/QRScanModel');
 const OrderModel = require('../models/OrderModel');
 
-// Función para generar imagen QR (implementada directamente aquí)
-const generateQRImage = async (data) => {
-    try {
-        // Opciones mejoradas para generar QRs más robustos
-        const options = {
-            errorCorrectionLevel: 'H', // Alta corrección de errores
-            margin: 2, // Margen alrededor del QR
-            width: 300, // Tamaño del QR
-            color: {
-                dark: '#000000', // Color del QR
-                light: '#FFFFFF' // Color de fondo
-            }
-        };
-        
-        // Obtener la URL base adecuada
-        const baseUrl = process.env.FRONTEND_URL;
-        
-        // Agregamos el dominio del frontend a la URL para asegurar que funcione correctamente
-        const qrContent = typeof data === 'string' ? `${baseUrl}/qr/scan/${data}` : JSON.stringify(data);
-        
-        const qrImage = await QRCode.toDataURL(qrContent, options);
-        return qrImage;
-    } catch (error) {
-        console.error('Error al generar código QR:', error);
-        throw error;
-    }
-};
+
 
 const qrData = {
     /**
-     * Generar múltiples códigos QR
      * @param {string} userId - ID del usuario
      * @param {number} count - Cantidad de QRs a generar
      */
@@ -43,49 +16,47 @@ const qrData = {
         const qrCodes = [];
         
         for (let i = 0; i < count; i++) {
-            // Generar un ID único para generar la imagen del QR
-            const uniqueId = crypto.randomBytes(8).toString('hex');
-            
-            // Generar la imagen del QR usando la función mejorada
-            const qrImage = await generateQRImage(uniqueId);
-            
-            // Crear el registro en la base de datos
-            const qr = await QRModel.create({
-                userId,
-                isLinked: false,
-                isActive: true,
-                qrImage,
-                qrId: uniqueId
-            });
-            
-            qrCodes.push(qr);
+            try {
+                // Generar un ID único para el QR
+                const qrId = crypto.randomBytes(8).toString('hex');
+                
+                // Crear el registro en la base de datos
+                const qrRecord = new QRModel({ 
+                    userId,
+                    isLinked: false,
+                    isActive: true,
+                    qrId 
+                });
+                await qrRecord.save();
+                
+                // Generar la URL para el código QR
+                const qrURL = `${process.env.FRONTEND_URL}/api/qr/scan/${qrId}`;
+                
+                // Generar el código QR como una imagen en base64
+                const qrImage = await QRCode.toDataURL(qrURL);
+                
+                qrRecord.qrImage = qrImage;
+                await qrRecord.save();
+                
+                qrCodes.push({
+                    _id: qrRecord._id,
+                    qrId,
+                    qrImage,
+                    qrURL,
+                    isLinked: false,
+                    isActive: true,
+                    userId
+                });
+            } catch (error) {
+                console.error('Error al generar código QR:', error);
+                throw error;
+            }
         }
         
         return qrCodes;
     },
     
-    /**
-     * Generar un código QR individual
-     * @param {string} userId - ID del usuario
-     */
-    generateQR: async (userId) => {
-        // Generar un ID único para el QR
-        const uniqueId = crypto.randomBytes(8).toString('hex');
-        
-        // Generar la imagen del QR
-        const qrImage = await generateQRImage(uniqueId);
-        
-        // Crear el registro en la base de datos
-        const qr = await QRModel.create({
-            userId,
-            isLinked: false,
-            isActive: true,
-            qrImage,
-            qrId: uniqueId
-        });
-        
-        return qr;
-    },
+ 
     
     /**
      * Obtener información de un QR escaneado
