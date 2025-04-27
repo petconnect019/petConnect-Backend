@@ -1,22 +1,5 @@
 const qrData = require('../../data/qrData');
 
-/**
- * Determina el código de estado HTTP basado en el tipo de error
- * @param {Error} error - El error capturado
- * @returns {number} Código de estado HTTP
- */
-const determineStatusCode = (error) => {
-    if (error.message.includes('no encontrado') || error.message.includes('No encontrado')) {
-        return 404;
-    } else if (error.message.includes('permiso') || error.message.includes('autorizado')) {
-        return 403;
-    } else if (error.message.includes('requerido') || error.message.includes('inválido') || error.message.includes('ya existe')) {
-        return 400;
-    } else {
-        return 500;
-    }
-};
-
 const qrController = {
     /**
      * Genera múltiples códigos QR
@@ -307,7 +290,7 @@ const qrController = {
             });
         } catch (error) {
             console.error('Error al obtener código QR:', error);
-            const statusCode = determineStatusCode(error);
+            const statusCode = error.statusCode || 500;
             return res.status(statusCode).json({
                 success: false,
                 message: 'Error al obtener código QR',
@@ -334,7 +317,7 @@ const qrController = {
             });
         } catch (error) {
             console.error('Error al obtener códigos QR del usuario:', error);
-            const statusCode = determineStatusCode(error);
+            const statusCode = error.statusCode || 500;
             return res.status(statusCode).json({
                 success: false,
                 message: 'Error al obtener códigos QR',
@@ -362,7 +345,7 @@ const qrController = {
             });
         } catch (error) {
             console.error('Error al obtener historial de QR:', error);
-            const statusCode = determineStatusCode(error);
+            const statusCode = error.statusCode || 500;
             return res.status(statusCode).json({
                 success: false,
                 message: 'Error al obtener historial de QR',

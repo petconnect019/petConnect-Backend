@@ -46,7 +46,7 @@ const UserController = {
             });
         } catch (error) {
             console.error('Error al crear usuario:', error);
-            const statusCode = determineStatusCode(error);
+            const statusCode = error.statusCode || 500;
             return res.status(statusCode).json({
                 ok: false,
                 message: 'Error al crear usuario',
@@ -78,7 +78,7 @@ const UserController = {
             });
         } catch (error) {
             console.error('Error al obtener usuarios:', error);
-            const statusCode = determineStatusCode(error);
+            const statusCode = error.statusCode || 500;
             return res.status(statusCode).json({
                 ok: false,
                 message: 'Error al obtener usuarios',
@@ -104,7 +104,7 @@ const UserController = {
             });
         } catch (error) {
             console.error('Error al obtener perfil:', error);
-            const statusCode = determineStatusCode(error);
+            const statusCode = error.statusCode || 500;
             return res.status(statusCode).json({
                 ok: false,
                 message: 'Error al obtener perfil',
@@ -132,7 +132,7 @@ const UserController = {
             });
         } catch (error) {
             console.error('Error al actualizar perfil:', error);
-            const statusCode = determineStatusCode(error);
+            const statusCode = error.statusCode || 500;
             return res.status(statusCode).json({
                 ok: false,
                 message: 'Error al actualizar perfil',
@@ -168,7 +168,7 @@ const UserController = {
             });
         } catch (error) {
             console.error('Error al actualizar privacidad:', error);
-            const statusCode = determineStatusCode(error);
+            const statusCode = error.statusCode || 500;
             return res.status(statusCode).json({
                 ok: false,
                 message: 'Error al actualizar configuración de privacidad',
@@ -205,7 +205,7 @@ const UserController = {
             });
         } catch (error) {
             console.error('Error al actualizar foto de perfil:', error);
-            const statusCode = determineStatusCode(error);
+            const statusCode = error.statusCode || 500;
             return res.status(statusCode).json({
                 ok: false,
                 message: 'Error al actualizar foto de perfil',
@@ -231,7 +231,7 @@ const UserController = {
             });
         } catch (error) {
             console.error('Error al eliminar foto de perfil:', error);
-            const statusCode = determineStatusCode(error);
+            const statusCode = error.statusCode || 500;
             return res.status(statusCode).json({
                 ok: false,
                 message: 'Error al eliminar foto de perfil',
@@ -257,7 +257,7 @@ const UserController = {
             });
         } catch (error) {
             console.error('Error al desactivar cuenta:', error);
-            const statusCode = determineStatusCode(error);
+            const statusCode = error.statusCode || 500;
             return res.status(statusCode).json({
                 ok: false,
                 message: 'Error al desactivar cuenta',
@@ -319,7 +319,7 @@ const UserController = {
             });
         } catch (error) {
             console.error('Error al cambiar estado del usuario:', error);
-            const statusCode = determineStatusCode(error);
+            const statusCode = error.statusCode || 500;
             return res.status(statusCode).json({
                 ok: false,
                 message: 'Error al cambiar estado del usuario',
@@ -361,7 +361,7 @@ const UserController = {
             });
         } catch (error) {
             console.error('Error al obtener usuario por ID:', error);
-            const statusCode = determineStatusCode(error);
+            const statusCode = error.statusCode || 500;
             return res.status(statusCode).json({
                 ok: false,
                 message: 'Error al obtener usuario',
@@ -408,7 +408,7 @@ const UserController = {
             });
         } catch (error) {
             console.error('Error al obtener perfil público:', error);
-            const statusCode = determineStatusCode(error);
+            const statusCode = error.statusCode || 500;
             return res.status(statusCode).json({
                 ok: false,
                 message: 'Error al obtener perfil público',
@@ -458,7 +458,7 @@ const UserController = {
             });
         } catch (error) {
             console.error('Error al desactivar cuenta:', error);
-            const statusCode = determineStatusCode(error);
+            const statusCode = error.statusCode || 500;
             return res.status(statusCode).json({
                 ok: false,
                 message: 'Error al desactivar tu cuenta',
