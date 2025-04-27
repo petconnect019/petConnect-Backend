@@ -29,62 +29,8 @@ Backend para la aplicación PetConnect, una plataforma para gestionar mascotas, 
 - QRCode para generación de códigos QR
 - Arquitectura en capas (Controllers, Data, Models)
 
-## 🚀 Instalación
-
-1. Clona el repositorio:
-```bash
-git clone https://github.com/tu-usuario/petconnect-api.git
-cd petconnect-api
-```
-
-2. Instala las dependencias:
-```bash
-npm install
-```
-
-3. Crea un archivo `.env` en la raíz del proyecto con las siguientes variables:
-```env
-# Servidor
-PORT=5000
-NODE_ENV=development
-
-# Base de datos
-MONGODB_URI=tu_uri_de_mongodb
-
-# JWT
-JWT_SECRET=tu_jwt_secret
-
-# Sesión
-SESSION_SECRET=tu_session_secret
-
-# Frontend
-FRONTEND_URL=http://localhost:5175
-BASE_URL=http://localhost:5000
-
-# Cloudinary
-CLOUDINARY_CLOUD_NAME=tu_cloud_name
-CLOUDINARY_API_KEY=tu_api_key
-CLOUDINARY_API_SECRET=tu_api_secret
-
-# Google OAuth
-GOOGLE_CLIENT_ID=tu_google_client_id
-GOOGLE_CLIENT_SECRET=tu_google_client_secret
-
-# Email
-EMAIL_USER=tu_email
-EMAIL_PASS=tu_password_de_aplicacion
-
-# Stripe (para pagos)
-STRIPE_SECRET_KEY=tu_clave_secreta_de_stripe
-```
-
-4. Inicia el servidor:
-```bash
-npm run dev
-```
 
 ## 📚 Estructura del Proyecto 
-
 ```
 src/
 ├── config/         # Configuraciones (DB, Passport, etc.)
@@ -287,35 +233,6 @@ Esta separación de responsabilidades mejora la mantenibilidad, testabilidad y e
    - Ve información de la mascota
    - Puede contactar al dueño
 
-## 👥 Cuenta de Administrador por Defecto
-
-Al iniciar la aplicación por primera vez, se crea
- automáticamente una cuenta de administrador:
-- Email: admin@gmail.com
-- Contraseña: petConnect12345
-
-**Importante**: Cambiar la contraseña después del primer inicio de sesión.
-
-
-
-## 📊 Monitoreo y Logs
-
-El sistema incluye monitoreo de rendimiento y logs detallados para:
-- Errores del servidor
-- Actividad de usuarios
-- Transacciones de pago
-- Escaneos de QR
-- Intentos de acceso no autorizados
-
-## 🌐 Despliegue
-
-Instrucciones para desplegar en diferentes entornos:
-
-### Producción
-```bash
-npm run build
-npm start
-```
 
 
 
