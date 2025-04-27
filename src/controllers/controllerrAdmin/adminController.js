@@ -3,7 +3,7 @@ const UserModel = require('../../models/UserModel');
 const bcrypt = require('bcrypt');
 
 const AdminController = {
-    getAllUsers: async (req, res) => {
+    getAllUsers: async (req, res, next) => {
         try {
             const users = await AdminData.getAllUsers();
             res.status(200).json({
@@ -12,84 +12,61 @@ const AdminController = {
             });
         } catch (error) {
             console.error('Error al obtener usuarios:', error);
-            res.status(500).json({ 
-                ok: false,
-                message: 'Error al obtener usuarios', 
-                error: error.message 
-            });
+            next(error);
         }
     },
 
-    deleteUser: async (req, res) => {
+    deleteUser: async (req, res, next) => {
         try {
             const { id } = req.params;
             
-            try {
-                await AdminData.deleteUser(id);
-                res.status(200).json({ 
-                    ok: true,
-                    message: 'Usuario eliminado con éxito' 
-                });
-            } catch (error) {
-                if (error.message === 'Usuario no encontrado') {
-                    return res.status(404).json({ 
-                        ok: false,
-                        message: 'Usuario no encontrado' 
-                    });
-                }
-                throw error;
+            const result = await AdminData.deleteUser(id);
+            if (!result) {
+                const error = new Error('Usuario no encontrado');
+                error.statusCode = 404;
+                return next(error);
             }
+            
+            res.status(200).json({ 
+                ok: true,
+                message: 'Usuario eliminado con éxito' 
+            });
         } catch (error) {
             console.error('Error al eliminar usuario:', error);
-            res.status(500).json({ 
-                ok: false,
-                message: 'Error al eliminar usuario', 
-                error: error.message 
-            });
+            next(error);
         }
     },
 
-    registerUser: async (req, res) => {
+    registerUser: async (req, res, next) => {
         try {
             const userData = req.body;
             const currentUserRole = req.user.role;
             
-            try {
-                const newUser = await AdminData.registerUser(userData, currentUserRole);
-                res.status(201).json({ 
-                    ok: true,
-                    message: 'Usuario registrado con éxito', 
-                    userId: newUser._id 
-                });
-            } catch (error) {
-                if (error.message === 'Solo un administrador puede crear otros administradores.') {
-                    return res.status(403).json({ 
-                        ok: false,
-                        message: 'Solo un administrador puede crear otros administradores.' 
-                    });
-                }
-                if (error.message === 'El usuario ya existe') {
-                    return res.status(400).json({ 
-                        ok: false,
-                        message: 'El usuario ya existe' 
-                    });
-                }
-                throw error;
+            if (userData.role === 'admin' && currentUserRole !== 'admin') {
+                const error = new Error('Solo un administrador puede crear otros administradores.');
+                error.statusCode = 403;
+                return next(error);
             }
+
+            const newUser = await AdminData.registerUser(userData, currentUserRole);
+            res.status(201).json({ 
+                ok: true,
+                message: 'Usuario registrado con éxito', 
+                userId: newUser._id 
+            });
         } catch (error) {
             console.error('Error al registrar usuario:', error);
-            res.status(500).json({ 
-                ok: false,
-                message: 'Error al registrar usuario', 
-                error: error.message 
-            });
+            if (error.message === 'El usuario ya existe') {
+                error.statusCode = 400;
+            }
+            next(error);
         }
     },
 
     /**
      * Actualizar un usuario existente
      */
-    updateUser: async (req, res) => {
+    updateUser: async (req, res, next) => {
         try {
             const { id } = req.params;
             const updateData = req.body;
@@ -97,18 +74,16 @@ const AdminController = {
 
             // Validación básica de datos requeridos
             if (!id) {
-                return res.status(400).json({
-                    ok: false,
-                    message: 'ID de usuario es requerido'
-                });
+                const error = new Error('ID de usuario es requerido');
+                error.statusCode = 400;
+                return next(error);
             }
 
             // Validación de datos de actualización
             if (Object.keys(updateData).length === 0) {
-                return res.status(400).json({
-                    ok: false,
-                    message: 'Se requieren datos para actualizar'
-                });
+                const error = new Error('Se requieren datos para actualizar');
+                error.statusCode = 400;
+                return next(error);
             }
 
             // Delegar la lógica de negocio a AdminData
@@ -122,34 +97,20 @@ const AdminController = {
         } catch (error) {
             console.error('Error al actualizar usuario:', error);
             
-            // Manejar errores específicos
             if (error.message === 'Usuario no encontrado') {
-                return res.status(404).json({
-                    ok: false,
-                    message: error.message
-                });
+                error.statusCode = 404;
+            } else if (error.message === 'Solo un administrador puede asignar el rol de administrador') {
+                error.statusCode = 403;
             }
             
-            if (error.message === 'Solo un administrador puede asignar el rol de administrador') {
-                return res.status(403).json({
-                    ok: false,
-                    message: error.message
-                });
-            }
-
-            // Error genérico
-            res.status(500).json({
-                ok: false,
-                message: 'Error al actualizar usuario',
-                error: error.message
-            });
+            next(error);
         }
     },
 
     /**
      * Cambiar el rol de un usuario
      */
-    changeUserRole: async (req, res) => {
+    changeUserRole: async (req, res, next) => {
         try {
             const { id } = req.params;
             const { role } = req.body;
@@ -157,17 +118,15 @@ const AdminController = {
 
             // Validación básica
             if (!id) {
-                return res.status(400).json({
-                    ok: false,
-                    message: 'ID de usuario es requerido'
-                });
+                const error = new Error('ID de usuario es requerido');
+                error.statusCode = 400;
+                return next(error);
             }
 
             if (!role) {
-                return res.status(400).json({
-                    ok: false,
-                    message: 'El nuevo rol es requerido'
-                });
+                const error = new Error('El nuevo rol es requerido');
+                error.statusCode = 400;
+                return next(error);
             }
 
             // Delegar la lógica de negocio a AdminData
@@ -181,35 +140,16 @@ const AdminController = {
         } catch (error) {
             console.error('Error al cambiar rol de usuario:', error);
             
-            // Manejar errores específicos
             if (error.message === 'Usuario no encontrado') {
-                return res.status(404).json({
-                    ok: false,
-                    message: error.message
-                });
+                error.statusCode = 404;
+            } else if (error.message === 'Solo un administrador puede cambiar roles de usuario' ||
+                      error.message === 'No se puede quitar el rol de administrador al último administrador del sistema') {
+                error.statusCode = 403;
+            } else if (error.message === 'Rol inválido. Los roles válidos son: user, admin') {
+                error.statusCode = 400;
             }
             
-            if (error.message === 'Solo un administrador puede cambiar roles de usuario' ||
-                error.message === 'No se puede quitar el rol de administrador al último administrador del sistema') {
-                return res.status(403).json({
-                    ok: false,
-                    message: error.message
-                });
-            }
-
-            if (error.message === 'Rol inválido. Los roles válidos son: user, admin') {
-                return res.status(400).json({
-                    ok: false,
-                    message: error.message
-                });
-            }
-
-            // Error genérico
-            res.status(500).json({
-                ok: false,
-                message: 'Error al cambiar rol de usuario',
-                error: error.message
-            });
+            next(error);
         }
     },
 
@@ -298,6 +238,65 @@ const AdminController = {
                 message: 'Error al confirmar la orden',
                 error: error.message
             });
+        }
+    },
+
+    // Obtener estadísticas del sistema
+    getSystemStats: async (req, res, next) => {
+        try {
+            const stats = await AdminData.getSystemStats();
+            res.status(200).json({
+                ok: true,
+                stats
+            });
+        } catch (error) {
+            console.error('Error al obtener estadísticas del sistema:', error);
+            next(error);
+        }
+    },
+
+    // Obtener logs del sistema
+    getSystemLogs: async (req, res, next) => {
+        try {
+            const { page = 1, limit = 50, level } = req.query;
+            
+            if (page < 1 || limit < 1) {
+                const error = new Error('Parámetros de paginación inválidos');
+                error.statusCode = 400;
+                return next(error);
+            }
+
+            const logs = await AdminData.getSystemLogs(page, limit, level);
+            res.status(200).json({
+                ok: true,
+                logs
+            });
+        } catch (error) {
+            console.error('Error al obtener logs del sistema:', error);
+            next(error);
+        }
+    },
+
+    // Limpiar logs antiguos
+    cleanOldLogs: async (req, res, next) => {
+        try {
+            const { days } = req.body;
+
+            if (!days || days < 1) {
+                const error = new Error('Se requiere especificar un número válido de días');
+                error.statusCode = 400;
+                return next(error);
+            }
+
+            const result = await AdminData.cleanOldLogs(days);
+            res.status(200).json({
+                ok: true,
+                message: `Se eliminaron ${result.deletedCount} logs antiguos`,
+                result
+            });
+        } catch (error) {
+            console.error('Error al limpiar logs antiguos:', error);
+            next(error);
         }
     }
 };

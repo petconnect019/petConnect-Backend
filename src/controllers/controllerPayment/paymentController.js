@@ -4,14 +4,16 @@ const Order = require('../../models/OrderModel');
 
 class PaymentController {
     // Crear un nuevo pago
-    async createPayment(req, res) {
+    async createPayment(req, res, next) {
         try {
             const { orderId, amount, paymentMethod } = req.body;
             
             // Verificar que la orden existe
             const order = await Order.findById(orderId);
             if (!order) {
-                return res.status(404).json({ message: 'Orden no encontrada' });
+                const error = new Error('Orden no encontrada');
+                error.statusCode = 404;
+                return next(error);
             }
 
             // Crear el nuevo pago
@@ -31,12 +33,12 @@ class PaymentController {
             });
         } catch (error) {
             console.error('Error al crear el pago:', error);
-            res.status(500).json({ message: 'Error al procesar el pago' });
+            next(error);
         }
     }
 
     // Obtener pagos por orden
-    async getPaymentByOrderId(req, res) {
+    async getPaymentByOrderId(req, res, next) {
         try {
             const { orderId } = req.params;
             
@@ -47,27 +49,28 @@ class PaymentController {
             res.json(payments);
         } catch (error) {
             console.error('Error al obtener los pagos:', error);
-            res.status(500).json({ message: 'Error al obtener los pagos' });
+            next(error);
         }
     }
 
     // Actualizar estado del pago
-    async updatePaymentStatus(req, res) {
+    async updatePaymentStatus(req, res, next) {
         try {
             const { paymentId } = req.params;
             const { status } = req.body;
 
             const validStatus = ['pending', 'completed', 'failed', 'refunded'];
             if (!validStatus.includes(status)) {
-                return res.status(400).json({ 
-                    message: 'Estado de pago inválido',
-                    validStatus
-                });
+                const error = new Error('Estado de pago inválido');
+                error.statusCode = 400;
+                return next(error);
             }
 
             const payment = await Payment.findById(paymentId);
             if (!payment) {
-                return res.status(404).json({ message: 'Pago no encontrado' });
+                const error = new Error('Pago no encontrado');
+                error.statusCode = 404;
+                return next(error);
             }
 
             payment.status = status;
@@ -79,21 +82,19 @@ class PaymentController {
             });
         } catch (error) {
             console.error('Error al actualizar el estado del pago:', error);
-            res.status(500).json({ message: 'Error al actualizar el estado del pago' });
+            next(error);
         }
     }
 
     // Endpoint para manejar la confirmación del pago de ePayco
-    async handlePaymentConfirmation(req, res) {
+    async handlePaymentConfirmation(req, res, next) {
         try {
             const result = await this.processPaymentConfirmation(req.body);
             res.status(200).json(result);
         } catch (error) {
             console.error('Error al procesar confirmación de pago:', error);
-            res.status(200).json({
-                success: false,
-                error: error.message
-            });
+            error.statusCode = 400;
+            next(error);
         }
     }
     
@@ -109,7 +110,9 @@ class PaymentController {
 
             // Validar que tengamos la información necesaria
             if (!paymentInfo.x_ref_payco || !paymentInfo.x_transaction_id || !paymentInfo.x_extra1) {
-                throw new Error('Información de pago incompleta');
+                const error = new Error('Información de pago incompleta');
+                error.statusCode = 400;
+                throw error;
             }
 
             // Buscar el pago existente
@@ -118,7 +121,9 @@ class PaymentController {
             });
 
             if (!payment) {
-                throw new Error(`Pago no encontrado con referencia: ${paymentInfo.x_ref_payco}`);
+                const error = new Error(`Pago no encontrado con referencia: ${paymentInfo.x_ref_payco}`);
+                error.statusCode = 404;
+                throw error;
             }
 
             // Mapear el estado de ePayco a nuestro estado interno

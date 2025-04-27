@@ -3,45 +3,56 @@ const EpaycoService = require('../../services/epaycoService');
 const mongoose = require('mongoose');
 
 class OrderController {
-    async createOrder(req, res) {
+    async createOrder(req, res, next) {
         try {
             console.log('Iniciando creación de orden con datos:', JSON.stringify(req.body, null, 2));
             
             // Validar que el usuario esté autenticado
             if (!req.user || !req.user.id) {
-                throw new Error('Usuario no autenticado');
+                const error = new Error('Usuario no autenticado');
+                error.statusCode = 401;
+                return next(error);
             }
-            console.log('Valor de req.user.id:', req.user.id);
 
             // Validar datos requeridos
             const requiredFields = ['quantity', 'customer', 'shipping'];
             const missingFields = requiredFields.filter(field => !req.body[field]);
             if (missingFields.length) {
-                throw new Error(`Campos requeridos faltantes: ${missingFields.join(', ')}`);
+                const error = new Error(`Campos requeridos faltantes: ${missingFields.join(', ')}`);
+                error.statusCode = 400;
+                return next(error);
             }
 
             // Validar datos del cliente
             const customerFields = ['name', 'email', 'phone'];
             const missingCustomerFields = customerFields.filter(field => !req.body.customer[field]);
             if (missingCustomerFields.length) {
-                throw new Error(`Campos del cliente faltantes: ${missingCustomerFields.join(', ')}`);
+                const error = new Error(`Campos del cliente faltantes: ${missingCustomerFields.join(', ')}`);
+                error.statusCode = 400;
+                return next(error);
             }
 
             // Validar email
             const emailRegex = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i;
             if (!emailRegex.test(req.body.customer.email)) {
-                throw new Error('Email inválido');
+                const error = new Error('Email inválido');
+                error.statusCode = 400;
+                return next(error);
             }
 
             // Validar teléfono
             const phoneRegex = /^[0-9]{10}$/;
             if (!phoneRegex.test(req.body.customer.phone)) {
-                throw new Error('Teléfono inválido (debe tener 10 dígitos)');
+                const error = new Error('Teléfono inválido (debe tener 10 dígitos)');
+                error.statusCode = 400;
+                return next(error);
             }
 
             // Validar cantidad
             if (req.body.quantity < 1 || req.body.quantity > 10) {
-                throw new Error('Cantidad inválida (debe estar entre 1 y 10)');
+                const error = new Error('Cantidad inválida (debe estar entre 1 y 10)');
+                error.statusCode = 400;
+                return next(error);
             }
 
             // Calcular el monto total
@@ -79,14 +90,11 @@ class OrderController {
             });
         } catch (error) {
             console.error('Error al crear orden:', error);
-            res.status(error.message.includes('requerido') || error.message.includes('inválido') ? 400 : 500).json({
-                success: false,
-                error: error.message
-            });
+            next(error);
         }
     }
 
-    async confirmOrder(req, res) {
+    async confirmOrder(req, res, next) {
         try {
             const orderId = req.params.orderId;
             const { paymentData } = req.body;
@@ -95,18 +103,24 @@ class OrderController {
 
             // Validar que exista el token de pago
             if (!paymentData?.token) {
-                throw new Error('Token de pago es requerido');
+                const error = new Error('Token de pago es requerido');
+                error.statusCode = 400;
+                return next(error);
             }
 
             // Obtener la orden
             const order = await orderData.getOrderById(orderId);
             
             if (!order) {
-                throw new Error('Orden no encontrada');
+                const error = new Error('Orden no encontrada');
+                error.statusCode = 404;
+                return next(error);
             }
 
             if (order.status !== 'pending') {
-                throw new Error('La orden ya ha sido procesada');
+                const error = new Error('La orden ya ha sido procesada');
+                error.statusCode = 400;
+                return next(error);
             }
 
             // Preparar datos para ePayco
@@ -132,28 +146,31 @@ class OrderController {
                     qrCodes: result.qrCodes
                 });
             } else {
-                throw new Error('Error al procesar el pago');
+                const error = new Error('Error al procesar el pago');
+                error.statusCode = 400;
+                return next(error);
             }
         } catch (error) {
             console.error('Error al confirmar orden:', error);
-            res.status(error.message.includes('no encontrada') ? 404 : 500).json({
-                success: false,
-                error: error.message
-            });
+            next(error);
         }
     }
 
-    async getOrderById(req, res) {
+    async getOrderById(req, res, next) {
         try {
             const order = await orderData.getOrderById(req.params.orderId);
             
             if (!order) {
-                throw new Error('Orden no encontrada');
+                const error = new Error('Orden no encontrada');
+                error.statusCode = 404;
+                return next(error);
             }
 
             // Verificar que el usuario tenga acceso a la orden
             if (order.userId.toString() !== req.user.id) {
-                throw new Error('No tienes permiso para ver esta orden');
+                const error = new Error('No tienes permiso para ver esta orden');
+                error.statusCode = 403;
+                return next(error);
             }
 
             console.log(`Orden ${req.params.orderId} obtenida exitosamente`);
@@ -164,14 +181,11 @@ class OrderController {
             });
         } catch (error) {
             console.error('Error al obtener orden:', error);
-            res.status(error.message.includes('no encontrada') ? 404 : 500).json({ 
-                success: false, 
-                error: error.message 
-            });
+            next(error);
         }
     }
 
-    async getUserOrders(req, res) {
+    async getUserOrders(req, res, next) {
         try {
             const orders = await orderData.getUserOrders(req.user.id);
             console.log(`Obtenidas ${orders.length} órdenes para el usuario ${req.user.id}`);
@@ -182,17 +196,14 @@ class OrderController {
             });
         } catch (error) {
             console.error('Error al obtener órdenes del usuario:', error);
-            res.status(500).json({ 
-                success: false, 
-                error: error.message 
-            });
+            next(error);
         }
     }
 
     /**
      * Redirige al usuario a la factura de ePayco
      */
-    async downloadInvoice(req, res) {
+    async downloadInvoice(req, res, next) {
         try {
             const { orderId } = req.params;
             const userId = req.user.id;
@@ -201,33 +212,31 @@ class OrderController {
             const order = await orderData.getOrderById(orderId);
             
             if (!order) {
-                throw new Error('Orden no encontrada');
+                const error = new Error('Orden no encontrada');
+                error.statusCode = 404;
+                return next(error);
             }
 
             // Verificar que el usuario tenga acceso a la orden
             if (order.userId.toString() !== userId) {
-                throw new Error('No tienes permiso para ver esta factura');
+                const error = new Error('No tienes permiso para acceder a esta factura');
+                error.statusCode = 403;
+                return next(error);
             }
 
-            // Verificar que la orden esté completada
-            if (order.status !== 'completed' || order.paymentStatus !== 'COMPLETED') {
-                throw new Error('La orden debe estar completada y pagada para ver la factura');
+            // Obtener la URL de la factura de ePayco
+            const invoiceUrl = await EpaycoService.getInvoiceUrl(order.epaycoTransactionId);
+            
+            if (!invoiceUrl) {
+                const error = new Error('No se pudo obtener la factura');
+                error.statusCode = 404;
+                return next(error);
             }
 
-            // Verificar que exista la referencia de ePayco
-            if (!order.epaycoRef) {
-                throw new Error('No se encontró la referencia de pago');
-            }
-
-           
-
+            res.redirect(invoiceUrl);
         } catch (error) {
-            console.error('Error al redirigir a la factura:', error);
-            const statusCode = error.message.includes('no encontrada') ? 404 : 500;
-            res.status(statusCode).json({
-                success: false,
-                error: error.message
-            });
+            console.error('Error al descargar factura:', error);
+            next(error);
         }
     }
 }

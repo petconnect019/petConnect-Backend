@@ -1,10 +1,11 @@
 class HealthController {
-    async checkHealth(req, res) {
+    async checkHealth(req, res, next) {
         try {
             // Respuesta mínima y eficiente
             res.status(200).json({ status: 'ok' });
         } catch (error) {
-            res.status(500).json({ status: 'error' });
+            console.error('Error en health check:', error);
+            next(error);
         }
     }
 }

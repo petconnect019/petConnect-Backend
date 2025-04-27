@@ -5,7 +5,7 @@ const PetData = require('../../data/petData');
 const QRData = require('../../data/qrData');
 
 const PetController = {
-    createPet: async (req, res) => {
+    createPet: async (req, res, next) => {
         try {
             const userId = req.user.id;
             const petData = { ...req.body, owner: userId };
@@ -24,11 +24,11 @@ const PetController = {
             });
         } catch (error) {
             console.error('Error al crear mascota:', error);
-            res.status(500).json({ ok: false, message: 'Error al crear la mascota', error: error.message });
+            next(error);
         }
     },
 
-    getAllPets: async (req, res) => {
+    getAllPets: async (req, res, next) => {
         try {
             const { page = 1, limit = 10, species, gender, status, city } = req.query;
             const filters = { species, gender, status, city };
@@ -41,24 +41,19 @@ const PetController = {
             });
         } catch (error) {
             console.error('Error al obtener mascotas:', error);
-            res.status(500).json({
-                ok: false,
-                message: 'Error al obtener mascotas',
-                error: error.message
-            });
+            next(error);
         }
     },
 
-    getPetById: async (req, res) => {
+    getPetById: async (req, res, next) => {
         try {
             const petId = req.params.id;
             const pet = await PetData.getPetById(petId);
 
             if (!pet) {
-                return res.status(404).json({
-                    ok: false,
-                    message: 'Mascota no encontrada'
-                });
+                const error = new Error('Mascota no encontrada');
+                error.statusCode = 404;
+                return next(error);
             }
             
             res.status(200).json({
@@ -67,15 +62,11 @@ const PetController = {
             });
         } catch (error) {
             console.error('Error al obtener mascota:', error);
-            res.status(500).json({
-                ok: false,
-                message: 'Error al obtener mascota',
-                error: error.message
-            });
+            next(error);
         }
     },
 
-    updatePet: async (req, res) => {
+    updatePet: async (req, res, next) => {
         try {
             const petId = req.params.id;
             const userId = req.user.id;
@@ -85,17 +76,15 @@ const PetController = {
             const pet = await PetData.getPetById(petId);
             
             if (!pet) {
-                return res.status(404).json({
-                    ok: false,
-                    message: 'Mascota no encontrada'
-                });
+                const error = new Error('Mascota no encontrada');
+                error.statusCode = 404;
+                return next(error);
             }
             
             if (pet.owner._id.toString() !== userId && req.user.role !== 'admin') {
-                return res.status(403).json({
-                    ok: false,
-                    message: 'No tienes permiso para actualizar esta mascota'
-                });
+                const error = new Error('No tienes permiso para actualizar esta mascota');
+                error.statusCode = 403;
+                return next(error);
             }
             
             const photos = req.files || [];
@@ -108,15 +97,11 @@ const PetController = {
             });
         } catch (error) {
             console.error('Error al actualizar mascota:', error);
-            res.status(500).json({
-                ok: false,
-                message: 'Error al actualizar la mascota',
-                error: error.message
-            });
+            next(error);
         }
     },
 
-    deletePet: async (req, res) => {
+    deletePet: async (req, res, next) => {
         try {
             const petId = req.params.id;
             const userId = req.user.id;
@@ -125,17 +110,15 @@ const PetController = {
             const pet = await PetData.getPetById(petId);
 
             if (!pet) {
-                return res.status(404).json({
-                    ok: false,
-                    message: 'Mascota no encontrada'
-                });
+                const error = new Error('Mascota no encontrada');
+                error.statusCode = 404;
+                return next(error);
             }
             
             if (pet.owner._id.toString() !== userId && req.user.role !== 'admin') {
-                return res.status(403).json({
-                    ok: false,
-                    message: 'No tienes permiso para eliminar esta mascota'
-                });
+                const error = new Error('No tienes permiso para eliminar esta mascota');
+                error.statusCode = 403;
+                return next(error);
             }
             
             await PetData.deletePet(petId);
@@ -146,15 +129,11 @@ const PetController = {
             });
         } catch (error) {
             console.error('Error al eliminar mascota:', error);
-            res.status(500).json({
-                ok: false,
-                message: 'Error al eliminar la mascota',
-                error: error.message
-            });
+            next(error);
         }
     },
 
-    getPetsByOwner: async (req, res) => {
+    getPetsByOwner: async (req, res, next) => {
         try {
             const ownerId = req.user.id;
             const pets = await PetData.getPetsByOwner(ownerId);
@@ -165,16 +144,11 @@ const PetController = {
             });
         } catch (error) {
             console.error('Error al obtener mascotas del usuario:', error);
-            res.status(500).json({
-                ok: false,
-                message: 'Error al obtener mascotas del usuario',
-                error: error.message
-            });
+            next(error);
         }
     },
 
-
-    updatePetLocation: async (req, res) => {
+    updatePetLocation: async (req, res, next) => {
         try {
             const petId = req.params.id;
             const userId = req.user.id;
@@ -184,33 +158,27 @@ const PetController = {
             const pet = await PetData.getPetById(petId);
             
             if (!pet) {
-                return res.status(404).json({
-                    ok: false,
-                    message: 'Mascota no encontrada'
-                });
+                const error = new Error('Mascota no encontrada');
+                error.statusCode = 404;
+                return next(error);
             }
             
             if (pet.owner._id.toString() !== userId && req.user.role !== 'admin') {
-                return res.status(403).json({
-                    ok: false,
-                    message: 'No tienes permiso para actualizar esta mascota'
-                });
+                const error = new Error('No tienes permiso para actualizar esta mascota');
+                error.statusCode = 403;
+                return next(error);
             }
             
             const updatedPet = await PetData.updatePetLocation(petId, locationData);
             
             res.status(200).json({
                 ok: true,
-                message: 'Ubicación actualizada exitosamente',
+                message: 'Ubicación de la mascota actualizada exitosamente',
                 pet: updatedPet
             });
         } catch (error) {
-            console.error('Error al actualizar ubicación:', error);
-            res.status(500).json({
-                ok: false,
-                message: 'Error al actualizar la ubicación',
-                error: error.message
-            });
+            console.error('Error al actualizar ubicación de la mascota:', error);
+            next(error);
         }
     },
 

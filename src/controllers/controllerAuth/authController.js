@@ -11,7 +11,7 @@ const AuthData = require('../../data/authData');
 
 
 const AuthController = {
-    registerUser: async (req, res) => {
+    registerUser: async (req, res, next) => {
         try {
             const { email, password } = req.body;
 
@@ -20,114 +20,85 @@ const AuthController = {
             const passwordValidation = AuthData.validatePassword(password);
             
             if (!emailValidation.isValid) {
-                return res.status(400).json({
-                    ok: false,
-                    message: emailValidation.error,
-                    errors: { email: emailValidation.error }
-                });
+                const error = new Error(emailValidation.error);
+                error.statusCode = 400;
+                return next(error);
             }
             
             if (!passwordValidation.isValid) {
-                return res.status(400).json({
-                    ok: false,
-                    message: passwordValidation.error,
-                    errors: { password: passwordValidation.error }
-                });
+                const error = new Error(passwordValidation.error);
+                error.statusCode = 400;
+                return next(error);
             }
 
             const userData = { ...req.body };
 
-            try {
-                const { user, isNewUser } = await AuthData.registerUser(userData);
-                const { accessToken, userResponse } = await handleAuthenticationSuccess(req, res, user);
-                
-                return res.status(201).json({
-                    ok: true,
-                    message: 'Usuario registrado exitosamente',
-                    accessToken,
-                    user: userResponse,
-                    isNewUser
-                });
-            } catch (error) {
-                if (error.message === 'El usuario ya existe') {
-                    return res.status(400).json({ 
-                        ok: false,
-                        message: 'El usuario ya existe' 
-                    });
-                }
-                throw error;
-            }
+            const { user, isNewUser } = await AuthData.registerUser(userData);
+            const { accessToken, userResponse } = await handleAuthenticationSuccess(req, res, user);
+            
+            return res.status(201).json({
+                ok: true,
+                message: 'Usuario registrado exitosamente',
+                accessToken,
+                user: userResponse,
+                isNewUser
+            });
         } catch (error) {
             console.error('Error en registro:', error);
-            return res.status(500).json({ 
-                ok: false,
-                message: 'Error al registrar usuario',
-                errors: { server: 'Error interno del servidor' }
-            });
+            if (error.message === 'El usuario ya existe') {
+                error.statusCode = 400;
+            }
+            next(error);
         }
     },
 
 
-    loginUser: async (req, res) => {
+    loginUser: async (req, res, next) => {
         try {
             const { email, password } = req.body;
             const emailValidation = AuthData.validateEmail(email);
             const passwordValidation = AuthData.validatePassword(password);
             
             if (!emailValidation.isValid) {
-                return res.status(400).json({
-                    ok: false,
-                    message: emailValidation.error,
-                    errors: { email: emailValidation.error }
-                });
+                const error = new Error(emailValidation.error);
+                error.statusCode = 400;
+                return next(error);
             }            
             if (!passwordValidation.isValid) {
-                return res.status(400).json({
-                    ok: false,
-                    message: passwordValidation.error,
-                    errors: { password: passwordValidation.error }
-                });
+                const error = new Error(passwordValidation.error);
+                error.statusCode = 400;
+                return next(error);
             }
-            try {
-                const { user, hasPets, isNewUser } = await AuthData.loginUser(email, password);
-                const { accessToken } = await handleAuthenticationSuccess(req, res, user);
 
-                return res.status(200).json({
-                    ok: true,
-                    accessToken,
-                    user,
-                    hasPets,
-                    isNewUser
-                });
-            } catch (error) {
-                if (error.message === 'Credenciales inválidas') {
-                    return res.status(400).json({
-                        ok: false,
-                        message: 'Credenciales inválidas'
-                    });
-                }
-                throw error;
-            }
+            const { user, hasPets, isNewUser } = await AuthData.loginUser(email, password);
+            const { accessToken } = await handleAuthenticationSuccess(req, res, user);
+
+            return res.status(200).json({
+                ok: true,
+                accessToken,
+                user,
+                hasPets,
+                isNewUser
+            });
         } catch (error) {
             console.error('Error en login:', error);
-            return res.status(500).json({
-                ok: false,
-                message: 'Error en el servidor'
-            });
+            if (error.message === 'Credenciales inválidas') {
+                error.statusCode = 400;
+            }
+            next(error);
         }
     },
 
-    requestPasswordReset: async (req, res) => {
+    requestPasswordReset: async (req, res, next) => {
         try {
             const { email } = req.body;
     
             // Validar email
             const emailValidation = AuthData.validateEmail(email);
             if (!emailValidation.isValid) {
-                return res.status(400).json({
-                    ok: false,
-                    message: emailValidation.error
-                });
+                const error = new Error(emailValidation.error);
+                error.statusCode = 400;
+                return next(error);
             }
     
             const resetData = await AuthData.requestPasswordReset(email);
@@ -159,56 +130,45 @@ const AuthController = {
             });
         } catch (error) {
             console.error('Error al solicitar restablecimiento:', error);
-            res.status(500).json({ 
-                ok: false,
-                message: 'Error al procesar la solicitud' 
-            });
+            next(error);
         }
     },
     
-    resetPassword: async (req, res) => {
+    resetPassword: async (req, res, next) => {
         try {
             const { resetToken, newPassword } = req.body;
 
             if (!resetToken || !newPassword) {
-                return res.status(400).json({ 
-                    message: 'Token y nueva contraseña son requeridos' 
-                });
+                const error = new Error('Token y nueva contraseña son requeridos');
+                error.statusCode = 400;
+                return next(error);
             }
 
             // Validar contraseña
             if (newPassword.length < 6) {
-                return res.status(400).json({
-                    message: 'La contraseña debe tener al menos 6 caracteres'
-                });
+                const error = new Error('La contraseña debe tener al menos 6 caracteres');
+                error.statusCode = 400;
+                return next(error);
             }
 
             const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{6,}$/;
             if (!passwordRegex.test(newPassword)) {
-                return res.status(400).json({
-                    message: 'La contraseña debe contener al menos una letra mayúscula, una minúscula y un número'
-                });
+                const error = new Error('La contraseña debe contener al menos una letra mayúscula, una minúscula y un número');
+                error.statusCode = 400;
+                return next(error);
             }
 
-            try {
-                await AuthData.resetPassword(resetToken, newPassword);
-                
-                res.status(200).json({ 
-                    message: 'Contraseña restablecida con éxito' 
-                });
-            } catch (error) {
-                if (error.message === 'Token inválido o expirado') {
-                    return res.status(400).json({ 
-                        message: 'Token inválido o expirado' 
-                    });
-                }
-                throw error;
-            }
+            await AuthData.resetPassword(resetToken, newPassword);
+            
+            res.status(200).json({ 
+                message: 'Contraseña restablecida con éxito' 
+            });
         } catch (error) {
             console.error('Error al restablecer contraseña:', error);
-            res.status(500).json({ 
-                message: 'Error al restablecer la contraseña' 
-            });
+            if (error.message === 'Token inválido o expirado') {
+                error.statusCode = 400;
+            }
+            next(error);
         }
     },
     

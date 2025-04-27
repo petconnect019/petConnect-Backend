@@ -5,15 +5,14 @@
 const PetData = require('../../data/petData');
 
 const PhotoController = {
-    addPetPhotos: async (req, res) => {
+    addPetPhotos: async (req, res, next) => {
         try {
             const petId = req.params.id;
             
             if (!req.files || req.files.length === 0) {
-                return res.status(400).json({
-                    ok: false,
-                    message: 'No se han proporcionado imágenes'
-                });
+                const error = new Error('No se han proporcionado imágenes');
+                error.statusCode = 400;
+                return next(error);
             }
             const photoUrls = await PetData.addPetPhotos(petId, req.files);
     
@@ -25,15 +24,11 @@ const PhotoController = {
             
         } catch (error) {
             console.error('Error al añadir fotos:', error);
-            res.status(500).json({
-                ok: false,
-                message: 'Error al añadir fotos',
-                error: error.message
-            });
+            next(error);
         }
     },
 
-    deletePetPhoto: async (req, res) => {
+    deletePetPhoto: async (req, res, next) => {
         try {
             const petId = req.params.id;
             const photoUrl = decodeURIComponent(req.params.photoId);
@@ -46,15 +41,11 @@ const PhotoController = {
             });
         } catch (error) {
             console.error('Error al eliminar foto:', error);
-            res.status(500).json({
-                ok: false,
-                message: 'Error al eliminar la foto',
-                error: error.message
-            });
+            next(error);
         }
     },
 
-    downloadPetPhoto: async (req, res) => {
+    downloadPetPhoto: async (req, res, next) => {
         try {
             const photoId = req.params.photoId;
             
@@ -62,31 +53,25 @@ const PhotoController = {
             res.redirect(photoId);
         } catch (error) {
             console.error('Error al descargar foto:', error);
-            res.status(500).json({
-                ok: false,
-                message: 'Error al descargar la foto',
-                error: error.message
-            });
+            next(error);
         }
     },
 
-    downloadAllPhotos: async (req, res) => {
+    downloadAllPhotos: async (req, res, next) => {
         try {
             const petId = req.params.id;
             const pet = await PetData.getPetById(petId);
             
             if (!pet) {
-                return res.status(404).json({
-                    ok: false,
-                    message: 'Mascota no encontrada'
-                });
+                const error = new Error('Mascota no encontrada');
+                error.statusCode = 404;
+                return next(error);
             }
             
             if (!pet.photos || pet.photos.length === 0) {
-                return res.status(404).json({
-                    ok: false,
-                    message: 'La mascota no tiene fotos adicionales'
-                });
+                const error = new Error('La mascota no tiene fotos adicionales');
+                error.statusCode = 404;
+                return next(error);
             }
             
             res.status(200).json({
@@ -95,11 +80,7 @@ const PhotoController = {
             });
         } catch (error) {
             console.error('Error al descargar fotos:', error);
-            res.status(500).json({
-                ok: false,
-                message: 'Error al descargar las fotos',
-                error: error.message
-            });
+            next(error);
         }
     }
 };
