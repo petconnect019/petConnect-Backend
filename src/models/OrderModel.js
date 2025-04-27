@@ -76,9 +76,7 @@ const orderSchema = new mongoose.Schema({
         paymentMethod: String,
         last4: String
     }
-}, {
-    timestamps: true
-});
+}, {timestamps: true});
 
 // Índices para mejorar el rendimiento de las consultas
 orderSchema.index({ userId: 1 });
