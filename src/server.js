@@ -24,8 +24,7 @@ const server = http.createServer(app);
 const io = socketIo(server, {
     cors: {
         origin: [
-            process.env.FRONTEND_URL,
-            process.env.NGROK_FRONTEND_URL,
+            process.env.FRONTEND_URL
         ],
         methods: ['GET', 'POST'],
         credentials: true
@@ -33,9 +32,6 @@ const io = socketIo(server, {
 });
 const PORT = process.env.PORT || 5000;
 
-// Middlewares esenciales
-// Remover esta línea ya que está causando conflicto
-// app.use(express.json());
 
 // Middleware para manejar diferentes tipos de contenido
 app.use((req, res, next) => {
@@ -134,10 +130,6 @@ app.use('/api', routes);
 // Configuración de Socket.io
 socketService.initialize(io);
 
-// Conexión a MongoDB
-mongoose.connect(process.env.MONGODB_URI)
-    .then(() => console.log('Conectado a MongoDB'))
-    .catch(err => console.error('Error conectando a MongoDB:', err));
 
 // Ruta de estado del servidor prueba el backend en el navegador (localhost:5000)
 app.get('/', (_, res) => res.send('🚀 PetConnect Backend funcionando!'));

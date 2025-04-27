@@ -11,8 +11,7 @@ const setupAdminAccount = async () => {
 
             // Crear contraseña segura y hashearla
             const password = 'petConnect12345';
-            const salt = await bcrypt.genSalt(10);
-            const hashedPassword = await bcrypt.hash(password, salt);
+            const hashedPassword = await bcrypt.hash(password, 10);
             try {
                 // Crear usuario admin directamente sin usar el modelo
                 await UserModel.create({

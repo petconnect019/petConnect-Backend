@@ -55,8 +55,7 @@ const userSchema = new mongoose.Schema({
         type: String
     },
     country: {
-        type: String,
-        default: 'Colombia'
+        type: String
     },
     address: {
         type: String
