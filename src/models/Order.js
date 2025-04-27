@@ -1,6 +1,6 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
-const Payment = require('./Payment');
+
 
 const Order = sequelize.define('Order', {
     id: {
@@ -24,16 +24,4 @@ const Order = sequelize.define('Order', {
     timestamps: true,
     tableName: 'orders'
 });
-
-// Definir la relación con Payment
-Order.hasMany(Payment, {
-    foreignKey: 'order_id',
-    as: 'payments'
-});
-
-Payment.belongsTo(Order, {
-    foreignKey: 'order_id',
-    as: 'order'
-});
-
 module.exports = Order; 

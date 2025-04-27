@@ -1,5 +1,4 @@
 const orderRoutes = require('./routes/orderRoutes');
-const paymentRoutes = require('./routes/paymentRoutes');
 const cors = require('cors');
 
 // Rutas
@@ -7,7 +6,7 @@ app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/pets', require('./routes/petRoutes'));
 app.use('/api/qrs', require('./routes/qrRoutes'));
 app.use('/api/orders', orderRoutes);
-app.use('/api/payments', paymentRoutes);
+
 
 // Configuración CORS
 app.use(cors({

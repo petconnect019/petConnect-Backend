@@ -47,29 +47,15 @@ app.use((req, res, next) => {
 app.use(cookieParser());
 app.use(morgan('dev'));
 
-// Obtener los orígenes permitidos para CORS
-const getAllowedOrigins = () => {
-    const origins = [
-        'http://localhost:5175', 
-        'http://localhost:3000',
-        'https://pet-connect-front-nu.vercel.app',
-        'https://petconnect-backend-production.up.railway.app',
-        'https://pruebadesplieguebackend-production.up.railway.app',
-        'https://secure.epayco.co',
-        'https://epayco.co'
-    ];
-    
-    // Añadir URLs de ngrok si están definidas
-    if (process.env.NGROK_FRONTEND_URL) {
-        origins.push(process.env.NGROK_FRONTEND_URL);
-    }
-    
-    return origins;
-};
-
 // Configuración de CORS
+const origins = [
+  'http://localhost:3000',
+  'http://localhost:5173',
+  process.env.FRONTEND_URL
+].filter(Boolean);
+
 app.use(cors({
-    origin: getAllowedOrigins(),
+    origin: origins,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With', 'X-CSRF-Token'],
     exposedHeaders: ['Content-Range', 'X-Content-Range'],
@@ -83,7 +69,7 @@ app.use(cors({
 app.options('*', (req, res) => {
     // Obtener el origen de la solicitud
     const origin = req.headers.origin;
-    const allowedOrigins = getAllowedOrigins();
+    const allowedOrigins = origins;
     
     // Si el origen está en la lista de permitidos, establecerlo en la respuesta
     if (allowedOrigins.includes(origin)) {
@@ -142,9 +128,6 @@ const startServer = async () => {
         
         server.listen(PORT, () => {
             console.log(`✅ Servidor corriendo en el puerto http://localhost:${PORT}`);
-            if (process.env.NGROK_DOMAIN) {
-                console.log(`✅ Ngrok URL: https://${process.env.NGROK_DOMAIN}`);
-            }
         });
     } catch (error) {
         console.error('❌ Error al iniciar el servidor:', error);
