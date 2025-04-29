@@ -23,8 +23,8 @@ const petSchema = new mongoose.Schema({
     },
     status:{
         type: String,
-        enum:['Disponible','Perdido', 'Encontrado'],
-        default: 'Disponible'
+        enum:['Activo','Perdido'],
+        default: 'Activo'
     },
     breed: {
         type: String,
