@@ -50,7 +50,7 @@ app.use(morgan('dev'));
 // Configuración de CORS
 const origins = [
   'http://localhost:3000',
-  'http://localhost:5173',
+  'http://localhost:5175',
   process.env.FRONTEND_URL
 ].filter(Boolean);
 
