@@ -121,12 +121,17 @@ const PetData = {
                 throw new Error('Mascota no encontrada');
             }
             
-            // Actualizar los campos de la mascota
-            Object.keys(updateData).forEach(key => {
-                if (updateData[key] !== undefined) {
+              // Actualizar los campos de la mascota
+        Object.keys(updateData).forEach(key => {
+            if (updateData[key] !== undefined) {
+                // Manejar el caso de birthDate
+                if (key === 'birthDate' && updateData[key] === 'null') {
+                    pet[key] = null; // Asignar null si el valor es la cadena "null"
+                } else {
                     pet[key] = updateData[key];
                 }
-            });
+            }
+        });
             
             // Si hay nuevas fotos, procesarlas
             if (photos && photos.length > 0) {
