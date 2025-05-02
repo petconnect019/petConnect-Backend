@@ -131,18 +131,7 @@ src/
 - `POST /api/admin/orders/:orderId/confirm` - Confirmar orden y generar QRs (admin) ✅
 - `GET /api/orders/:orderId/invoice` - Descargar factura de una orden ❌falta
 - `GET /api/orders` - Listar todas las órdenes (admin) ❌falta
-- `PUT /api/orders/:orderId/status` - Actualizar estado de una orden (admin) ❌falta
 - `GET /api/orders/stats` - Estadísticas de órdenes (admin) ❌falta
-
-### Mensajes
-- `POST /api/messages/send` - Enviar mensaje al dueño de una mascota
-- `GET /api/messages/user` - Obtener mensajes recibidos
-- `GET /api/messages/sent` - Obtener mensajes enviados
-- `GET /api/messages/:messageId` - Obtener un mensaje específico
-- `PATCH /api/messages/:messageId/read` - Marcar mensaje como leído
-- `DELETE /api/messages/:messageId` - Eliminar un mensaje
-- `POST /api/messages/:messageId/reply` - Responder a un mensaje
-- `GET /api/messages/unread-count` - Obtener cantidad de mensajes no leídos
 
 ### Chat en Tiempo Real (WebSocket)
 - `POST /api/chat/pet/:petId/start` - Iniciar chat con el dueño de una mascota
@@ -175,7 +164,7 @@ src/
 
 
 ### Escaneo de QR y Comunicación
-- `GET /api/qr/scan/:qrId` - Escanear código QR (público, mejorado con información de perfil)
+- `GET /api/qr/scan/:qrId` - Escanear código QR (público, mejorado con información de perfil) 
 - `POST /api/messages/pet/:petId` - Enviar mensaje al dueño desde el perfil público (con o sin registro)
 - `GET /api/qr/:qrId/history` - Ver historial de escaneos de un QR
 - `DELETE /api/qr/:qrId`  Eliminar QR como Usuario
