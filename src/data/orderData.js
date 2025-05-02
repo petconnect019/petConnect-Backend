@@ -2,21 +2,68 @@ const OrderModel = require('../models/OrderModel');
 const QRModel = require('../models/QRModel');
 const qrData = require('./qrData');
 
+const validateOrderData = (orderInfo) => {
+    // Validar datos requeridos
+    const requiredFields = ['quantity', 'customer', 'shipping'];
+    const missingFields = requiredFields.filter(field => !orderInfo[field]);
+    if (missingFields.length) {
+        throw new Error(`Campos requeridos faltantes: ${missingFields.join(', ')}`);
+    }
+
+    // Validar datos del cliente
+    const customerFields = ['name', 'email', 'phone'];
+    const missingCustomerFields = customerFields.filter(field => !orderInfo.customer[field]);
+    if (missingCustomerFields.length) {
+        throw new Error(`Campos del cliente faltantes: ${missingCustomerFields.join(', ')}`);
+    }
+
+    // Validar email
+    const emailRegex = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i;
+    if (!emailRegex.test(orderInfo.customer.email)) {
+        throw new Error('Email inválido');
+    }
+
+    // Validar teléfono
+    const phoneRegex = /^[0-9]{10}$/;
+    if (!phoneRegex.test(orderInfo.customer.phone)) {
+        throw new Error('Teléfono inválido (debe tener 10 dígitos)');
+    }
+
+    // Validar cantidad
+    if (orderInfo.quantity < 1 || orderInfo.quantity > 10) {
+        throw new Error('Cantidad inválida (debe estar entre 1 y 10)');
+    }
+};
+
 const orderData = {
     createOrder: async function(orderInfo) {
         try {
-            const { quantity, shippingDetails, customerName, customerEmail, customerLastName, docNumber } = orderInfo;
+            // Validar los datos de la orden
+            validateOrderData(orderInfo);
 
-            // Validar datos básicos
-            if (!quantity || quantity < 1) {
-                throw new Error('La cantidad debe ser mayor a 0');
-            }
+            const unitPrice = 15000; // Precio unitario en COP
+            const totalAmount = orderInfo.quantity * unitPrice;
 
-            const unitPrice = 15000;
-            const totalAmount = quantity * unitPrice;
+            // Reestructurar los datos según el modelo
+            const orderToCreate = {
+                userId: orderInfo.userId,
+                quantity: orderInfo.quantity,
+                totalAmount: totalAmount,
+                status: 'pending',
+                paymentStatus: 'PENDING',
+                customerName: orderInfo.customer.name,
+                customerEmail: orderInfo.customer.email,
+                customerPhone: orderInfo.customer.phone,
+                shippingDetails: {
+                    address: orderInfo.shipping.address,
+                    city: orderInfo.shipping.city,
+                    state: orderInfo.shipping.state,
+                    country: orderInfo.shipping.country,
+                    postalCode: orderInfo.shipping.postalCode
+                }
+            };
 
-            // Crear orden
-            const order = new OrderModel(orderInfo);
+            const order = new OrderModel(orderToCreate);
             await order.save();
 
             return order;
@@ -179,6 +226,24 @@ const orderData = {
         } catch (error) {
             console.error(`Error al cancelar orden ${orderId}:`, error);
             throw error;
+        }
+    },
+
+    validatePaymentData: function(paymentData) {
+        if (!paymentData?.token) {
+            throw new Error('Token de pago es requerido');
+        }
+    },
+
+    validateOrderAccess: function(order, userId) {
+        if (order.userId.toString() !== userId) {
+            throw new Error('No tienes permiso para acceder a esta orden');
+        }
+    },
+
+    validateOrderStatus: function(order) {
+        if (order.status !== 'pending') {
+            throw new Error('La orden ya ha sido procesada');
         }
     }
 };
