@@ -11,7 +11,7 @@ const validateOrderData = (orderInfo) => {
     }
 
     // Validar datos del cliente
-    const customerFields = ['name', 'email', 'phone'];
+    const customerFields = ['name', 'email'];
     const missingCustomerFields = customerFields.filter(field => !orderInfo.customer[field]);
     if (missingCustomerFields.length) {
         throw new Error(`Campos del cliente faltantes: ${missingCustomerFields.join(', ')}`);
@@ -21,12 +21,6 @@ const validateOrderData = (orderInfo) => {
     const emailRegex = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i;
     if (!emailRegex.test(orderInfo.customer.email)) {
         throw new Error('Email inválido');
-    }
-
-    // Validar teléfono
-    const phoneRegex = /^[0-9]{12}$/;
-    if (!phoneRegex.test(orderInfo.customer.phone)) {
-        throw new Error('Teléfono inválido (debe tener 12 dígitos)');
     }
 
     // Validar cantidad
