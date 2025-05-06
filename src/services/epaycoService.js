@@ -35,7 +35,7 @@ class EpaycoService {
                 token_card: paymentInfo.token,
                 customer_id: paymentInfo.customerEmail,
                 doc_type: 'CC',
-                doc_number: paymentInfo.docNumber || '123456789',
+                doc_number: paymentInfo.docNumber,
                 name: paymentInfo.customerName,
                 last_name: paymentInfo.customerLastName || ' ',
                 email: paymentInfo.customerEmail,
