@@ -24,9 +24,9 @@ const validateOrderData = (orderInfo) => {
     }
 
     // Validar teléfono
-    const phoneRegex = /^[0-9]{10}$/;
+    const phoneRegex = /^[0-9]{12}$/;
     if (!phoneRegex.test(orderInfo.customer.phone)) {
-        throw new Error('Teléfono inválido (debe tener 10 dígitos)');
+        throw new Error('Teléfono inválido (debe tener 12 dígitos)');
     }
 
     // Validar cantidad
