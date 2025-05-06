@@ -111,19 +111,7 @@ const orderData = {
                     order: updatedOrder,
                     qrCodes: generatedQRs
                 };
-            } catch (error) {
-                console.error(`Error al generar QRs: ${error.message}`);
-                
-                // Intentar actualizar el estado de la orden sin generar QRs
-                const updatedOrder = await OrderModel.findByIdAndUpdate(
-                    order._id,
-                    {
-                        status: 'completed',
-                        paymentStatus: 'COMPLETED'
-                    },
-                    { new: true }
-                );
-                
+            } catch (error) {     
                 throw new Error(`Error al generar códigos QR: ${error.message}`);
             }
         } catch (error) {
