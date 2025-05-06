@@ -19,7 +19,7 @@ const tokenService = {
                 is_active: user.is_active
             },
             process.env.JWT_SECRET,
-            { expiresIn: '15m' } 
+            { expiresIn: '1h' } 
         );
 
         // Generar refresh token
