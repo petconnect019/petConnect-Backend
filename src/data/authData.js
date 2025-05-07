@@ -171,9 +171,20 @@ const AuthData = {
     changePassword: async (userId, currentPassword, newPassword) => {
         try {
             // Verificar que el usuario existe
-            const user = await UserModel.findById(userId);
+            const user = await UserModel.findById(userId).select('+password');
             if (!user) {
                 throw new Error('Usuario no encontrado');
+            }
+
+            // Verificar que la contraseña actual existe
+            if (!user.password) {
+                console.error('Usuario sin contraseña:', userId);
+                throw new Error('Error en la configuración de la cuenta');
+            }
+
+            // Verificar que la contraseña actual no está vacía
+            if (!currentPassword) {
+                throw new Error('La contraseña actual es requerida');
             }
 
             // Verificar la contraseña actual
@@ -191,6 +202,7 @@ const AuthData = {
 
             return true;
         } catch (error) {
+            console.error('Error en changePassword:', error);
             throw error;
         }
     },

@@ -181,7 +181,6 @@ src/
 - Límite de 10 solicitudes por minuto para endpoints públicos
 - Límite de 100 solicitudes por minuto para usuarios autenticados
 - Máximo 20 mascotas por usuario
-- Máximo 50 mensajes por día
 
 ## 🔒 Seguridad
 

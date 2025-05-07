@@ -177,6 +177,27 @@ const AuthController = {
             const userId = req.user.id;
             const { currentPassword, newPassword } = req.body;
 
+            // Validar que se proporcionaron ambas contraseñas
+            if (!currentPassword || !newPassword) {
+                return res.status(400).json({ 
+                    message: 'La contraseña actual y la nueva contraseña son requeridas' 
+                });
+            }
+
+            // Validar nueva contraseña
+            if (newPassword.length < 8) {
+                return res.status(400).json({ 
+                    message: 'La contraseña debe tener al menos 8 caracteres' 
+                });
+            }
+
+            const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+            if (!passwordRegex.test(newPassword)) {
+                return res.status(400).json({ 
+                    message: 'La contraseña debe contener al menos una letra mayúscula, una minúscula y un número' 
+                });
+            }
+
             try {
                 await AuthData.changePassword(userId, currentPassword, newPassword);
                 
@@ -184,6 +205,8 @@ const AuthController = {
                     message: 'Contraseña actualizada exitosamente' 
                 });
             } catch (error) {
+                console.error('Error específico al cambiar contraseña:', error);
+                
                 if (error.message === 'Usuario no encontrado') {
                     return res.status(404).json({ 
                         message: 'Usuario no encontrado' 
@@ -194,6 +217,17 @@ const AuthController = {
                         message: 'Contraseña actual incorrecta' 
                     });
                 }
+                if (error.message === 'Error en la configuración de la cuenta') {
+                    return res.status(500).json({ 
+                        message: 'Error en la configuración de la cuenta. Por favor, contacta al soporte.' 
+                    });
+                }
+                if (error.message === 'La contraseña actual es requerida') {
+                    return res.status(400).json({ 
+                        message: 'La contraseña actual es requerida' 
+                    });
+                }
+                
                 throw error;
             }
         } catch (error) {
