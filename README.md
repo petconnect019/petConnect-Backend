@@ -110,10 +110,9 @@ src/
 - `GET /api/pets/public/:petId` - Obtener perfil público de una mascota ✅
 
 ### Códigos QR
-- `POST /api/qr/generate` - Generar código QR (admin)
 - `POST /api/qr/generate-multiple` - Generar múltiples QRs ✅
+- `POST /api/qr/user/:userId` - Generar QR para un usuario específico (admin) ✅
 - `GET /api/qr/scan/:qrId` - Escanear código QR (público) ✅
-// crear validador de qr
 - `POST /api/qr/link` - Vincular QR a mascota ✅
 - `GET /api/qr/user` - Obtener QRs del usuario ✅
 - `DELETE /api/qr/:qrId` - Eliminar un QR ✅

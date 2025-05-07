@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const AdminController = require('../controllers/controllerrAdmin/adminController');
-const PetController = require('../controllers/ControllerPet/petController');
+const QRController = require('../controllers/controllerQR/qrController');
 const { verifyToken, isAdmin } = require('../middlewares/authMiddleware');
 
 // Todas las rutas de admin requieren autenticación y rol de admin
@@ -10,17 +10,10 @@ router.use(verifyToken, isAdmin);
 // Gestión de usuarios
 router.get('/users', AdminController.getAllUsers);
 router.delete('/users/:id', AdminController.deleteUser);
-router.post('/register', AdminController.registerUser);
 router.put('/users/:id', AdminController.updateUser);
 router.put('/users/:id/role', AdminController.changeUserRole);
-router.get('/status/users', AdminController.getUserStats);
 
-// Gestión de mascotas
-router.get('/pets', PetController.getAllPets);
-router.delete('/pets/:id', PetController.deletePet);
-router.put('/pets/:id', PetController.updatePet);
-
-// Gestión de órdenes
-router.post('/orders/:orderId/confirm', AdminController.confirmOrderAndGenerateQR);
+// Generar QR para usuario
+router.get('/users/:userId/qr', QRController.generateUserQR);
 
 module.exports = router; 

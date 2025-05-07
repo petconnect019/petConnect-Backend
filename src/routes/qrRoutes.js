@@ -17,6 +17,7 @@ router.delete('/:qrId', QRController.deleteQR);
 // Rutas para administradores
 router.use(isAdmin);
 router.post('/generate-multiple', QRController.generateMultipleQRs);
+router.post('/user/:userId', QRController.generateUserQR);
 router.get('/', QRController.getAllQRs);
 router.delete('/admin/:qrId', QRController.deactivateQR);
 

@@ -1,4 +1,8 @@
 const qrData = require('../../data/qrData');
+const QRCode = require('qrcode');
+const jwt = require('jsonwebtoken');
+const UserModel = require('../../models/UserModel');
+const mongoose = require('mongoose');
 
 const qrController = {
     generateMultipleQRs: async (req, res, next) => {
@@ -217,6 +221,58 @@ const qrController = {
             });
         } catch (error) {
             console.error('Error al obtener historial de QR:', error);
+            next(error);
+        }
+    },
+
+    /**
+     * Genera un código QR para un usuario (solo administradores)
+     * Este QR podrá ser vinculado a una mascota posteriormente
+     */
+    generateUserQR: async (req, res, next) => {
+        try {
+            // Verificar que el usuario es administrador
+            if (req.user.role !== 'admin') {
+                const error = new Error('Solo los administradores pueden generar códigos QR para usuarios');
+                error.statusCode = 403;
+                return next(error);
+            }
+
+            const { userId } = req.params;
+            
+            // Verificar que el usuario existe
+            const user = await UserModel.findById(userId);
+            if (!user) {
+                const error = new Error('Usuario no encontrado');
+                error.statusCode = 404;
+                return next(error);
+            }
+
+            // Generar un solo QR usando la función existente
+            const qrCodes = await qrData.generateMultipleQRs(userId, 1);
+            
+            if (!qrCodes || qrCodes.length === 0) {
+                const error = new Error('Error al generar el código QR');
+                error.statusCode = 500;
+                return next(error);
+            }
+
+            const qrCode = qrCodes[0];
+
+            res.status(200).json({
+                success: true,
+                message: 'Código QR generado exitosamente. Este QR puede ser vinculado a una mascota.',
+                data: {
+                    qrCode: qrCode.qrImage,
+                    qrId: qrCode._id,
+                    qrURL: qrCode.qrURL,
+                    userId: user._id,
+                    isLinked: qrCode.isLinked,
+                    isActive: qrCode.isActive
+                }
+            });
+        } catch (error) {
+            console.error('Error al generar código QR:', error);
             next(error);
         }
     }
