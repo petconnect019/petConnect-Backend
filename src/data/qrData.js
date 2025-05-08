@@ -18,7 +18,7 @@ const qrData = {
         
         for (let i = 0; i < count; i++) {
             try {
-                // Generar un ID único para el QR
+                // Generar un ID único para el QR (24 caracteres hexadecimales)
                 const qrId = crypto.randomBytes(12).toString('hex');
                 
                 // Crear el registro en la base de datos
