@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const QRCode = require('qrcode');
 const QRScanModel = require('../models/QRScanModel');
 const OrderModel = require('../models/OrderModel');
+const mongoose = require('mongoose');
 
 
 
@@ -139,60 +140,60 @@ const qrData = {
     
     /**
      * Vincular un QR a una mascota
-     * @param {string} qrId - ID del QR (ID de MongoDB)
+     * @param {string} qrId - ID del QR (puede ser el _id de MongoDB o el qrId)
      * @param {string} petId - ID de la mascota
      * @param {string} userId - ID del usuario
      * @param {string} userRole - Rol del usuario
      */
     linkQRToPet: async (qrId, petId, userId, userRole) => {
-        // Verificar si el QR existe - Buscar por _id si parece un ObjectId válido, o buscar por otro campo si no
-        let qr;
-        
-        // Verificar si el qrId parece un ObjectId (24 caracteres hex) o no
-        const isValidObjectId = /^[0-9a-fA-F]{24}$/.test(qrId);
-        
-        if (isValidObjectId) {
-            qr = await QRModel.findById(qrId);
-        } else {
-            // Buscar por qrId en lugar de qrCode (que no existe en el modelo)
-            qr = await QRModel.findOne({ qrId: qrId });
+        try {
+            // Primero intentar encontrar el QR por qrId
+            let qr = await QRModel.findOne({ qrId: qrId });
+            
+            // Si no se encuentra, intentar buscar por _id de MongoDB
+            if (!qr && mongoose.Types.ObjectId.isValid(qrId)) {
+                qr = await QRModel.findById(qrId);
+            }
+            
+            if (!qr || !qr.isActive) {
+                throw new Error('QR no encontrado o ha sido eliminado');
+            }
+            
+            // Verificar si el QR ya está vinculado
+            if (qr.isLinked) {
+                const petData = require('./petData');
+                const petProfile = await petData.getPublicProfile(qr.petId);
+                return {    
+                    isLinked: true,
+                    message: 'Hola me encontré a esta mascota',
+                    pet: petProfile
+                };
+            }
+            
+            // Verificar si la mascota existe
+            const pet = await PetModel.findById(petId);
+            
+            if (!pet) {
+                throw new Error('Mascota no encontrada');
+            }
+            
+            // Verificar si el usuario es dueño de la mascota
+            if (pet.owner.toString() !== userId && userRole !== 'admin') {
+                throw new Error('No tienes permiso para vincular este QR a esta mascota');
+            }
+            
+            // Actualizar el QR
+            const updatedQR = await QRModel.findByIdAndUpdate(
+                qr._id,
+                { petId, isLinked: true },
+                { new: true }
+            );
+            
+            return updatedQR;
+        } catch (error) {
+            console.error('Error al vincular QR:', error);
+            throw error;
         }
-        
-        if (!qr || !qr.isActive) {
-            throw new Error('QR no encontrado o ha sido eliminado');
-        }
-        
-        // Verificar si el QR ya está vinculado
-        if (qr.isLinked) {
-            const petData = require('./petData');
-            const petProfile = await petData.getPublicProfile(qr.petId);
-            return {    
-                isLinked: true,
-                message: 'Hola me encontré a esta mascota',
-                pet: petProfile
-            };
-        }
-        
-        // Verificar si la mascota existe
-        const pet = await PetModel.findById(petId);
-        
-        if (!pet) {
-            throw new Error('Mascota no encontrada');
-        }
-        
-        // Verificar si el usuario es dueño de la mascota
-        if (pet.owner.toString() !== userId && userRole !== 'admin') {
-            throw new Error('No tienes permiso para vincular este QR a esta mascota');
-        }
-        
-        // Actualizar el QR
-        const updatedQR = await QRModel.findByIdAndUpdate(
-            qr._id,
-            { petId, isLinked: true },
-            { new: true }
-        );
-        
-        return updatedQR;
     },
     
     /**

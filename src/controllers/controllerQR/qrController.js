@@ -58,27 +58,51 @@ const qrController = {
             const { qrId, petId } = req.body;
             const userId = req.user.id;
             const userRole = req.user.role;
+
+            if (!qrId || !petId) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Se requieren tanto el ID del QR como el ID de la mascota'
+                });
+            }
             
             const updatedQR = await qrData.linkQRToPet(qrId, petId, userId, userRole);
             
             res.json({
                 success: true,
+                message: 'QR vinculado exitosamente',
                 qr: updatedQR
             });
         } catch (error) {
             console.error('Error al vincular QR:', error);
             
             if (error.message === 'QR no encontrado o ha sido eliminado') {
-                error.statusCode = 404;
+                return res.status(404).json({
+                    success: false,
+                    message: error.message
+                });
             } else if (error.message === 'Este QR ya está vinculado a una mascota') {
-                error.statusCode = 400;
+                return res.status(400).json({
+                    success: false,
+                    message: error.message
+                });
             } else if (error.message === 'Mascota no encontrada') {
-                error.statusCode = 404;
+                return res.status(404).json({
+                    success: false,
+                    message: error.message
+                });
             } else if (error.message === 'No tienes permiso para vincular este QR a esta mascota') {
-                error.statusCode = 403;
+                return res.status(403).json({
+                    success: false,
+                    message: error.message
+                });
             }
             
-            next(error);
+            res.status(500).json({
+                success: false,
+                message: 'Error interno al vincular el QR',
+                error: error.message
+            });
         }
     },
     
