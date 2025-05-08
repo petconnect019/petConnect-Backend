@@ -20,6 +20,7 @@ const qrData = {
             try {
                 // Generar un ID único para el QR (24 caracteres hexadecimales)
                 const qrId = crypto.randomBytes(12).toString('hex');
+                console.log('ID generado:', qrId);
                 
                 // Crear el registro en la base de datos
                 const qrRecord = new QRModel({ 
@@ -29,9 +30,11 @@ const qrData = {
                     qrId 
                 });
                 await qrRecord.save();
+                console.log('QR guardado en DB con ID:', qrRecord.qrId);
                 
                 // Generar la URL para el código QR
-                const qrURL = `${process.env.FRONTEND_URL}/api/qr/scan/${qrId}`;
+                const qrURL = `${process.env.FRONTEND_URL}/qr/scan/${qrId}`;
+                console.log('URL generada:', qrURL);
                 
                 // Generar el código QR como una imagen en base64
                 const qrImage = await QRCode.toDataURL(qrURL);
@@ -147,8 +150,23 @@ const qrData = {
      */
     linkQRToPet: async (qrId, petId, userId, userRole) => {
         try {
-            // Primero intentar encontrar el QR por qrId
+            console.log('Intentando vincular QR. ID recibido:', qrId);
+            console.log('Longitud del ID:', qrId.length);
+            
+            // Asegurarnos de que el ID tenga el formato correcto
+            if (!qrId || qrId.length !== 24) {
+                throw new Error('ID de QR inválido - debe tener 24 caracteres');
+            }
+            
+            // Primero intentar encontrar el QR por qrId exacto
             let qr = await QRModel.findOne({ qrId: qrId });
+            console.log('Búsqueda por qrId exacto:', qr);
+            
+            if (!qr) {
+                // Si no se encuentra, intentar con el ID en minúsculas
+                qr = await QRModel.findOne({ qrId: qrId.toLowerCase() });
+                console.log('Búsqueda por qrId en minúsculas:', qr);
+            }
             
             // Si no se encuentra, intentar buscar por _id de MongoDB
             if (!qr && mongoose.Types.ObjectId.isValid(qrId)) {
