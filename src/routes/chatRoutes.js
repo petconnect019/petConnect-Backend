@@ -6,6 +6,15 @@ const { verifyToken } = require('../middlewares/authMiddleware');
 // Todas las rutas de chat requieren autenticación
 router.use(verifyToken);
 
+// Obtener todos los chats del usuario
+router.get('/', chatController.getUserChats);
+
+// Obtener mensajes de un chat
+router.get('/:chatId/messages', chatController.getChatMessages);
+
+// Enviar mensaje en un chat
+router.post('/:chatId/messages', chatController.sendMessage);
+
 // Iniciar chat con el dueño de una mascota
 router.post('/pet/:petId/start', chatController.startChatWithPetOwner);
 

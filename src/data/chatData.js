@@ -1,5 +1,6 @@
 const UserModel = require('../models/UserModel');
 const PetModel = require('../models/PetModel');
+const ChatModel = require('../models/ChatModel');
 const socketService = require('../services/socketService');
 
 const chatData = {
@@ -39,44 +40,72 @@ const chatData = {
       
       // Obtener la mascota y su dueño
       const pet = await PetModel.findById(petId).populate('owner', 'name email profilePicture');
-      
-      // Obtener información del usuario que inicia el chat
-      const user = await UserModel.findById(userId).select('name email profilePicture');
-      
-      // Crear objeto de chat (sin persistir en base de datos)
-      const chatInfo = {
-        petId,
-        petName: pet.name,
-        petOwner: {
-          id: pet.owner._id,
-          name: pet.owner.name,
-          email: pet.owner.email,
-          profilePicture: pet.owner.profilePicture
+      if (!pet) {
+        throw new Error('Mascota no encontrada');
+      }
+
+      // Verificar si ya existe un chat entre estos usuarios para esta mascota
+      const existingChat = await ChatModel.findOne({
+        petId: pet._id,
+        'owner.userId': pet.owner._id,
+        'participants.userId': userId
+      });
+
+      if (existingChat) {
+        return {
+          _id: existingChat._id,
+          petId: existingChat.petId,
+          petName: pet.name,
+          otherUser: {
+            _id: pet.owner._id,
+            name: pet.owner.name,
+            email: pet.owner.email,
+            profilePicture: pet.owner.profilePicture
+          }
+        };
+      }
+
+      // Crear nuevo chat
+      const newChat = new ChatModel({
+        petId: pet._id,
+        owner: {
+          userId: pet.owner._id,
+          lastRead: null
         },
-        initiator: {
-          id: user._id,
-          name: user.name,
-          email: user.email,
-          profilePicture: user.profilePicture
-        },
-        startedAt: new Date()
-      };
-      
+        participants: [{
+          userId: userId,
+          lastRead: null
+        }],
+        messages: [],
+        lastMessage: null
+      });
+
+      await newChat.save();
+
       // Notificar al dueño de la mascota si está conectado
       socketService.sendDirectMessage(pet.owner._id.toString(), 'chat_request', {
-        petId,
+        chatId: newChat._id,
+        petId: pet._id,
         petName: pet.name,
         from: {
-          id: user._id,
-          name: user.name,
-          email: user.email,
-          profilePicture: user.profilePicture
+          id: userId
         },
         timestamp: new Date()
       });
-      
-      return chatInfo;
+
+      return {
+        _id: newChat._id,
+        petId: newChat.petId,
+        petName: pet.name,
+        otherUser: {
+          _id: pet.owner._id,
+          name: pet.owner.name,
+          email: pet.owner.email,
+          profilePicture: pet.owner.profilePicture
+        }
+      };
     } catch (error) {
+      console.error('Error en startChatWithPetOwner:', error);
       throw error;
     }
   },
@@ -153,6 +182,64 @@ const chatData = {
       
       return messageInfo;
     } catch (error) {
+      throw error;
+    }
+  },
+
+  /**
+   * Obtiene todos los chats de un usuario
+   * @param {string} userId - ID del usuario
+   * @returns {Promise<Array>} Lista de chats del usuario
+   */
+  async getUserChats(userId) {
+    try {
+      // Buscar chats donde el usuario es participante
+      const chats = await ChatModel.find({
+        $or: [
+          { 'participants.userId': userId },
+          { 'owner.userId': userId }
+        ]
+      })
+      .sort({ updatedAt: -1 })
+      .populate('participants.userId', 'name email profilePicture')
+      .populate('owner.userId', 'name email profilePicture')
+      .populate('petId', 'name photos');
+
+      // Si no hay chats, retornar array vacío
+      if (!chats) {
+        return [];
+      }
+
+      return chats;
+    } catch (error) {
+      console.error('Error al obtener chats:', error);
+      return [];
+    }
+  },
+
+  /**
+   * Verifica si un usuario tiene acceso a un chat
+   * @param {string} userId - ID del usuario
+   * @param {string} chatId - ID del chat
+   */
+  async userHasAccessToChat(userId, chatId) {
+    try {
+      const chat = await ChatModel.findById(chatId);
+      if (!chat) {
+        throw new Error('Chat no encontrado');
+      }
+
+      // Verificar si el usuario es el dueño o un participante
+      const isOwner = chat.owner.userId.toString() === userId;
+      const isParticipant = chat.participants.some(p => p.userId.toString() === userId);
+
+      if (!isOwner && !isParticipant) {
+        throw new Error('No tienes permiso para acceder a este chat');
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error en userHasAccessToChat:', error);
       throw error;
     }
   }

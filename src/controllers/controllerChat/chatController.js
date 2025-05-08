@@ -1,5 +1,6 @@
 const chatData = require('../../data/chatData');
 const socketService = require('../../services/socketService');
+const ChatModel = require('../../models/ChatModel');
 
 const chatController = {
   // Obtener todos los chats del usuario
@@ -7,6 +8,15 @@ const chatController = {
     try {
       const userId = req.user.id;
       const chats = await chatData.getUserChats(userId);
+      
+      // Si no hay chats, devolvemos un array vacío
+      if (!chats) {
+        return res.json({
+          success: true,
+          chats: [],
+          message: 'No hay conversaciones disponibles'
+        });
+      }
       
       res.json({
         success: true,
@@ -16,39 +26,42 @@ const chatController = {
       console.error('Error al obtener chats del usuario:', error);
       res.status(500).json({
         success: false,
-        message: 'Error al obtener los chats',
+        message: 'Error interno del servidor',
         error: error.message
       });
     }
   },
   
   // Obtener mensajes de un chat
-  getChatMessages: async (req, res) => {
+  async getChatMessages(req, res) {
     try {
       const { chatId } = req.params;
       const userId = req.user.id;
-      
-      // Verificar que el usuario es participante del chat
-      const hasAccess = await chatData.userHasAccessToChat(userId, chatId);
-      if (!hasAccess) {
-        return res.status(403).json({
+
+      // Verificar acceso al chat
+      await chatData.userHasAccessToChat(userId, chatId);
+
+      // Obtener mensajes del chat
+      const messages = await ChatModel.findById(chatId)
+        .select('messages')
+        .populate('messages.sender', 'name profilePicture');
+
+      if (!messages) {
+        return res.status(404).json({
           success: false,
-          message: 'No tienes permiso para acceder a este chat'
+          message: 'Chat no encontrado'
         });
       }
-      
-      const messages = await chatData.getChatMessages(chatId);
-      
+
       res.json({
         success: true,
-        messages
+        messages: messages.messages || []
       });
     } catch (error) {
       console.error('Error al obtener mensajes del chat:', error);
-      res.status(500).json({
+      res.status(error.message.includes('permiso') ? 403 : 500).json({
         success: false,
-        message: 'Error al obtener los mensajes',
-        error: error.message
+        message: error.message
       });
     }
   },
@@ -155,6 +168,63 @@ const chatController = {
         success: false,
         message: 'Error al enviar el mensaje',
         error: error.message
+      });
+    }
+  },
+
+  async sendMessage(req, res) {
+    try {
+      const { chatId } = req.params;
+      const { content } = req.body;
+      const userId = req.user.id;
+
+      if (!content) {
+        return res.status(400).json({
+          success: false,
+          message: 'El contenido del mensaje es requerido'
+        });
+      }
+
+      // Verificar acceso al chat
+      await chatData.userHasAccessToChat(userId, chatId);
+
+      // Crear el nuevo mensaje
+      const newMessage = {
+        senderId: userId,
+        content,
+        timestamp: new Date()
+      };
+
+      // Agregar mensaje al chat y actualizar lastMessage
+      const chat = await ChatModel.findById(chatId);
+      chat.messages.push(newMessage);
+      chat.lastMessage = newMessage;
+
+      await chat.save();
+
+      // Notificar a los participantes del chat
+      const otherParticipants = [
+        chat.owner.userId.toString(),
+        ...chat.participants.map(p => p.userId.toString())
+      ].filter(id => id !== userId);
+
+      otherParticipants.forEach(participantId => {
+        socketService.sendDirectMessage(participantId, 'new_message', {
+          chatId,
+          message: newMessage
+        });
+      });
+
+      res.json({
+        success: true,
+        message: 'Mensaje enviado exitosamente',
+        data: newMessage
+      });
+    } catch (error) {
+      console.error('Error al enviar mensaje:', error);
+      res.status(error.message.includes('permiso') ? 403 : 500).json({
+        success: false,
+        message: error.message
       });
     }
   }
