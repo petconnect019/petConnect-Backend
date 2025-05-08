@@ -41,21 +41,34 @@ const chatController = {
       // Verificar acceso al chat
       await chatData.userHasAccessToChat(userId, chatId);
 
-      // Obtener mensajes del chat
-      const messages = await ChatModel.findById(chatId)
-        .select('messages')
-        .populate('messages.sender', 'name profilePicture');
+      // Obtener mensajes del chat con información del remitente
+      const chat = await ChatModel.findById(chatId)
+        .populate({
+          path: 'messages.senderId',
+          select: 'name profilePicture'
+        });
 
-      if (!messages) {
+      if (!chat) {
         return res.status(404).json({
           success: false,
           message: 'Chat no encontrado'
         });
       }
 
+      // Actualizar lastRead para el usuario actual
+      if (chat.owner.userId.toString() === userId) {
+        chat.owner.lastRead = new Date();
+      } else {
+        const participant = chat.participants.find(p => p.userId.toString() === userId);
+        if (participant) {
+          participant.lastRead = new Date();
+        }
+      }
+      await chat.save();
+
       res.json({
         success: true,
-        messages: messages.messages || []
+        messages: chat.messages
       });
     } catch (error) {
       console.error('Error al obtener mensajes del chat:', error);
@@ -192,7 +205,8 @@ const chatController = {
       const newMessage = {
         senderId: userId,
         content,
-        timestamp: new Date()
+        timestamp: new Date(),
+        read: false
       };
 
       // Agregar mensaje al chat y actualizar lastMessage
@@ -200,7 +214,17 @@ const chatController = {
       chat.messages.push(newMessage);
       chat.lastMessage = newMessage;
 
+      // Guardar el chat actualizado
       await chat.save();
+
+      // Obtener el mensaje con la información del remitente
+      const populatedChat = await ChatModel.findById(chatId)
+        .populate({
+          path: 'messages.senderId',
+          select: 'name profilePicture'
+        });
+
+      const sentMessage = populatedChat.messages[populatedChat.messages.length - 1];
 
       // Notificar a los participantes del chat
       const otherParticipants = [
@@ -211,14 +235,14 @@ const chatController = {
       otherParticipants.forEach(participantId => {
         socketService.sendDirectMessage(participantId, 'new_message', {
           chatId,
-          message: newMessage
+          message: sentMessage
         });
       });
 
       res.json({
         success: true,
         message: 'Mensaje enviado exitosamente',
-        data: newMessage
+        data: sentMessage
       });
     } catch (error) {
       console.error('Error al enviar mensaje:', error);
