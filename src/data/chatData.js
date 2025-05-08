@@ -44,6 +44,12 @@ const chatData = {
         throw new Error('Mascota no encontrada');
       }
 
+      // Obtener información del usuario que inicia el chat
+      const initiator = await UserModel.findById(userId).select('name email profilePicture');
+      if (!initiator) {
+        throw new Error('Usuario no encontrado');
+      }
+
       // Verificar si ya existe un chat entre estos usuarios para esta mascota
       const existingChat = await ChatModel.findOne({
         petId: pet._id,
@@ -87,8 +93,25 @@ const chatData = {
         chatId: newChat._id,
         petId: pet._id,
         petName: pet.name,
+        chat: {
+          _id: newChat._id,
+          petId: pet._id,
+          petName: pet.name,
+          otherUser: {
+            _id: initiator._id,
+            name: initiator.name,
+            email: initiator.email,
+            profilePicture: initiator.profilePicture
+          },
+          lastMessage: null,
+          createdAt: newChat.createdAt,
+          updatedAt: newChat.updatedAt
+        },
         from: {
-          id: userId
+          _id: initiator._id,
+          name: initiator.name,
+          email: initiator.email,
+          profilePicture: initiator.profilePicture
         },
         timestamp: new Date()
       });
@@ -193,24 +216,56 @@ const chatData = {
    */
   async getUserChats(userId) {
     try {
-      // Buscar chats donde el usuario es participante
+      // Buscar chats donde el usuario es participante o dueño
       const chats = await ChatModel.find({
         $or: [
           { 'participants.userId': userId },
           { 'owner.userId': userId }
         ]
       })
-      .sort({ updatedAt: -1 })
       .populate('participants.userId', 'name email profilePicture')
       .populate('owner.userId', 'name email profilePicture')
-      .populate('petId', 'name photos');
+      .populate('petId', 'name photos')
+      .sort({ updatedAt: -1 });
 
       // Si no hay chats, retornar array vacío
-      if (!chats) {
-        return [];
-      }
+      if (!chats) return [];
 
-      return chats;
+      // Formatear los chats para el frontend
+      return chats.map(chat => {
+        const isOwner = chat.owner.userId._id.toString() === userId;
+        const otherUser = isOwner 
+          ? chat.participants[0]?.userId 
+          : chat.owner.userId;
+
+        // Contar mensajes no leídos
+        const userLastRead = isOwner 
+          ? chat.owner.lastRead 
+          : chat.participants.find(p => p.userId._id.toString() === userId)?.lastRead;
+        
+        const unreadCount = userLastRead 
+          ? chat.messages.filter(msg => 
+              msg.timestamp > userLastRead && 
+              msg.senderId.toString() !== userId
+            ).length 
+          : chat.messages.length;
+
+        return {
+          _id: chat._id,
+          petId: chat.petId._id,
+          petName: chat.petId.name,
+          otherUser: {
+            _id: otherUser._id,
+            name: otherUser.name,
+            email: otherUser.email,
+            profilePicture: otherUser.profilePicture
+          },
+          lastMessage: chat.lastMessage,
+          unreadCount,
+          createdAt: chat.createdAt,
+          updatedAt: chat.updatedAt
+        };
+      });
     } catch (error) {
       console.error('Error al obtener chats:', error);
       return [];
