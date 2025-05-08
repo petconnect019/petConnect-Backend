@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const UserModel = require('../models/UserModel');
+const ChatModel = require('../models/ChatModel');
 
 let io;
 const connectedUsers = new Map();
@@ -55,6 +56,70 @@ const initialize = (socketIo) => {
         
         // Unirse a salas personales para recibir mensajes directos
         socket.join(`user:${socket.userId}`);
+
+        // Manejar unión a un chat específico
+        socket.on('join_chat', async ({ chatId }, callback) => {
+            try {
+                // Verificar acceso al chat
+                const chat = await ChatModel.findById(chatId)
+                    .populate({
+                        path: 'messages.senderId',
+                        select: 'name profilePicture'
+                    });
+
+                if (!chat) {
+                    return callback({ 
+                        success: false, 
+                        error: 'Chat no encontrado' 
+                    });
+                }
+
+                // Verificar si el usuario tiene acceso
+                const isOwner = chat.owner.userId.toString() === socket.userId;
+                const isParticipant = chat.participants.some(p => 
+                    p.userId.toString() === socket.userId
+                );
+
+                if (!isOwner && !isParticipant) {
+                    return callback({ 
+                        success: false, 
+                        error: 'No tienes acceso a este chat' 
+                    });
+                }
+
+                // Unirse a la sala del chat
+                socket.join(`chat:${chatId}`);
+                
+                // Actualizar lastRead
+                if (isOwner) {
+                    chat.owner.lastRead = new Date();
+                } else {
+                    const participant = chat.participants.find(p => 
+                        p.userId.toString() === socket.userId
+                    );
+                    if (participant) {
+                        participant.lastRead = new Date();
+                    }
+                }
+                await chat.save();
+
+                // Devolver mensajes
+                callback({
+                    success: true,
+                    messages: chat.messages
+                });
+            } catch (error) {
+                logger.error('Error al unirse al chat:', error);
+                callback({ 
+                    success: false, 
+                    error: 'Error al cargar mensajes' 
+                });
+            }
+        });
+
+        socket.on('leave_chat', ({ chatId }) => {
+            socket.leave(`chat:${chatId}`);
+        });
 
         // Implementar heartbeat
         const heartbeat = setInterval(() => {
