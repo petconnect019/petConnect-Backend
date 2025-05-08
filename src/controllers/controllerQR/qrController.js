@@ -55,7 +55,8 @@ const qrController = {
     
     linkQRToPet: async (req, res, next) => {
         try {
-            const { qrId, petId } = req.body;
+            const qrId = req.query.qrId;
+            const { petId } = req.body;
             const userId = req.user.id;
             const userRole = req.user.role;
 
