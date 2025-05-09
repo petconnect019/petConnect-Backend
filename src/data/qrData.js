@@ -32,8 +32,10 @@ const qrData = {
                 await qrRecord.save();
                 console.log('QR guardado en DB con ID:', qrRecord._id);
                 
-                // Generar la URL para el código QR
-                const qrURL = `${process.env.FRONTEND_URL}/public-pet-profile/${qrRecord._id}`;
+                // Generar la URL para el código QR basada en si está vinculado
+                const qrURL = qrRecord.isLinked && qrRecord.petId ? 
+                    `${process.env.FRONTEND_URL}/public-pet-profile/${qrRecord.petId}` :
+                    `${process.env.FRONTEND_URL}/qr-status/${qrRecord._id}`;
                 console.log('URL generada:', qrURL);
                 
                 // Generar el código QR como una imagen en base64
@@ -191,6 +193,14 @@ const qrData = {
                 { petId, isLinked: true },
                 { new: true }
             );
+
+            // Generar nueva URL con el ID de la mascota
+            const newQrURL = `${process.env.FRONTEND_URL}/public-pet-profile/${petId}`;
+            const newQrImage = await QRCode.toDataURL(newQrURL);
+
+            // Actualizar la imagen del QR
+            updatedQR.qrImage = newQrImage;
+            await updatedQR.save();
             
             return updatedQR;
         } catch (error) {
