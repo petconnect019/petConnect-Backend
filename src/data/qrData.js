@@ -19,21 +19,21 @@ const qrData = {
         for (let i = 0; i < count; i++) {
             try {
                 // Generar un ID único para el QR (24 caracteres hexadecimales)
-                const qrId = crypto.randomBytes(12).toString('hex');
-                console.log('ID generado:', qrId);
+                const _id = crypto.randomBytes(12).toString('hex');
+                console.log('ID generado:', _id);
                 
                 // Crear el registro en la base de datos
                 const qrRecord = new QRModel({ 
                     userId,
                     isLinked: false,
                     isActive: true,
-                    qrId 
+                    _id 
                 });
                 await qrRecord.save();
-                console.log('QR guardado en DB con ID:', qrRecord.qrId);
+                console.log('QR guardado en DB con ID:', qrRecord._id);
                 
                 // Generar la URL para el código QR
-                const qrURL = `${process.env.FRONTEND_URL}/api/qr/scan/${qrId}`;
+                const qrURL = `${process.env.FRONTEND_URL}/public-pet-profile/${qrRecord._id}`;
                 console.log('URL generada:', qrURL);
                 
                 // Generar el código QR como una imagen en base64
