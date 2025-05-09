@@ -31,10 +31,10 @@ const qrController = {
     
     scanQR: async (req, res, next) => {
         try {
-            const { qrId } = req.params;
+            const {_id} = req.params;
             const scannerUserId = req.user ? req.user.id : null;
             
-            const qrInfo = await qrData.scanQR(qrId, scannerUserId);
+            const qrInfo = await qrData.scanQR(_id, scannerUserId);
             
             res.json({
                 success: true,
@@ -55,19 +55,19 @@ const qrController = {
     
     linkQRToPet: async (req, res, next) => {
         try {
-            const qrId = req.query._id;
+            const _id = req.query._id;
             const { petId } = req.body;
             const userId = req.user.id;
             const userRole = req.user.role;
 
-            if (!qrId || !petId) {
+            if (!_id || !petId) {
                 return res.status(400).json({
                     success: false,
                     message: 'Se requieren tanto el ID del QR como el ID de la mascota'
                 });
             }
             
-            const updatedQR = await qrData.linkQRToPet(qrId, petId, userId, userRole);
+            const updatedQR = await qrData.linkQRToPet(_id, petId, userId, userRole);
             
             res.json({
                 success: true,
@@ -151,11 +151,11 @@ const qrController = {
     
     deactivateQR: async (req, res, next) => {
         try {
-            const { qrId } = req.params;
+            const { _id } = req.params;
             const userId = req.user.id;
             const userRole = req.user.role;
             
-            const updatedQR = await qrData.deactivateQR(qrId, userId, userRole);
+            const updatedQR = await qrData.deactivateQR(_id, userId, userRole);
             
             res.json({
                 success: true,
@@ -177,10 +177,10 @@ const qrController = {
     
     deleteQR: async (req, res, next) => {
         try {
-            const { qrId } = req.params;
+            const { _id } = req.params;
             const userId = req.user.id;
             
-            const result = await qrData.deleteQR(qrId, userId);
+            const result = await qrData.deleteQR(_id, userId);
             
             res.json({
                 success: true,
@@ -203,8 +203,8 @@ const qrController = {
     
     getQRById: async (req, res, next) => {
         try {
-            const qrId = req.params.id;
-            const qrDetails = await qrData.getQRById(qrId);
+            const _id = req.params.id;
+            const qrDetails = await qrData.getQRById(_id);
             
             return res.status(200).json({
                 success: true,
@@ -289,7 +289,7 @@ const qrController = {
                 message: 'Código QR generado exitosamente. Este QR puede ser vinculado a una mascota.',
                 data: {
                     qrCode: qrCode.qrImage,
-                    qrId: qrCode._id,
+                    _id: qrCode._id,
                     qrURL: qrCode.qrURL,
                     userId: user._id,
                     isLinked: qrCode.isLinked,

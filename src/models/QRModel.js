@@ -6,11 +6,6 @@ const qrSchema = new mongoose.Schema({
         ref: 'Order',
         required: false
     },
-    qrId: {
-        type: String,
-        required: false,
-        unique: true
-    },
     dataUrl: {
         type: String,
         required: false

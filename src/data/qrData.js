@@ -44,7 +44,6 @@ const qrData = {
                 
                 qrCodes.push({
                     _id: qrRecord._id,
-                    qrId,
                     qrImage,
                     qrURL,
                     isLinked: false,
@@ -64,20 +63,20 @@ const qrData = {
     
     /**
      * Obtener información de un QR escaneado
-     * @param {string} qrId - ID del QR
+     * @param {string} _id - ID del QR
      * @param {string} scannerUserId - ID del usuario que escanea el QR
      */
-    scanQR: async (qrId, scannerUserId = null, locationData = null) => {
+    scanQR: async (_id, scannerUserId = null, locationData = null) => {
         // Verificar si el qrId parece un ObjectId (24 caracteres hex) o no
-        const isValidObjectId = /^[0-9a-fA-F]{24}$/.test(qrId);
+        const isValidObjectId = /^[0-9a-fA-F]{24}$/.test(_id);
         
         let qr;
         if (isValidObjectId) {
             // Buscar el QR por su ID de MongoDB
-            qr = await QRModel.findById(qrId);
+            qr = await QRModel.findById(_id);
         } else {
             // Buscar por qrId en lugar de qrCode (que no existe en el modelo)
-            qr = await QRModel.findOne({ qrId: qrId });
+            qr = await QRModel.findOne({ _id: _id });
         }
         
         if (!qr || !qr.isActive) {
@@ -87,7 +86,7 @@ const qrData = {
         try {
             // Registrar el escaneo - aseguramos que qrId sea un ObjectId
             const scanRecord = await QRScanModel.create({
-                qrId: qr._id, // Usamos el _id que es un ObjectId válido
+                _id: qr._id, // Usamos el _id que es un ObjectId válido
                 scannedBy: scannerUserId,
                 scanDate: new Date(),
                 location: locationData ? {
@@ -116,7 +115,7 @@ const qrData = {
                 };
             } else {
                 return {
-                    qrId: qr._id.toString(),
+                    _id: qr._id.toString(),
                     isLinked: false,
                     message: 'Este QR no está vinculado a ninguna mascota. Por favor, redirige a vincular una mascota.'  
                 };
@@ -129,34 +128,34 @@ const qrData = {
     
     /**
      * Vincular un QR a una mascota
-     * @param {string} qrId - ID del QR (puede ser el _id de MongoDB o el qrId)
+     * @param {string} _id - ID del QR (puede ser el _id de MongoDB o el qrId)
      * @param {string} petId - ID de la mascota
      * @param {string} userId - ID del usuario
      * @param {string} userRole - Rol del usuario
      */
-    linkQRToPet: async (qrId, petId, userId, userRole) => {
+        linkQRToPet: async (_id, petId, userId, userRole) => {
         try {
-            console.log('Intentando vincular QR. ID recibido:', qrId);
-            console.log('Longitud del ID:', qrId.length);
+            console.log('Intentando vincular QR. ID recibido:', _id);
+            console.log('Longitud del ID:', _id.length);
             
             // Asegurarnos de que el ID tenga el formato correcto
-            if (!qrId || qrId.length !== 24) {
+            if (!_id || _id.length !== 24) {
                 throw new Error('ID de QR inválido - debe tener 24 caracteres');
             }
             
             // Primero intentar encontrar el QR por qrId exacto
-            let qr = await QRModel.findOne({ qrId: qrId });
+            let qr = await QRModel.findOne({ _id: _id });
             console.log('Búsqueda por qrId exacto:', qr);
             
             if (!qr) {
                 // Si no se encuentra, intentar con el ID en minúsculas
-                qr = await QRModel.findOne({ qrId: qrId.toLowerCase() });
+                qr = await QRModel.findOne({ _id: _id.toLowerCase() });
                 console.log('Búsqueda por qrId en minúsculas:', qr);
             }
             
             // Si no se encuentra, intentar buscar por _id de MongoDB
-            if (!qr && mongoose.Types.ObjectId.isValid(qrId)) {
-                qr = await QRModel.findById(qrId);
+            if (!qr && mongoose.Types.ObjectId.isValid(_id)) {
+                qr = await QRModel.findById(_id);
             }
             
             if (!qr || !qr.isActive) {
