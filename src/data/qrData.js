@@ -33,7 +33,7 @@ const qrData = {
                 console.log('QR guardado en DB con ID:', qrRecord.qrId);
                 
                 // Generar la URL para el código QR
-                const qrURL = `${process.env.FRONTEND_URL}/qr/scan/${qrId}`;
+                const qrURL = `${process.env.FRONTEND_URL}/api/qr/scan/${qrId}`;
                 console.log('URL generada:', qrURL);
                 
                 // Generar el código QR como una imagen en base64
