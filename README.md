@@ -132,18 +132,14 @@ src/
 - `GET /api/orders` - Listar todas las órdenes (admin) ❌falta
 - `GET /api/orders/stats` - Estadísticas de órdenes (admin) ❌falta
 
-### Chat en Tiempo Real (WebSocket)
+### Chat
+- `GET /api/chat/` - Obtener todos los chats del usuario
+- `GET /api/chat/:chatId/messages` - Obtener mensajes de un chat específico
+- `POST /api/chat/:chatId/messages` - Enviar mensaje en un chat existente
 - `POST /api/chat/pet/:petId/start` - Iniciar chat con el dueño de una mascota
 - `POST /api/chat/pet/:petId/message` - Enviar mensaje al dueño de una mascota
 - `POST /api/chat/finder/:finderId/pet/:petId/message` - Enviar mensaje a un usuario que encontró una mascota
 - Conexión WebSocket: `ws://localhost:5000/socket.io/?EIO=4&transport=websocket`
-- Eventos WebSocket:
-  - `send_direct_message` - Enviar mensaje directo
-  - `direct_message` - Recibir mensaje directo
-  - `pet_message` - Recibir mensaje sobre mascota
-  - `chat_request` - Recibir solicitud de chat
-  - `message_sent` - Confirmación de envío de mensaje
-  - `user_offline` - Notificación de usuario desconectado
 
 ### Notificaciones
 - `GET /api/notifications` - Obtener notificaciones del usuario
