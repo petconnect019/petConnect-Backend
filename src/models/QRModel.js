@@ -8,7 +8,7 @@ const qrSchema = new mongoose.Schema({
     },
     qrId: {
         type: String,
-        required: true,
+        required: false,
         unique: true
     },
     dataUrl: {
