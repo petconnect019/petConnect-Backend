@@ -111,7 +111,8 @@ const qrData = {
                     message: 'Hola Estoy perdido, me puedes ayudar a encontrar a mi dueño?',
                     pet: petProfile,
                     scanId: scanRecord._id,
-                    requiresLocation: !locationData
+                    requiresLocation: !locationData,
+                    isLinked: true
                 };
             } else {
                 return {
@@ -122,22 +123,7 @@ const qrData = {
             }
         } catch (error) {
             console.error('Error al registrar escaneo de QR:', error);
-            // Si hay error al registrar el escaneo, aún así devolvemos la info del QR
-            if (qr.isLinked && qr.petId) {
-                const petData = require('./petData');
-                const petProfile = await petData.getPublicProfile(qr.petId);
-                return {
-                    message: 'Hola Estoy perdido, me puedes ayudar a encontrar a mi dueño?',
-                    pet: petProfile,
-                    requiresLocation: !locationData
-                };
-            } else {
-                return {
-                    qrId: qr._id.toString(),
-                    isLinked: false,
-                    message: 'Este QR no está vinculado a ninguna mascota. Por favor, redirige a vincular una mascota.'  
-                };
-            }
+            throw error;
         }
     },
     
