@@ -44,10 +44,6 @@ const orderSchema = new mongoose.Schema({
         type: String,
         required: false
     },
-    transactionId: {
-        type: String,
-        default: null
-    },
     shippingDetails: {
         address: String,
         city: String,

@@ -32,7 +32,7 @@ const qrData = {
                 await qrRecord.save();
                 console.log('QR guardado en DB con ID:', qrRecord._id);
                 
-                // Generar la URL para el código QR - siempre usando el _id del QR
+             
                 const qrURL = `${process.env.FRONTEND_URL}/public-pet-profile/${qrRecord._id}`;
                 console.log('URL generada:', qrURL);
                 
