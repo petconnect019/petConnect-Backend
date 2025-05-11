@@ -65,31 +65,38 @@ const PetController = {
             
             if (qr) {
                 if (qr.isLinked && qr.petId) {
-                    // If QR is linked to a pet, redirect to that pet's ID
-                    return res.status(200).json({
-                        ok: false,
-                        redirect: `/public-pet-profile/${qr.petId}`,
-                        message: 'Redirigiendo a la mascota vinculada'
-                    });
-                } else {
-                    // If QR exists but is not linked, indicate redirection to /my-pets
-                    return res.status(200).json({
-                        ok: false,
-                        redirect: '/my-pets',
-                        message: 'Este código QR no está vinculado a ninguna mascota'
-                    });
+                    // If QR is linked to a pet, get the pet data
+                    const linkedPet = await PetData.getPetById(qr.petId);
+                    if (linkedPet) {
+                        return res.status(200).json({
+                            ok: true,
+                            pet: linkedPet
+                        });
+                    }
                 }
+                
+                // If QR exists but is not linked or linked pet not found
+                return res.status(200).json({
+                    ok: false,
+                    redirect: '/my-pets',
+                    message: 'Este código QR no está vinculado a ninguna mascota'
+                });
             }
             
             // If neither pet nor QR is found, return error
-            const error = new Error('No se encontró la mascota ni el código QR');
-            error.statusCode = 404;
-            error.redirect = '/';
-            return next(error);
+            return res.status(404).json({
+                ok: false,
+                redirect: '/',
+                message: 'No se encontró la mascota ni el código QR'
+            });
             
         } catch (error) {
             console.error('Error al obtener mascota:', error);
-            next(error);
+            return res.status(500).json({
+                ok: false,
+                redirect: '/',
+                message: 'Error al procesar la solicitud'
+            });
         }
     },
 
