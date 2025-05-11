@@ -61,7 +61,7 @@ const PetController = {
             
             // If pet not found, try to find a QR with this ID
             const QRModel = require('../../models/QRModel');
-            const qr = await QRModel.findOne({ qrId: id });
+            const qr = await QRModel.findOne({ _id: id });
             
             if (qr) {
                 if (qr.isLinked && qr.petId) {
