@@ -65,17 +65,15 @@ const PetController = {
             
             if (qr) {
                 if (qr.isLinked && qr.petId) {
-                    // If QR is linked to a pet, get the pet data
-                    const linkedPet = await PetData.getPetById(qr.petId);
-                    if (linkedPet) {
-                        return res.status(200).json({
-                            ok: true,
-                            pet: linkedPet
-                        });
-                    }
+                    // If QR is linked to a pet, redirect to that pet's public profile
+                    return res.status(200).json({
+                        ok: false,
+                        redirect: `/public-pet-profile/${qr.petId}`,
+                        message: 'Redirigiendo a la mascota vinculada'
+                    });
                 }
                 
-                // If QR exists but is not linked or linked pet not found
+                // If QR exists but is not linked
                 return res.status(200).json({
                     ok: false,
                     redirect: '/my-pets',
