@@ -49,7 +49,7 @@ const PetController = {
         try {
             const id = req.params.id;
             
-            // Primero intenta obtener la mascota directamente
+            // First try to get the pet directly
             const pet = await PetData.getPetById(id);
             
             if (pet) {
@@ -59,39 +59,42 @@ const PetController = {
                 });
             }
             
-            // Si no se encuentra la mascota, intenta encontrar un QR con este ID
+            // If pet not found, try to find a QR with this ID
             const QRModel = require('../../models/QRModel');
-            const qr = await QRModel.findOne({ qrId: id });
+            const qr = await QRModel.findOne({ _id: id });
             
             if (qr) {
                 if (qr.isLinked && qr.petId) {
-                    // Si el QR está vinculado a una mascota, devuelve esa mascota
-                    const linkedPet = await PetData.getPetById(qr.petId);
-                    if (linkedPet) {
-                        return res.status(200).json({
-                            ok: true,
-                            pet: linkedPet
-                        });
-                    }
-                } else {
-                    // Si el QR existe pero no está vinculado, indica redirección a /my-pets
+                    // If QR is linked to a pet, redirect to that pet's public profile
                     return res.status(200).json({
                         ok: false,
-                        redirect: '/my-pets',
-                        message: 'Este código QR no está vinculado a ninguna mascota'
+                        redirect: `/public-pet-profile/${qr.petId}`,
+                        message: 'Redirigiendo a la mascota vinculada'
                     });
                 }
+                
+                // If QR exists but is not linked
+                return res.status(200).json({
+                    ok: false,
+                    redirect: '/my-pets',
+                    message: 'Este código QR no está vinculado a ninguna mascota'
+                });
             }
             
-            // Si no se encuentra ni la mascota ni el QR, devuelve error
-            const error = new Error('No se encontró la mascota ni el código QR');
-            error.statusCode = 404;
-            error.redirect = '/';
-            return next(error);
+            // If neither pet nor QR is found, return error
+            return res.status(404).json({
+                ok: false,
+                redirect: '/',
+                message: 'No se encontró la mascota ni el código QR'
+            });
             
         } catch (error) {
             console.error('Error al obtener mascota:', error);
-            next(error);
+            return res.status(500).json({
+                ok: false,
+                redirect: '/',
+                message: 'Error al procesar la solicitud'
+            });
         }
     },
 
