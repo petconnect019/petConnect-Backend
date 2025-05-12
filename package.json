@@ -14,7 +14,7 @@
   "dependencies": {
     "@hapi/boom": "^10.0.1",
     "@prisma/client": "^5.4.2",
-    "axios": "^1.8.4",
+    "axios": "^1.6.7",
     "bcrypt": "^5.1.1",
     "cloudinary": "^2.5.1",
     "connect-mongo": "^5.1.0",

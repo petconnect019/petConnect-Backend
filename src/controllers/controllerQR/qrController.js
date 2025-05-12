@@ -5,6 +5,40 @@ const UserModel = require('../../models/UserModel');
 const mongoose = require('mongoose');
 const QRModel = require('../../models/QRModel');
 const QRScanModel = require('../../models/QRScanModel');
+const axios = require('axios');
+
+// Función auxiliar para obtener detalles de ubicación usando OpenStreetMap Nominatim
+async function getLocationDetails(latitude, longitude) {
+    try {
+        // Esperar 1 segundo para respetar el límite de rate de Nominatim
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        const response = await axios.get(`https://nominatim.openstreetmap.org/reverse`, {
+            params: {
+                format: 'json',
+                lat: latitude,
+                lon: longitude,
+                'accept-language': 'es'
+            },
+            headers: {
+                'User-Agent': 'PetConnect/1.0' // Identificador requerido por Nominatim
+            }
+        });
+
+        if (response.data) {
+            const address = response.data.address;
+            return {
+                departamento: address.state || address.county || 'No disponible',
+                ciudad: address.city || address.town || address.village || address.municipality || 'No disponible',
+                direccion: response.data.display_name
+            };
+        }
+        return null;
+    } catch (error) {
+        console.error('Error al obtener detalles de ubicación:', error);
+        return null;
+    }
+}
 
 const qrController = {
     generateMultipleQRs: async (req, res, next) => {
@@ -35,7 +69,7 @@ const qrController = {
         try {
             const { qrId } = req.params;
             const scannerUserId = req.user ? req.user.id : null;
-            const { location } = req.body; // Esperar datos de ubicación en el body
+            const { location } = req.body;
             
             // Verificar si el QR existe
             const qr = await QRModel.findById(qrId).populate('petId');
@@ -46,6 +80,12 @@ const qrController = {
                 });
             }
 
+            // Si tenemos coordenadas, obtener detalles de ubicación
+            let locationDetails = null;
+            if (location?.latitude && location?.longitude) {
+                locationDetails = await getLocationDetails(location.latitude, location.longitude);
+            }
+
             // Crear registro de escaneo
             const scanRecord = new QRScanModel({
                 qrId: qr._id,
@@ -53,9 +93,9 @@ const qrController = {
                 location: {
                     latitude: location?.latitude,
                     longitude: location?.longitude,
-                    address: location?.address,
-                    departamento: location?.departamento,
-                    ciudad: location?.ciudad
+                    address: locationDetails?.direccion || location?.address,
+                    departamento: locationDetails?.departamento || location?.departamento,
+                    ciudad: locationDetails?.ciudad || location?.ciudad
                 }
             });
             await scanRecord.save();
