@@ -49,28 +49,34 @@ const PetController = {
         try {
             const id = req.params.id;
             
-            // First try to get the pet directly
-            const pet = await PetData.getPetById(id);
+            // Check if the ID is a valid ObjectId
+            const isValidObjectId = mongoose.Types.ObjectId.isValid(id);
             
-            if (pet) {
-                return res.status(200).json({
-                    ok: true,
-                    pet
-                });
+            if (isValidObjectId) {
+                // If it's a valid ObjectId, try to find the pet first
+                const pet = await PetData.getPetById(id);
+                if (pet) {
+                    return res.status(200).json({
+                        ok: true,
+                        pet
+                    });
+                }
             }
             
-            // If pet not found, try to find a QR with this ID
+            // If pet not found or ID is not a valid ObjectId, try to find a QR
             const QRModel = require('../../models/QRModel');
             const qr = await QRModel.findOne({ _id: id });
             
             if (qr) {
                 if (qr.isLinked && qr.petId) {
-                    // If QR is linked to a pet, redirect to that pet's public profile
-                    return res.status(200).json({
-                        ok: false,
-                        redirect: `/public-pet-profile/${qr.petId}`,
-                        message: 'Redirigiendo a la mascota vinculada'
-                    });
+                    // If QR is linked to a pet, get the pet data directly
+                    const linkedPet = await PetData.getPetById(qr.petId);
+                    if (linkedPet) {
+                        return res.status(200).json({
+                            ok: true,
+                            pet: linkedPet
+                        });
+                    }
                 }
                 
                 // If QR exists but is not linked
