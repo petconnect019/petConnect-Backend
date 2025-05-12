@@ -86,7 +86,7 @@ const qrData = {
         try {
             // Registrar el escaneo - aseguramos que qrId sea un ObjectId
             const scanRecord = await QRScanModel.create({
-                _id: qr._id, // Usamos el _id que es un ObjectId válido
+                qrId: qr._id, 
                 scannedBy: scannerUserId,
                 scanDate: new Date(),
                 location: locationData ? {
