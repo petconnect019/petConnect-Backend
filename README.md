@@ -116,7 +116,7 @@ src/
 - `POST /api/qr/link` - Vincular QR a mascota ✅
 - `GET /api/qr/user` - Obtener QRs del usuario ✅
 - `DELETE /api/qr/:qrId` - Eliminar un QR ✅
-- `GET /api/qr/:qrId/history` - Ver historial de escaneos de un QR
+- `GET /api/qr/:qrId/history` - Ver historial de escaneos de un QR 
 - `GET /api/qr/stats` - Estadísticas de QRs (admin)
 
 ### Órdenes

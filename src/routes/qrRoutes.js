@@ -6,6 +6,9 @@ const { verifyToken, isAdmin, optionalAuth } = require('../middlewares/authMiddl
 // Rutas públicas
 router.get('/scan/:qrId', optionalAuth, QRController.scanQR);
 
+// Ruta para obtener historial de escaneos de un QR
+router.get('/:qrId/history', verifyToken, QRController.getQRHistory);
+
 // Middleware de autenticación para rutas protegidas
 router.use(verifyToken);
 
