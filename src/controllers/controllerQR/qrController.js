@@ -3,6 +3,8 @@ const QRCode = require('qrcode');
 const jwt = require('jsonwebtoken');
 const UserModel = require('../../models/UserModel');
 const mongoose = require('mongoose');
+const QRModel = require('../../models/QRModel');
+const QRScanModel = require('../../models/QRScanModel');
 
 const qrController = {
     generateMultipleQRs: async (req, res, next) => {
@@ -33,22 +35,58 @@ const qrController = {
         try {
             const { qrId } = req.params;
             const scannerUserId = req.user ? req.user.id : null;
+            const { location } = req.body; // Esperar datos de ubicación en el body
             
-            const qrInfo = await qrData.scanQR(qrId, scannerUserId);
-            
-            res.json({
-                success: true,
-                qr: qrInfo
+            // Verificar si el QR existe
+            const qr = await QRModel.findById(qrId).populate('petId');
+            if (!qr || !qr.isActive) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'QR no encontrado o ha sido eliminado'
+                });
+            }
+
+            // Crear registro de escaneo
+            const scanRecord = new QRScanModel({
+                qrId: qr._id,
+                scannedBy: scannerUserId,
+                location: {
+                    latitude: location?.latitude,
+                    longitude: location?.longitude,
+                    address: location?.address,
+                    departamento: location?.departamento,
+                    ciudad: location?.ciudad
+                }
             });
+            await scanRecord.save();
+
+            // Preparar respuesta
+            const response = {
+                success: true,
+                message: qr.isLinked ? 
+                    'Hola, ¿me ayudas a encontrar a mi dueño?' : 
+                    'Este QR no está vinculado a ninguna mascota',
+                isLinked: qr.isLinked,
+                scan: {
+                    fecha: scanRecord.formattedDate,
+                    hora: scanRecord.formattedTime,
+                    ubicacion: scanRecord.location
+                }
+            };
+
+            if (qr.isLinked && qr.petId) {
+                response.pet = {
+                    id: qr.petId._id,
+                    nombre: qr.petId.name,
+                    especie: qr.petId.species,
+                    raza: qr.petId.breed,
+                    foto: qr.petId.profilePicture
+                };
+            }
+
+            res.json(response);
         } catch (error) {
             console.error('Error al escanear QR:', error);
-            
-            if (error.message === 'QR no encontrado o ha sido eliminado') {
-                error.statusCode = 404;
-            } else if (error.message === 'Mascota no encontrada') {
-                error.statusCode = 404;
-            }
-            
             next(error);
         }
     },
@@ -237,12 +275,52 @@ const qrController = {
         try {
             const { qrId } = req.params;
             const userId = req.user.id;
-            const history = await qrData.getQRHistory(qrId, userId);
+            
+            // Obtener el QR y verificar permisos
+            const qr = await QRModel.findById(qrId).populate('petId');
+            if (!qr) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'QR no encontrado'
+                });
+            }
+
+            if (qr.userId.toString() !== userId) {
+                return res.status(403).json({
+                    success: false,
+                    message: 'No tienes permiso para ver el historial de este QR'
+                });
+            }
+
+            // Obtener el historial de escaneos
+            const history = await QRScanModel.find({ qrId: qr._id })
+                .sort({ scanDate: -1 })
+                .populate('scannedBy', 'name email');
+
+            // Formatear los datos para el frontend
+            const formattedHistory = history.map(scan => ({
+                mascotaDetectada: qr.petId ? qr.petId.name : 'No vinculada',
+                departamento: scan.location?.departamento || 'No disponible',
+                ciudad: scan.location?.ciudad || 'No disponible',
+                fecha: scan.formattedDate,
+                hora: scan.formattedTime,
+                ubicacion: {
+                    latitude: scan.location?.latitude,
+                    longitude: scan.location?.longitude,
+                    address: scan.location?.address
+                },
+                escaneadoPor: scan.scannedBy ? {
+                    id: scan.scannedBy._id,
+                    nombre: scan.scannedBy.name,
+                    email: scan.scannedBy.email
+                } : null
+            }));
             
             return res.status(200).json({
                 success: true,
                 message: `Se encontraron ${history.length} escaneos para este QR`,
-                history
+                petName: qr.petId ? qr.petId.name : null,
+                history: formattedHistory
             });
         } catch (error) {
             console.error('Error al obtener historial de QR:', error);

@@ -18,7 +18,9 @@ const qrScanSchema = new mongoose.Schema({
   location: {
     latitude: Number,
     longitude: Number,
-    address: String
+    address: String,
+    departamento: String,
+    ciudad: String
   }
 }, { 
   timestamps: true,
@@ -30,6 +32,19 @@ const qrScanSchema = new mongoose.Schema({
 // Índice para mejorar el rendimiento de consultas
 qrScanSchema.index({ qrId: 1 });
 qrScanSchema.index({ scanDate: -1 });
+
+// Virtual para formatear la fecha y hora
+qrScanSchema.virtual('formattedDate').get(function() {
+  return this.scanDate.toLocaleDateString('es-CO');
+});
+
+qrScanSchema.virtual('formattedTime').get(function() {
+  return this.scanDate.toLocaleTimeString('es-CO', { 
+    hour: '2-digit', 
+    minute: '2-digit',
+    hour12: true 
+  });
+});
 
 // Pre-validación para asegurar que qrId sea un ObjectId válido
 qrScanSchema.pre('validate', function(next) {
