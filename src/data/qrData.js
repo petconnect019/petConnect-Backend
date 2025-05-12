@@ -85,23 +85,6 @@ const qrData = {
         console.log('QR encontrado:', qr);
         
         try {
-            // Registrar el escaneo - aseguramos que qrId sea un ObjectId
-            const scanRecord = await QRScanModel.create({
-                qrId: qr._id, 
-                scannedBy: scannerUserId,
-                scanDate: new Date(),
-                location: locationData ? {
-                    latitude: locationData.latitude,
-                    longitude: locationData.longitude,
-                    address: locationData.address
-                } : null
-            });
-            
-            console.log('Registro de escaneo guardado:', scanRecord);
-            
-            const registroVerificado = await QRScanModel.findById(scanRecord._id);
-            console.log('Registro de escaneo verificado:', registroVerificado);
-            
             // Verificar si el QR está vinculado a una mascota
             if (qr.isLinked && qr.petId) {
                 const petData = require('./petData');
@@ -115,14 +98,12 @@ const qrData = {
                 return {
                     message: 'Hola Estoy perdido, me puedes ayudar a encontrar a mi dueño?',
                     pet: petProfile,
-                    scanId: scanRecord._id,
                     requiresLocation: !locationData,
                     isLinked: true
                 };
             } else {
                 return {
                     _id: qr._id.toString(),
-                    scanId: scanRecord._id,
                     isLinked: false,
                     message: 'Este QR no está vinculado a ninguna mascota. Por favor, redirige a vincular una mascota.'
                 };
@@ -142,9 +123,7 @@ const qrData = {
      */
         linkQRToPet: async (_id, petId, userId, userRole) => {
         try {
-            console.log('Intentando vincular QR. ID recibido:', _id);
-            console.log('Longitud del ID:', _id.length);
-            
+            console.log('Intentando vincular QR. ID recibido:', _id);          
             // Asegurarnos de que el ID tenga el formato correcto
             if (!_id || _id.length !== 24) {
                 throw new Error('ID de QR inválido - debe tener 24 caracteres');
