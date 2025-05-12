@@ -31,10 +31,10 @@ const qrController = {
     
     scanQR: async (req, res, next) => {
         try {
-            const {_id} = req.params;
+            const { qrId } = req.params;
             const scannerUserId = req.user ? req.user.id : null;
             
-            const qrInfo = await qrData.scanQR(_id, scannerUserId);
+            const qrInfo = await qrData.scanQR(qrId, scannerUserId);
             
             res.json({
                 success: true,

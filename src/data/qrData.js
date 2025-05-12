@@ -82,6 +82,7 @@ const qrData = {
         if (!qr || !qr.isActive) {
             throw new Error('QR no encontrado o ha sido eliminado');
         }
+        console.log('QR encontrado:', qr);
         
         try {
             // Registrar el escaneo - aseguramos que qrId sea un ObjectId
@@ -95,6 +96,11 @@ const qrData = {
                     address: locationData.address
                 } : null
             });
+            
+            console.log('Registro de escaneo guardado:', scanRecord);
+            
+            const registroVerificado = await QRScanModel.findById(scanRecord._id);
+            console.log('Registro de escaneo verificado:', registroVerificado);
             
             // Verificar si el QR está vinculado a una mascota
             if (qr.isLinked && qr.petId) {
@@ -116,8 +122,9 @@ const qrData = {
             } else {
                 return {
                     _id: qr._id.toString(),
+                    scanId: scanRecord._id,
                     isLinked: false,
-                    message: 'Este QR no está vinculado a ninguna mascota. Por favor, redirige a vincular una mascota.'  
+                    message: 'Este QR no está vinculado a ninguna mascota. Por favor, redirige a vincular una mascota.'
                 };
             }
         } catch (error) {
@@ -348,6 +355,8 @@ const qrData = {
             if (qr.userId.toString() !== userId) {
                 throw new Error('No tienes permiso para ver el historial de este QR');
             }
+
+            console.log('Buscando historial para qrId:', qr._id);
 
             // Obtener el historial de escaneos usando el ObjectId del QR
             const history = await QRScanModel.find({ qrId: qr._id })
