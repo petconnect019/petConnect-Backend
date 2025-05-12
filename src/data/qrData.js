@@ -165,9 +165,19 @@ const qrData = {
                 qr = await QRModel.findById(_id);
             }
             
+            // Verificar que el QR existe y está activo
             if (!qr || !qr.isActive) {
                 throw new Error('QR no encontrado o ha sido eliminado');
             }
+            
+            // Registrar el escaneo del QR antes de vincularlo
+            const scanRecord = await QRScanModel.create({
+                qrId: qr._id,
+                scannedBy: userId,
+                scanDate: new Date(),
+                location: null // No se dispone de datos de ubicación en este contexto
+            });
+            console.log('Registro de escaneo en linkQRToPet:', scanRecord);
             
             // Verificar si el QR ya está vinculado
             if (qr.isLinked) {
