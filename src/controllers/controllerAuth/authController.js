@@ -89,7 +89,8 @@ const AuthController = {
                     lastName: user.lastName,
                     role: user.role
                 },
-                hasPets
+                hasPets,
+                isNewUser
             });
         } catch (error) {
             next(error);
