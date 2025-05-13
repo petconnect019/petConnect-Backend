@@ -243,26 +243,7 @@ const AuthController = {
 
     googleAuthCallback: async (req, res) => {
         try {
-            // Si no existe req.user o estamos en ambiente de test, forzamos una respuesta 200
-            if (!req.user || process.env.NODE_ENV === 'test') {
-                const responseData = {
-                    ok: true,
-                    message: 'Login con Google exitoso (test)',
-                    accessToken: 'testAccessToken',
-                    user: {
-                        google_id: 'test-google-id',
-                        email: 'google@example.com',
-                        name: 'Google User',
-                        profile_picture: 'http://example.com/pic.jpg',
-                        role: 'user'
-                    },
-                    hasPets: false,
-                    isNewUser: false
-                };
-                return res.status(200).send(`<html><body><script>if(window.opener){window.opener.postMessage(${JSON.stringify(responseData)}, "${process.env.FRONTEND_URL}");window.close();}else{window.location.href="${process.env.FRONTEND_URL}/home";}</script></body></html>`);
-            }
-
-            // Flujo normal para ambientes que no sean test
+            // Flujo normal para ambientes 
             const { accessToken } = await handleAuthenticationSuccess(req, res, req.user);
             const { hasPets, isNewUser } = await AuthData.findOrCreateGoogleUser({
                 id: req.user.google_id,
