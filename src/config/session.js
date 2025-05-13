@@ -1,6 +1,7 @@
 const session = require('express-session');
 const MongoStore = require('connect-mongo');
 const tokenService = require('../services/tokenService');
+const jwt = require('jsonwebtoken');
 
 // Verificar que la variable de entorno esté disponible
 if (!process.env.MONGODB_URI) {
@@ -31,60 +32,21 @@ const sessionConfig = {
 
 //  separacion de logica de session en el apartado cookies
 const handleAuthenticationSuccess = async (req, res, user) => {
-    try {
-        // Inicializar sesión
-        req.session.userId = user._id;
-        req.session.userEmail = user.email;
-        await req.session.save();
-       
+    const accessToken = jwt.sign(
+        { id: user._id, role: user.role },
+        process.env.JWT_SECRET || 'your-secret-key',
+        { expiresIn: '1d' }
+    );
 
-        // Generar tokens
-        const { accessToken, refreshToken, expiresIn } = await tokenService.generateTokens(user);
+    const userResponse = {
+        id: user._id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role
+    };
 
-        // Configurar cookie para refresh token
-        const cookieOptions = {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            maxAge: 20 * 24 * 60 * 60 * 1000, // 20 días
-            path: '/', // Ruta de la cookie visible para todas las rutas
-            domain: 'localhost'
-        };
-
-        
-        res.cookie('refreshToken', refreshToken, cookieOptions);
-
-        // Configurar cookie de sesión
-        res.cookie('connect.sid', req.sessionID, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            maxAge: 24 * 60 * 60 * 1000,// 1 día
-        });
-
-        // Preparar objeto de usuario para la respuesta
-        const userResponse = {
-            id: user._id,
-            email: user.email,
-            name: user.name,
-            profile_picture: user.profile_picture || null,
-            role: user.role,
-            is_profile_public: user.is_profile_public,
-            show_contact: user.show_contact,
-            country: user.country,
-            state: user.state,
-            address: user.address,
-            city: user.city,
-            phone: user.phone
-        };
-
-        return {
-            accessToken,
-            userResponse
-        };
-    } catch (error) {
-        throw error;
-    }
+    return { accessToken, userResponse };
 };
 
 // Middleware para logging de sesión
@@ -105,15 +67,11 @@ const isAuthenticated = (req, res, next) => {
 };
 
 // Middleware para limpiar sesión
-const clearSession = async (req, res) => {
-    try {
-        await req.session.destroy();
-        res.clearCookie('connect.sid', {path: '/'});
-        res.clearCookie('refreshToken', { path: '/' });
-        return true;
-    } catch (error) {
-        return false;
+const clearSession = (req, res) => {
+    if (req.session) {
+        req.session.destroy();
     }
+    res.clearCookie('connect.sid');
 };
 
 module.exports = {

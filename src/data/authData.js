@@ -20,9 +20,9 @@ const AuthData = {
      */
     validatePassword: (password) => {
         if (!password) return { isValid: false, error: 'La contraseña es requerida' };
-        return password.length >= 6
-            ? { isValid: true }
-            : { isValid: false, error: 'La contraseña debe tener al menos 6 caracteres' };
+        if (password.length < 6) return { isValid: false, error: 'La contraseña debe tener al menos 6 caracteres' };
+        if (password.length > 72) return { isValid: false, error: 'La contraseña es demasiado larga' };
+        return { isValid: true };
     },
 
     /**
@@ -30,10 +30,19 @@ const AuthData = {
      */
     registerUser: async (userData) => {
         try {
+            // Validar campos requeridos
+            if (!userData.firstName || !userData.lastName) {
+                const error = new Error('Nombre y apellido son requeridos');
+                error.statusCode = 400;
+                throw error;
+            }
+
             // Verificar si el usuario ya existe
             const userExists = await UserModel.findOne({ email: userData.email });
             if (userExists) {
-                throw new Error('El usuario ya existe');
+                const error = new Error('El email ya está registrado');
+                error.statusCode = 400;
+                throw error;
             }
 
             // Hashear la contraseña
@@ -41,16 +50,25 @@ const AuthData = {
 
             // Crear nuevo usuario
             const user = new UserModel({
-              ...userData,
-              password: hashedPassword,
+                ...userData,
+                password: hashedPassword,
+                role: 'user' // Asignar rol por defecto
             });
 
             await user.save();
+
+            // Limpiar la contraseña antes de devolver el usuario
+            const userObject = user.toObject();
+            delete userObject.password;
+
             return {
-                user,
+                user: userObject,
                 isNewUser: true
             };
         } catch (error) {
+            if (!error.statusCode) {
+                error.statusCode = 500;
+            }
             throw error;
         }
     },
@@ -64,22 +82,24 @@ const AuthData = {
             const user = await UserModel.findOne({ email }).select('+password +role');
             
             if (!user) {
-                throw new Error('Credenciales inválidas');
+                const error = new Error('Credenciales inválidas');
+                error.statusCode = 401;
+                throw error;
             }
 
             // Verificar que tanto la contraseña como el hash existen
             if (!password || !user.password) {
-                console.log('Contraseña o hash faltante:', { 
-                    hasPassword: !!password, 
-                    hasHashedPassword: !!user.password 
-                });
-                throw new Error('Credenciales inválidas');
+                const error = new Error('Credenciales inválidas');
+                error.statusCode = 401;
+                throw error;
             }
             
             // Comparar contraseñas
             const isMatch = await bcrypt.compare(password, user.password);
             if (!isMatch) {
-                throw new Error('Credenciales inválidas');
+                const error = new Error('Credenciales inválidas');
+                error.statusCode = 401;
+                throw error;
             }
 
             // Verificar si el usuario tiene mascotas
@@ -95,7 +115,9 @@ const AuthData = {
                 isNewUser: false
             };
         } catch (error) {
-            console.error('Error en loginUser:', error);
+            if (!error.statusCode) {
+                error.statusCode = 500;
+            }
             throw error;
         }
     },

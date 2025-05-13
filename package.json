@@ -5,7 +5,10 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "drop-qr-index": "node scripts/dropQrIndex.js"
+    "drop-qr-index": "node scripts/dropQrIndex.js",
+    "test": "jest --setupFiles ./tests/setup.js",
+    "test:watch": "jest --watch --setupFiles ./tests/setup.js",
+    "test:coverage": "jest --coverage --setupFiles ./tests/setup.js"
   },
   "keywords": [],
   "author": "",
@@ -39,6 +42,17 @@
     "uuid": "^11.1.0"
   },
   "devDependencies": {
-    "nodemon": "^3.1.9"
+    "nodemon": "^3.1.9",
+    "jest": "^29.7.0",
+    "supertest": "^6.3.3",
+    "@types/jest": "^29.5.12",
+    "mongodb-memory-server": "^9.1.6"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "coveragePathIgnorePatterns": [
+      "/node_modules/"
+    ],
+    "testTimeout": 10000
   }
 }

@@ -37,17 +37,17 @@ const AuthController = {
             const { accessToken, userResponse } = await handleAuthenticationSuccess(req, res, user);
             
             return res.status(201).json({
-                ok: true,
+                success: true,
                 message: 'Usuario registrado exitosamente',
                 accessToken,
-                user: userResponse,
+                user: {
+                    ...userResponse,
+                    firstName: user.firstName || req.body.firstName,
+                    lastName: user.lastName || req.body.lastName
+                },
                 isNewUser
             });
         } catch (error) {
-            console.error('Error en registro:', error);
-            if (error.message === 'El usuario ya existe') {
-                error.statusCode = 400;
-            }
             next(error);
         }
     },
@@ -81,10 +81,6 @@ const AuthController = {
                 isNewUser
             });
         } catch (error) {
-            console.error('Error en login:', error);
-            if (error.message === 'Credenciales inválidas') {
-                error.statusCode = 400;
-            }
             next(error);
         }
     },
@@ -129,7 +125,6 @@ const AuthController = {
                 message: 'Email enviado exitosamente',
             });
         } catch (error) {
-            console.error('Error al solicitar restablecimiento:', error);
             next(error);
         }
     },
@@ -164,10 +159,6 @@ const AuthController = {
                 message: 'Contraseña restablecida con éxito' 
             });
         } catch (error) {
-            console.error('Error al restablecer contraseña:', error);
-            if (error.message === 'Token inválido o expirado') {
-                error.statusCode = 400;
-            }
             next(error);
         }
     },
