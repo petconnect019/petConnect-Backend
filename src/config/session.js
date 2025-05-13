@@ -72,6 +72,7 @@ const clearSession = (req, res) => {
         req.session.destroy();
     }
     res.clearCookie('connect.sid');
+    return true;
 };
 
 module.exports = {

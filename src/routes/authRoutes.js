@@ -9,7 +9,7 @@ const { verifyToken } = require('../middlewares/authMiddleware');
 router.post('/register', AuthController.registerUser);
 router.post('/login', AuthController.loginUser);
 router.post('/logout', AuthController.logout);
-router.post('/refresh', AuthController.refreshToken);
+router.post('/refresh-token', AuthController.refreshToken);
 router.post('/request-password-reset', AuthController.requestPasswordReset);
 router.post('/reset-password', AuthController.resetPassword);
 
