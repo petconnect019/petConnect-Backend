@@ -30,13 +30,7 @@ const AuthData = {
      */
     registerUser: async (userData) => {
         try {
-            // Validar campos requeridos
-            if (!userData.firstName || !userData.lastName) {
-                const error = new Error('Nombre y apellido son requeridos');
-                error.statusCode = 400;
-                throw error;
-            }
-
+        
             // Verificar si el usuario ya existe
             const userExists = await UserModel.findOne({ email: userData.email });
             if (userExists) {

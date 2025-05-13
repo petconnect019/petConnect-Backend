@@ -41,9 +41,7 @@ const AuthController = {
                 message: 'Usuario registrado exitosamente',
                 accessToken,
                 user: {
-                    ...userResponse,
-                    firstName: user.firstName || req.body.firstName,
-                    lastName: user.lastName || req.body.lastName
+                    ...userResponse
                 },
                 isNewUser
             });
