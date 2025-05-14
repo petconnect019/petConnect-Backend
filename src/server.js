@@ -18,6 +18,7 @@ const QRModel = require('./models/QRModel');
 const QRCode = require('qrcode');
 const session = require('express-session');
 const MongoStore = require('connect-mongo');
+const rateLimiter = require('./middlewares/rateLimitMiddleware');
 
 const app = express();
 const server = http.createServer(app);
@@ -62,6 +63,9 @@ app.use(cors({
     optionsSuccessStatus: 204,
     maxAge: 86400 // Cache preflight requests for 24 hours
 }));
+
+// Aplicar el rate limiter a todas las rutas
+app.use(rateLimiter);
 
 // Manejar solicitudes OPTIONS
 app.options('*', (req, res) => {
