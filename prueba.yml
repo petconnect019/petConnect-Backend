@@ -1,0 +1,32 @@
+config:
+  target: "http://localhost:5000" # Cambia por la URL de tu API
+  phases:
+    - duration: 60
+      arrivalRate: 5
+      name: "Fase de calentamiento"
+    - duration: 120
+      arrivalRate: 10
+      rampTo: 50
+      name: "Fase de carga máxima"
+    - duration: 60
+      arrivalRate: 5
+      name: "Fase de enfriamiento"
+  defaults:
+    headers:
+      Content-Type: "application/json"
+      Accept: "application/json"
+
+scenarios:
+  - name: "Prueba de rutas principales"
+    flow:
+      # Ejemplo para una API que no requiere autenticación
+      - get:
+          url: "/api/pets"
+          expect:
+            - statusCode: 200
+      
+      # Puedes añadir más rutas según necesites probar
+      - get:
+          url: "/"
+          expect:
+            - statusCode: 200 

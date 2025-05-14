@@ -1,0 +1,62 @@
+config:
+  target: "http://localhost:5000"
+  phases:
+    - duration: 30
+      arrivalRate: 1
+      name: "Calentamiento"
+    - duration: 60
+      arrivalRate: 5
+      rampTo: 10
+      name: "Rampa de carga"
+    - duration: 60
+      arrivalRate: 10
+      name: "Carga sostenida"
+  defaults:
+    headers:
+      Content-Type: "application/json"
+      Accept: "application/json"
+
+scenarios:
+  - name: "Flujo de autenticación"
+    flow:
+      # Verificar estado del servidor
+      - get:
+          url: "/"
+          expect:
+            - statusCode: 200
+
+      # Registro de usuario
+      - post:
+          url: "/api/auth/register"
+          json:
+            email: "{{ $randomString() }}@gmail.com"
+            password: "Test123!"
+            name: "Test User"
+          capture:
+            - json: "$.user._id"
+              as: "userId"
+          expect:
+            - statusCode: 200
+
+      # Inicio de sesión
+      - post:
+          url: "/api/auth/login"
+          json:
+            email: "{{ $randomString() }}@gmail.com"
+            password: "Test123!"
+          capture:
+            - json: "$.token"
+              as: "authToken"
+          expect:
+            - statusCode: 200
+
+      # Validar token
+      - get:
+          url: "/api/auth/validate"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+          expect:
+            - statusCode: 200
+
+      # Pausa entre operaciones
+      - think: 1 

@@ -1,0 +1,43 @@
+config:
+  target: "http://localhost:5000"
+  phases:
+    - duration: 30
+      arrivalRate: 1
+      name: "Calentamiento"
+    - duration: 60
+      arrivalRate: 10
+      rampTo: 50
+      name: "Rampa inicial"
+    - duration: 120
+      arrivalRate: 50
+      rampTo: 100
+      name: "Incremento de carga"
+    - duration: 180
+      arrivalRate: 100
+      name: "Carga máxima"
+  defaults:
+    headers:
+      Content-Type: "application/json"
+      Accept: "application/json"
+  processor: "./funciones.js"
+  variables:
+    counter: 0
+
+scenarios:
+  - name: "Registro masivo de usuarios"
+    flow:
+      # Registro de usuario con contador incremental
+      - post:
+          url: "/api/auth/register"
+          json:
+            email: "test{{ $randomString(5) }}_{{ $processEnvironment.COUNTER }}@gmail.com"
+            password: "Test123!"
+            name: "Usuario de Prueba {{ $randomString(5) }}"
+          capture:
+            - json: "$.user._id"
+              as: "userId"
+          expect:
+            - statusCode: 201
+            
+      # Pausa mínima entre registros
+      - think: 0.5 

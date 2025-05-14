@@ -1,0 +1,184 @@
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const morgan = require('morgan');
+const passport = require('passport');
+const cookieParser = require('cookie-parser');
+const { connectDB } = require('./config/db');
+const { sessionConfig, sessionLogger } = require('./config/session');
+const { setupAdminAccount } = require('./services/setupService');
+require('./config/passport');
+const routes = require('./routes');
+const mongoose = require('mongoose');
+const http = require('http');
+const socketIo = require('socket.io');
+const jwt = require('jsonwebtoken');
+const socketService = require('./services/socketService');
+const QRModel = require('./models/QRModel');
+const QRCode = require('qrcode');
+const session = require('express-session');
+const MongoStore = require('connect-mongo');
+const performanceMonitor = require('./utils/performanceMonitor');
+
+const app = express();
+const server = http.createServer(app);
+const io = socketIo(server, {
+    cors: {
+        origin: process.env.FRONTEND_URL,
+        methods: ["GET", "POST"],
+        credentials: true
+    }
+});
+const PORT = process.env.PORT || 5000;
+
+// Iniciar monitor de rendimiento
+performanceMonitor.start();
+
+// Usar middleware de rendimiento
+app.use(performanceMonitor.middleware());
+
+// Middleware para manejar diferentes tipos de contenido
+app.use((req, res, next) => {
+    if (req.path === '/api/payments/confirmation') {
+        // Para el webhook de ePayco, usar raw body
+        express.raw({ type: 'application/json' })(req, res, next);
+    } else {
+        // Para otras rutas, usar JSON parser normal
+        express.json()(req, res, next);
+    }
+});
+
+app.use(cookieParser());
+app.use(morgan('dev'));
+
+// Configuración de CORS
+const origins = [
+  'http://localhost:3000',
+  'http://localhost:5175',
+  process.env.FRONTEND_URL
+].filter(Boolean);
+
+app.use(cors({
+    origin: origins,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With', 'X-CSRF-Token'],
+    exposedHeaders: ['Content-Range', 'X-Content-Range'],
+    credentials: true,
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
+    maxAge: 86400 // Cache preflight requests for 24 hours
+}));
+
+// Manejar solicitudes OPTIONS
+app.options('*', (req, res) => {
+    // Obtener el origen de la solicitud
+    const origin = req.headers.origin;
+    const allowedOrigins = origins;
+    
+    // Si el origen está en la lista de permitidos, establecerlo en la respuesta
+    if (allowedOrigins.includes(origin)) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+    } else {
+        res.setHeader('Access-Control-Allow-Origin', process.env.FRONTEND_URL || 'http://localhost:5175');
+    }
+    
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, Origin, X-Requested-With, X-CSRF-Token');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.status(204).end();
+});
+
+// Configuración de sesión y autenticación
+app.use(session({
+    secret: process.env.SESSION_SECRET || 'petconnect_secret_key',
+    resave: false,
+    saveUninitialized: false,
+    store: MongoStore.create({
+        mongoUrl: process.env.MONGODB_URI,
+        dbName: 'petconnect',
+        collectionName: 'sessions',
+        ttl: 24 * 60 * 60 // 1 día en segundos
+    }),
+    cookie: {
+        secure: process.env.NODE_ENV === 'production',
+        httpOnly: true,
+        maxAge: 24 * 60 * 60 * 1000 // 1 día
+    }
+}));
+
+app.use(passport.initialize());
+app.use(passport.session());
+
+// Middleware de logging en desarrollo
+if (process.env.NODE_ENV === 'development') {
+    app.use(sessionLogger);
+}
+
+// Rutas API
+app.use('/api', routes);
+
+// Configuración de Socket.io
+socketService.initialize(io);
+
+// Ruta de estado del servidor prueba el backend en el navegador (localhost:5000)
+app.get('/', (_, res) => res.send('🚀 PetConnect Backend funcionando!'));
+
+// Ruta para ver estadísticas de rendimiento en tiempo real
+app.get('/api/performance', (req, res) => {
+  res.json(performanceMonitor.stats);
+});
+
+// Inicialización del servidor
+const startServer = async () => {
+    try {
+        await connectDB();
+        await setupAdminAccount();
+        
+        server.listen(PORT, () => {
+            console.log(`✅ Servidor de pruebas de rendimiento corriendo en el puerto http://localhost:${PORT}`);
+            console.log(`📊 Monitoreo de rendimiento activado - http://localhost:${PORT}/api/performance`);
+        });
+    } catch (error) {
+        console.error('❌ Error al iniciar el servidor:', error);
+        process.exit(1);
+    }
+};
+
+startServer();
+
+// Manejo de errores
+app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).json({
+        success: false,
+        error: err.message
+    });
+});
+
+// Función para cerrar conexiones
+const gracefulShutdown = async () => {
+    console.log('Recibida señal de apagado. Cerrando conexiones...');
+    
+    try {
+        // Detener monitoreo y guardar reporte
+        const finalReport = performanceMonitor.stop();
+        console.log('📊 Reporte final de rendimiento:', finalReport);
+        
+        // Cerrar conexión a MongoDB
+        await mongoose.connection.close();
+        console.log('Conexión a MongoDB cerrada');
+        
+        // Cerrar el servidor
+        server.close(() => {
+            console.log('Servidor HTTP cerrado');
+            process.exit(0);
+        });
+    } catch (error) {
+        console.error('Error durante el cierre:', error);
+        process.exit(1);
+    }
+};
+
+// Manejar señales de terminación
+process.on('SIGTERM', gracefulShutdown);
+process.on('SIGINT', gracefulShutdown); 

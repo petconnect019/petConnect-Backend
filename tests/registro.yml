@@ -1,0 +1,33 @@
+config:
+  target: "http://localhost:5000"
+  phases:
+    - duration: 10
+      arrivalRate: 1
+      name: "Calentamiento"
+    - duration: 60
+      arrivalRate: 20
+      maxVusers: 1000
+      name: "Registro de 1000 usuarios"
+  defaults:
+    headers:
+      Content-Type: "application/json"
+      Accept: "application/json"
+
+scenarios:
+  - name: "Registro de 1000 usuarios"
+    flow:
+      # Registro de usuario con timestamp para garantizar unicidad
+      - post:
+          url: "/api/auth/register"
+          json:
+            email: "test_{{ $timestamp }}_{{ $randomString(5) }}@gmail.com"
+            password: "Test123!"
+            name: "Usuario {{ $randomString(5) }}"
+          capture:
+            - json: "$.user._id"
+              as: "userId"
+          expect:
+            - statusCode: 201
+            
+      # Pausa mínima entre registros
+      - think: 0.1 

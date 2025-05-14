@@ -1,0 +1,81 @@
+config:
+  target: "http://localhost:5000"
+  phases:
+    - duration: 60
+      arrivalRate: 1
+      name: "Calentamiento"
+    - duration: 120
+      arrivalRate: 5
+      rampTo: 50
+      name: "Rampa de estrés"
+    - duration: 180
+      arrivalRate: 50
+      name: "Carga máxima"
+    - duration: 60
+      arrivalRate: 5
+      name: "Enfriamiento"
+  defaults:
+    headers:
+      Content-Type: "application/json"
+      Accept: "application/json"
+
+scenarios:
+  - name: "Prueba de estrés general"
+    flow:
+      # Verificar estado
+      - get:
+          url: "/"
+          expect:
+            - statusCode: 200
+
+      # Registro aleatorio
+      - post:
+          url: "/api/auth/register"
+          json:
+            email: "{{ $randomString() }}@test.com"
+            password: "Test123!"
+            name: "Test User"
+          capture:
+            - json: "$.user._id"
+              as: "userId"
+          expect:
+            - statusCode: 200
+
+      # Login
+      - post:
+          url: "/api/auth/login"
+          json:
+            email: "{{ $randomString() }}@test.com"
+            password: "Test123!"
+          capture:
+            - json: "$.token"
+              as: "authToken"
+          expect:
+            - statusCode: 200
+
+      # Crear mascota
+      - post:
+          url: "/api/pets"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+          json:
+            name: "Stress Test Pet"
+            type: "Perro"
+            breed: "Mixed"
+            age: 2
+          capture:
+            - json: "$.pet._id"
+              as: "petId"
+          expect:
+            - statusCode: 200
+
+      # Obtener mascota
+      - get:
+          url: "/api/pets/{{ petId }}"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+          expect:
+            - statusCode: 200
+
+      # Pausa variable
+      - think: 2 

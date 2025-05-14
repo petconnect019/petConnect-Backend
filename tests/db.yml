@@ -1,0 +1,48 @@
+config:
+  target: "http://localhost:5000"
+  phases:
+    - duration: 30
+      arrivalRate: 1
+      name: "Calentamiento"
+    - duration: 60
+      arrivalRate: 5
+      name: "Carga normal"
+  defaults:
+    headers:
+      Content-Type: "application/json"
+      Accept: "application/json"
+
+scenarios:
+  - name: "Operaciones de base de datos"
+    flow:
+      # Crear mascota
+      - post:
+          url: "/api/pets"
+          json:
+            name: "Test Pet"
+            type: "Perro"
+            breed: "Mixed"
+            age: 2
+          capture:
+            - json: "$.pet._id"
+              as: "petId"
+          expect:
+            - statusCode: 200
+
+      # Obtener mascota
+      - get:
+          url: "/api/pets/{{ petId }}"
+          expect:
+            - statusCode: 200
+
+      # Actualizar mascota
+      - put:
+          url: "/api/pets/{{ petId }}"
+          json:
+            name: "Updated Pet"
+            age: 3
+          expect:
+            - statusCode: 200
+
+      # Pausa entre operaciones
+      - think: 1 
