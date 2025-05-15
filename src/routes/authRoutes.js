@@ -12,6 +12,7 @@ router.post('/logout', AuthController.logout);
 router.post('/refresh', AuthController.refreshToken);
 router.post('/request-password-reset', AuthController.requestPasswordReset);
 router.post('/reset-password', AuthController.resetPassword);
+router.get('/register/status/:jobId', AuthController.checkRegistrationStatus);
 
 // Rutas de Google OAuth
 router.get('/google',

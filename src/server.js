@@ -7,6 +7,7 @@ const cookieParser = require('cookie-parser');
 const { connectDB } = require('./config/db');
 const { sessionConfig, sessionLogger } = require('./config/session');
 const { setupAdminAccount } = require('./services/setupService');
+const { redisClient, initRedis } = require('./config/redis');
 require('./config/passport');
 const routes = require('./routes');
 const mongoose = require('mongoose');
@@ -125,6 +126,11 @@ app.get('/', (_, res) => res.send('🚀 PetConnect Backend funcionando!'));
 // Inicialización del servidor
 const startServer = async () => {
     try {
+        // Inicializar Redis primero
+        await initRedis();
+        console.log('✅ Redis inicializado correctamente');
+        
+        // Luego conectar a MongoDB y configurar el admin
         await connectDB();
         await setupAdminAccount();
         
@@ -133,7 +139,8 @@ const startServer = async () => {
         });
     } catch (error) {
         console.error('❌ Error al iniciar el servidor:', error);
-        process.exit(1);
+        // Si hay un error en la inicialización, cerrar todas las conexiones
+        await gracefulShutdown();
     }
 };
 
@@ -156,6 +163,10 @@ const gracefulShutdown = async () => {
         // Cerrar conexión a MongoDB
         await mongoose.connection.close();
         console.log('Conexión a MongoDB cerrada');
+        
+        // Cerrar conexión a Redis
+        await redisClient.quit();
+        console.log('Conexión a Redis cerrada');
         
         // Cerrar el servidor
         server.close(() => {

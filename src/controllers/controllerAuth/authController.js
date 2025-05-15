@@ -8,6 +8,7 @@ const { handleAuthenticationSuccess, clearSession } = require('../../config/sess
 const tokenService = require('../../services/tokenService');
 const PetModel = require('../../models/PetModel');
 const AuthData = require('../../data/authData');
+const registrationQueue = require('../../queues/registrationQueue');
 
 
 const AuthController = {
@@ -34,14 +35,11 @@ const AuthController = {
             const userData = { ...req.body };
 
             const { user, isNewUser } = await AuthData.registerUser(userData);
-            const { accessToken, userResponse } = await handleAuthenticationSuccess(req, res, user);
-            
+            const job = await registrationQueue.add(req.body);
             return res.status(201).json({
                 ok: true,
-                message: 'Usuario registrado exitosamente',
-                accessToken,
-                user: userResponse,
-                isNewUser
+                message: 'Solicitud de registro recibida y en proceso',
+                jobId: job.id
             });
         } catch (error) {
             console.error('Error en registro:', error);
@@ -52,6 +50,51 @@ const AuthController = {
         }
     },
 
+    // Endpoint para verificar el estado del registro
+    checkRegistrationStatus: async (req, res) => {
+        try {
+            const { jobId } = req.params;
+            const job = await registrationQueue.getJob(jobId);
+
+            if (!job) {
+                return res.status(404).json({
+                    ok: false,
+                    message: 'Trabajo de registro no encontrado'
+                });
+            }
+
+            const state = await job.getState();
+            const result = job.returnvalue;
+            const error = job.failedReason;
+
+            // Si el registro se completó exitosamente, incluir el token de acceso
+            if (state === 'completed' && result?.success) {
+                const user = await UserModel.findById(result.userId);
+                if (user) {
+                    const { accessToken, userResponse } = await handleAuthenticationSuccess(req, res, user);
+                    return res.json({
+                        ok: true,
+                        status: state,
+                        accessToken,
+                        user: userResponse
+                    });
+                }
+            }
+
+            res.json({
+                ok: true,
+                status: state,
+                error
+            });
+        } catch (error) {
+            console.error('Error al verificar estado:', error);
+            res.status(500).json({
+                ok: false,
+                message: 'Error al verificar el estado del registro',
+                error: error.message
+            });
+        }
+    },
 
     loginUser: async (req, res, next) => {
         try {
