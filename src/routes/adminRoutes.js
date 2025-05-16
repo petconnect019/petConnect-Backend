@@ -16,4 +16,7 @@ router.put('/users/:id/role', AdminController.changeUserRole);
 // Generar QR para usuario
 router.get('/users/:userId/qr', QRController.generateUserQR);
 
+// Gestión de órdenes
+router.post('/orders/:orderId/confirm', AdminController.confirmOrderAndGenerateQR);
+
 module.exports = router; 

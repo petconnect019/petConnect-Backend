@@ -216,7 +216,7 @@ Esta separación de responsabilidades mejora la mantenibilidad, testabilidad y e
    - Ve información de la mascota
    - Puede contactar al dueño
 
-prueba
+
 
 
 
