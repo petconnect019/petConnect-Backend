@@ -33,7 +33,10 @@ const AuthData = {
             // Verificar si el usuario ya existe
             const userExists = await UserModel.findOne({ email: userData.email });
             if (userExists) {
-                throw new Error('El usuario ya existe');
+                return {
+                    user: userExists,
+                    isNewUser: false
+                };
             }
 
             // Hashear la contraseña
