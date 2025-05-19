@@ -10,16 +10,19 @@ const socketIo = require('socket.io');
 const socketService = require('./services/socketService');
 
 const PORT = process.env.PORT || 5000;
+const isDevelopment = process.env.NODE_ENV !== 'production';
 
-if (cluster.isMaster) {
-    console.log(`Proceso maestro ${process.pid} está corriendo`);
+if (isDevelopment && cluster.isMaster) {
+    console.log('\n=== INICIANDO SERVIDOR EN MODO CLUSTER (DESARROLLO) ===');
+    console.log(`📌 Proceso Maestro (PID: ${process.pid})`);
+    console.log(`📌 Creando ${numCPUs} workers...\n`);
 
     for (let i = 0; i < numCPUs; i++) {
         cluster.fork();
     }
 
     cluster.on('exit', (worker, code, signal) => {
-        console.log(`Worker ${worker.process.pid} murió`);
+        console.log(`❌ Worker ${worker.process.pid} se ha detenido. Iniciando nuevo worker...`);
         cluster.fork();
     });
 } else {
@@ -38,10 +41,20 @@ if (cluster.isMaster) {
             socketService.initialize(io);
 
             await connectDB();
-            await setupAdminAccount();
+            const processType = isDevelopment && !cluster.isMaster ? `Worker ${process.pid}` : 'Servidor';
+            console.log(`🔌 ${processType}: Conectado a MongoDB`);
+            
+            const adminSetup = await setupAdminAccount();
+            if (adminSetup.created) {
+                console.log(`👤 ${processType}: Nueva cuenta admin creada`);
+                console.log(`📧 Email: ${adminSetup.email}`);
+                console.log(`🔑 Contraseña: ${adminSetup.password}`);
+            } else {
+                console.log(`👤 ${processType}: Cuenta admin verificada`);
+            }
 
             server.listen(PORT, () => {
-                console.log(`Worker ${process.pid} iniciado en puerto ${PORT}`);
+                console.log(`🚀 ${processType}: Servidor activo en puerto ${PORT}\n`);
             });
 
             // Cierre limpio
@@ -49,7 +62,8 @@ if (cluster.isMaster) {
             process.on('SIGINT', () => gracefulShutdown(server));
 
         } catch (error) {
-            console.error('❌ Error al iniciar el servidor:', error);
+            const processType = isDevelopment && !cluster.isMaster ? `Worker ${process.pid}` : 'Servidor';
+            console.error(`❌ ${processType}: Error al iniciar:`, error);
             process.exit(1);
         }
     };
@@ -59,17 +73,18 @@ if (cluster.isMaster) {
 
 // Función para cerrar el servidor y MongoDB
 const gracefulShutdown = async (server) => {
-    console.log('🛑 Cerrando conexiones...');
+    const processType = isDevelopment && !cluster.isMaster ? `Worker ${process.pid}` : 'Servidor';
+    console.log(`\n🛑 ${processType}: Iniciando cierre controlado...`);
     try {
         await mongoose.connection.close();
-        console.log('✔️ Conexión a MongoDB cerrada');
+        console.log(`✔️ ${processType}: Conexión a MongoDB cerrada`);
 
         server.close(() => {
-            console.log('✔️ Servidor HTTP cerrado');
+            console.log(`✔️ ${processType}: Servidor HTTP cerrado`);
             process.exit(0);
         });
     } catch (error) {
-        console.error('❌ Error durante el cierre:', error);
+        console.error(`❌ ${processType}: Error durante el cierre:`, error);
         process.exit(1);
     }
 };

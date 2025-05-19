@@ -13,9 +13,10 @@ const connectDB = async () => {
             w: 'majority',
             wtimeoutMS : 10000,
         });
-        console.log('✅ Conectado a MongoDB 🚀....');
+        // El mensaje se mostrará desde server.js
+        return true;
     } catch (error) {
-        console.error('❌ Error al conectar a MongoDB:', error.message);
+        console.error(`❌ Error al conectar a MongoDB: ${error.message}`);
         process.exit(1); 
     }
 };

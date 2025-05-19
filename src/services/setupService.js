@@ -7,8 +7,6 @@ const setupAdminAccount = async () => {
         const adminExists = await UserModel.findOne({ role: 'admin' });
 
         if (!adminExists) {
-            console.log('Creando cuenta por defecto...');
-
             // Crear contraseña segura y hashearla
             const password = 'petConnect12345';
             const hashedPassword = await bcrypt.hash(password, 10);
@@ -27,9 +25,11 @@ const setupAdminAccount = async () => {
                 }).select('+password');
 
                 if (savedAdmin && savedAdmin.password) {
-                    console.log('✅ Cuenta de administrador creada exitosamente');
-                    console.log('📧 Email:', savedAdmin.email);
-                    console.log('🔑 Contraseña:', password);
+                    return {
+                        created: true,
+                        email: savedAdmin.email,
+                        password: password
+                    };
                 } else {
                     throw new Error('La contraseña no se guardó correctamente');
                 }
@@ -38,7 +38,7 @@ const setupAdminAccount = async () => {
                 throw error;
             }
         } else {
-            console.log('✅ Cuenta de administrador ya existe');
+            return { exists: true };
         }
     } catch (error) {
         console.error('❌ Error al configurar cuenta de administrador:', error);
