@@ -149,14 +149,16 @@ const qrData = {
                 throw new Error('QR no encontrado o ha sido eliminado');
             }
             
-            // Registrar el escaneo del QR antes de vincularlo
-            const scanRecord = await QRScanModel.create({
-                qrId: qr._id,
-                scannedBy: userId,
-                scanDate: new Date(),
-                location: null // No se dispone de datos de ubicación en este contexto
-            });
-            console.log('Registro de escaneo en linkQRToPet:', scanRecord);
+            // Solo registrar el escaneo si el QR está vinculado y no es escaneado por su dueño
+            if (qr.isLinked && qr.petId && qr.userId.toString() !== userId) {
+                const scanRecord = await QRScanModel.create({
+                    qrId: qr._id,
+                    scannedBy: userId,
+                    scanDate: new Date(),
+                    location: null // No se dispone de datos de ubicación en este contexto
+                });
+                console.log('Registro de escaneo en linkQRToPet:', scanRecord);
+            }
             
             // Verificar si el QR ya está vinculado
             if (qr.isLinked) {

@@ -9,6 +9,9 @@ router.get('/scan/:qrId', optionalAuth, QRController.scanQR);
 // Ruta para obtener historial de escaneos de un QR
 router.get('/:qrId/history', verifyToken, QRController.getQRHistory);
 
+// Ruta para registro manual de escaneos
+router.post('/manual-scan/:qrId', optionalAuth, QRController.registerManualScan);
+
 // Middleware de autenticación para rutas protegidas
 router.use(verifyToken);
 

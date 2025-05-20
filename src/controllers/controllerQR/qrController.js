@@ -86,19 +86,21 @@ const qrController = {
                 locationDetails = await getLocationDetails(location.latitude, location.longitude);
             }
 
-            // Crear registro de escaneo
-            const scanRecord = new QRScanModel({
-                qrId: qr._id,
-                scannedBy: scannerUserId,
-                location: {
-                    latitude: location?.latitude,
-                    longitude: location?.longitude,
-                    address: locationDetails?.direccion || location?.address,
-                    departamento: locationDetails?.departamento || location?.departamento,
-                    ciudad: locationDetails?.ciudad || location?.ciudad
-                }
-            });
-            await scanRecord.save();
+            // Solo crear registro de escaneo si el QR está vinculado a una mascota y no es escaneado por su dueño
+            let scanRecord = null;
+            if (qr.isLinked && qr.petId && (!scannerUserId || qr.userId.toString() !== scannerUserId)) {
+                scanRecord = await QRScanModel.create({
+                    qrId: qr._id,
+                    scannedBy: scannerUserId,
+                    location: {
+                        latitude: location?.latitude,
+                        longitude: location?.longitude,
+                        address: locationDetails?.direccion || location?.address,
+                        departamento: locationDetails?.departamento || location?.departamento,
+                        ciudad: locationDetails?.ciudad || location?.ciudad
+                    }
+                });
+            }
 
             // Preparar respuesta
             const response = {
@@ -106,13 +108,17 @@ const qrController = {
                 message: qr.isLinked ? 
                     'Hola, ¿me ayudas a encontrar a mi dueño?' : 
                     'Este QR no está vinculado a ninguna mascota',
-                isLinked: qr.isLinked,
-                scan: {
+                isLinked: qr.isLinked
+            };
+
+            // Solo incluir información del escaneo si se creó el registro
+            if (scanRecord) {
+                response.scan = {
                     fecha: scanRecord.formattedDate,
                     hora: scanRecord.formattedTime,
                     ubicacion: scanRecord.location
-                }
-            };
+                };
+            }
 
             if (qr.isLinked && qr.petId) {
                 response.pet = {
@@ -416,6 +422,76 @@ const qrController = {
             });
         } catch (error) {
             console.error('Error al generar código QR:', error);
+            next(error);
+        }
+    },
+
+    registerManualScan: async (req, res, next) => {
+        try {
+            const { qrId } = req.params;
+            const scannerUserId = req.user ? req.user.id : null;
+            const { latitude, longitude } = req.body;
+
+            // Validate required coordinates
+            if (!latitude || !longitude) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Se requieren latitud y longitud para registrar el escaneo'
+                });
+            }
+
+            // Verificar si el QR existe
+            const qr = await QRModel.findById(qrId);
+            if (!qr || !qr.isActive) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'QR no encontrado o ha sido eliminado'
+                });
+            }
+
+            // Verificar que el QR esté vinculado a una mascota
+            if (!qr.isLinked || !qr.petId) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Este QR no está vinculado a ninguna mascota'
+                });
+            }
+
+            // Verificar que no sea el dueño quien registra el escaneo
+            if (scannerUserId && qr.userId.toString() === scannerUserId) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'El dueño de la mascota no puede registrar escaneos'
+                });
+            }
+
+            // Obtener detalles de ubicación
+            const locationDetails = await getLocationDetails(latitude, longitude);
+
+            // Crear el registro de escaneo
+            const scanRecord = await QRScanModel.create({
+                qrId: qr._id,
+                scannedBy: scannerUserId,
+                location: {
+                    latitude,
+                    longitude,
+                    address: locationDetails?.direccion || 'No disponible',
+                    departamento: locationDetails?.departamento || 'No disponible',
+                    ciudad: locationDetails?.ciudad || 'No disponible'
+                }
+            });
+
+            res.status(201).json({
+                success: true,
+                message: 'Escaneo registrado exitosamente',
+                scan: {
+                    fecha: scanRecord.formattedDate,
+                    hora: scanRecord.formattedTime,
+                    ubicacion: scanRecord.location
+                }
+            });
+        } catch (error) {
+            console.error('Error al registrar escaneo manual:', error);
             next(error);
         }
     }
