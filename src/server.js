@@ -1,172 +1,90 @@
-require('dotenv').config();
+const cluster = require('cluster');
+const os = require('os');
+const numCPUs = os.cpus().length;
 const express = require('express');
-const cors = require('cors');
-const morgan = require('morgan');
-const passport = require('passport');
-const cookieParser = require('cookie-parser');
-const { connectDB } = require('./config/db');
-const { sessionConfig, sessionLogger } = require('./config/session');
-const { setupAdminAccount } = require('./services/setupService');
-require('./config/passport');
-const routes = require('./routes');
-const mongoose = require('mongoose');
 const http = require('http');
+const mongoose = require('mongoose');
+const { connectDB } = require('./config/db');
+const { setupAdminAccount } = require('./services/setupService');
 const socketIo = require('socket.io');
-const jwt = require('jsonwebtoken');
 const socketService = require('./services/socketService');
-const QRModel = require('./models/QRModel');
-const QRCode = require('qrcode');
-const session = require('express-session');
-const MongoStore = require('connect-mongo');
 
-const app = express();
-const server = http.createServer(app);
-const io = socketIo(server, {
-    cors: {
-        origin: process.env.FRONTEND_URL,
-        methods: ["GET", "POST"],
-        credentials: true
-    }
-});
 const PORT = process.env.PORT || 5000;
+const isDevelopment = process.env.NODE_ENV !== 'production';
 
+if (isDevelopment && cluster.isMaster) {
+    console.log('\n=== INICIANDO SERVIDOR EN MODO CLUSTER (DESARROLLO) ===');
+    console.log(`📌 Proceso Maestro (PID: ${process.pid})`);
+    console.log(`📌 Creando ${numCPUs} workers...\n`);
 
-// Middleware para manejar diferentes tipos de contenido
-app.use((req, res, next) => {
-    if (req.path === '/api/payments/confirmation') {
-        // Para el webhook de ePayco, usar raw body
-        express.raw({ type: 'application/json' })(req, res, next);
-    } else {
-        // Para otras rutas, usar JSON parser normal
-        express.json()(req, res, next);
+    for (let i = 0; i < numCPUs; i++) {
+        cluster.fork();
     }
-});
 
-app.use(cookieParser());
-app.use(morgan('dev'));
+    cluster.on('exit', (worker, code, signal) => {
+        console.log(`❌ Worker ${worker.process.pid} se ha detenido. Iniciando nuevo worker...`);
+        cluster.fork();
+    });
+} else {
+    const startServer = async () => {
+        try {
+            const app = require('./app'); 
+            const server = http.createServer(app);
+            const io = socketIo(server, {
+                cors: {
+                    origin: process.env.FRONTEND_URL,
+                    methods: ["GET", "POST"],
+                    credentials: true
+                }
+            });
 
-// Configuración de CORS
-const origins = [
-  'http://localhost:3000',
-  'http://localhost:5175',
-  process.env.FRONTEND_URL
-].filter(Boolean);
+            socketService.initialize(io);
 
-app.use(cors({
-    origin: origins,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With', 'X-CSRF-Token'],
-    exposedHeaders: ['Content-Range', 'X-Content-Range'],
-    credentials: true,
-    preflightContinue: false,
-    optionsSuccessStatus: 204,
-    maxAge: 86400 // Cache preflight requests for 24 hours
-}));
+            await connectDB();
+            const processType = isDevelopment && !cluster.isMaster ? `Worker ${process.pid}` : 'Servidor';
+            console.log(`🔌 ${processType}: Conectado a MongoDB`);
+            
+            const adminSetup = await setupAdminAccount();
+            if (adminSetup.created) {
+                console.log(`👤 ${processType}: Nueva cuenta admin creada`);
+                console.log(`📧 Email: ${adminSetup.email}`);
+                console.log(`🔑 Contraseña: ${adminSetup.password}`);
+            } else {
+                console.log(`👤 ${processType}: Cuenta admin verificada`);
+            }
 
-// Manejar solicitudes OPTIONS
-app.options('*', (req, res) => {
-    // Obtener el origen de la solicitud
-    const origin = req.headers.origin;
-    const allowedOrigins = origins;
-    
-    // Si el origen está en la lista de permitidos, establecerlo en la respuesta
-    if (allowedOrigins.includes(origin)) {
-        res.setHeader('Access-Control-Allow-Origin', origin);
-    } else {
-        res.setHeader('Access-Control-Allow-Origin', process.env.FRONTEND_URL || 'http://localhost:5175');
-    }
-    
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, Origin, X-Requested-With, X-CSRF-Token');
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-    res.status(204).end();
-});
+            server.listen(PORT, () => {
+                console.log(`🚀 ${processType}: Servidor activo en puerto ${PORT}\n`);
+            });
 
-// Configuración de sesión y autenticación
-app.use(session({
-    secret: process.env.SESSION_SECRET || 'petconnect_secret_key',
-    resave: false,
-    saveUninitialized: false,
-    store: MongoStore.create({
-        mongoUrl: process.env.MONGODB_URI,
-        dbName: 'petconnect',
-        collectionName: 'sessions',
-        ttl: 24 * 60 * 60 // 1 día en segundos
-    }),
-    cookie: {
-        secure: process.env.NODE_ENV === 'production',
-        httpOnly: true,
-        maxAge: 24 * 60 * 60 * 1000 // 1 día
-    }
-}));
+            // Cierre limpio
+            process.on('SIGTERM', () => gracefulShutdown(server));
+            process.on('SIGINT', () => gracefulShutdown(server));
 
-app.use(passport.initialize());
-app.use(passport.session());
+        } catch (error) {
+            const processType = isDevelopment && !cluster.isMaster ? `Worker ${process.pid}` : 'Servidor';
+            console.error(`❌ ${processType}: Error al iniciar:`, error);
+            process.exit(1);
+        }
+    };
 
-// Middleware de logging en desarrollo
-if (process.env.NODE_ENV === 'development') {
-    app.use(sessionLogger);
+    startServer();
 }
 
-// Rutas API
-app.use('/api', routes);
-
-// Configuración de Socket.io
-socketService.initialize(io);
-
-
-// Ruta de estado del servidor prueba el backend en el navegador (localhost:5000)
-app.get('/', (_, res) => res.send('🚀 PetConnect Backend funcionando!'));
-
-// Inicialización del servidor
-const startServer = async () => {
+// Función para cerrar el servidor y MongoDB
+const gracefulShutdown = async (server) => {
+    const processType = isDevelopment && !cluster.isMaster ? `Worker ${process.pid}` : 'Servidor';
+    console.log(`\n🛑 ${processType}: Iniciando cierre controlado...`);
     try {
-        await connectDB();
-        await setupAdminAccount();
-        
-        server.listen(PORT, () => {
-            console.log(`✅ Servidor corriendo en el puerto http://localhost:${PORT}`);
-        });
-    } catch (error) {
-        console.error('❌ Error al iniciar el servidor:', error);
-        process.exit(1);
-    }
-};
-
-startServer();
-
-// Manejo de errores
-app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(500).json({
-        success: false,
-        error: err.message
-    });
-});
-
-// Función para cerrar conexiones
-const gracefulShutdown = async () => {
-    console.log('Recibida señal de apagado. Cerrando conexiones...');
-    
-    try {
-        // Cerrar conexión a MongoDB
         await mongoose.connection.close();
-        console.log('Conexión a MongoDB cerrada');
-        
-        // Cerrar el servidor
+        console.log(`✔️ ${processType}: Conexión a MongoDB cerrada`);
+
         server.close(() => {
-            console.log('Servidor HTTP cerrado');
+            console.log(`✔️ ${processType}: Servidor HTTP cerrado`);
             process.exit(0);
         });
     } catch (error) {
-        console.error('Error durante el cierre:', error);
+        console.error(`❌ ${processType}: Error durante el cierre:`, error);
         process.exit(1);
     }
 };
-//comprobar de prueba
-
-
-
-// Manejar señales de terminación
-process.on('SIGTERM', gracefulShutdown);
-process.on('SIGINT', gracefulShutdown);

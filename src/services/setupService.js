@@ -7,38 +7,44 @@ const setupAdminAccount = async () => {
         const adminExists = await UserModel.findOne({ role: 'admin' });
 
         if (!adminExists) {
-            console.log('Creando cuenta por defecto...');
-
             // Crear contraseña segura y hashearla
             const password = 'petConnect12345';
             const hashedPassword = await bcrypt.hash(password, 10);
             try {
-                // Crear usuario admin directamente sin usar el modelo
-                await UserModel.create({
+                // Intentar crear el admin
+                const newAdmin = await UserModel.create({
                     name: 'ADMIN',
                     email: 'admin@gmail.com',
                     password: hashedPassword,
                     role: 'admin',
                     is_profile_public: false
+                }).catch(err => {
+                    // Si el error es por duplicado, intentamos obtener el admin existente
+                    if (err.code === 11000) {
+                        return null;
+                    }
+                    throw err;
                 });
-                // Verificar que se guardó correctamente
-                const savedAdmin = await UserModel.findOne({ 
-                    email: 'admin@gmail.com' 
-                }).select('+password');
 
-                if (savedAdmin && savedAdmin.password) {
-                    console.log('✅ Cuenta de administrador creada exitosamente');
-                    console.log('📧 Email:', savedAdmin.email);
-                    console.log('🔑 Contraseña:', password);
-                } else {
-                    throw new Error('La contraseña no se guardó correctamente');
+                // Si no se pudo crear, probablemente ya existe
+                if (!newAdmin) {
+                    return { exists: true };
                 }
+
+                return {
+                    created: true,
+                    email: newAdmin.email,
+                    password: password
+                };
             } catch (error) {
-                console.error('Error al crear admin:', error);
-                throw error;
+                // Si el error no es de duplicación, lo propagamos
+                if (error.code !== 11000) {
+                    throw error;
+                }
+                return { exists: true };
             }
         } else {
-            console.log('✅ Cuenta de administrador ya existe');
+            return { exists: true };
         }
     } catch (error) {
         console.error('❌ Error al configurar cuenta de administrador:', error);

@@ -34,9 +34,10 @@ const AuthData = {
             // Verificar si el usuario ya existe
             const userExists = await UserModel.findOne({ email: userData.email });
             if (userExists) {
-                const error = new Error('El email ya está registrado');
-                error.statusCode = 400;
-                throw error;
+                return {
+                    user: userExists,
+                    isNewUser: false
+                };
             }
 
             // Hashear la contraseña
