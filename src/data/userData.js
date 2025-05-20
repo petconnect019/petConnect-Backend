@@ -89,7 +89,7 @@ const UserData = {
             }
             
             // Actualizar solo los campos permitidos
-            const allowedFields = ['name', 'phone', 'city', 'state', 'country', 'address', 'gender'];
+            const allowedFields = ['name', 'phone', 'city', 'state', 'country', 'address', 'gender', 'bio'];
             
             allowedFields.forEach(field => {
                 if (updateData[field] !== undefined) {

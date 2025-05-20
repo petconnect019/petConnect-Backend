@@ -1,6 +1,7 @@
 const UserData = require('../../data/userData');
 const UserModel = require('../../models/UserModel');
 const bcrypt = require('bcrypt');
+const PetModel = require('../../models/PetModel');
 
 const UserController = {
     /**
@@ -187,7 +188,7 @@ const UserController = {
     /**
      * Desactivar cuenta de usuario
      */
-    deleteUser: async (req, res, next) => {
+    deactivateAccount: async (req, res, next) => {
         try {
             const userId = req.user.id;
             
@@ -310,7 +311,14 @@ const UserController = {
                 return next(error);
             }
             
-            // Filtrar información para perfil público
+            // Verificar si el perfil es público
+            if (!user.is_profile_public) {
+                const error = new Error('Este perfil no es público');
+                error.statusCode = 403;
+                return next(error);
+            }
+            
+            // Filtrar información para perfil público (solo datos no sensibles)
             const publicProfile = {
                 _id: user._id,
                 name: user.name,
@@ -320,7 +328,9 @@ const UserController = {
                 email: user.show_contact ? user.email : undefined,
                 city: user.city,
                 state: user.state,
-                country: user.country
+                country: user.country,
+                bio: user.bio,
+                gender: user.gender
             };
             
             // Respuesta HTTP
@@ -335,44 +345,49 @@ const UserController = {
     },
     
     /**
-     * Desactivar cuenta del propio usuario
+     * Obtener mascotas públicas de un usuario
      */
-    deactivateAccount: async (req, res, next) => {
+    getUserPets: async (req, res, next) => {
         try {
-            const userId = req.user.id;
+            const { id } = req.params;
             
-            // Verificar si la contraseña es correcta (seguridad adicional)
-            const { password } = req.body;
-            
-            if (password) {
-                // Obtener usuario con contraseña incluida
-                const user = await UserModel.findById(userId).select('+password');
-                
-                if (!user) {
-                    const error = new Error('Usuario no encontrado');
-                    error.statusCode = 404;
-                    return next(error);
-                }
-                
-                // Verificar contraseña
-                const isMatch = await bcrypt.compare(password, user.password);
-                if (!isMatch) {
-                    const error = new Error('Contraseña incorrecta');
-                    error.statusCode = 400;
-                    return next(error);
-                }
+            // Verificar si el usuario existe
+            const user = await UserData.getUserById(id);
+            if (!user) {
+                const error = new Error('Usuario no encontrado');
+                error.statusCode = 404;
+                return next(error);
             }
             
-            // Desactivar cuenta
-            await UserData.deleteUser(userId);
+            // Verificar si el perfil es público
+            if (!user.is_profile_public) {
+                const error = new Error('Este perfil no es público');
+                error.statusCode = 403;
+                return next(error);
+            }
+            
+            // Buscar las mascotas del usuario
+            const pets = await PetModel.find({ 
+                owner: id
+            }, {
+                // Solo incluir campos no sensibles
+                _id: 1,
+                name: 1,
+                species: 1,
+                breed: 1,
+                gender: 1,
+                color: 1,
+                profile_picture: 1,
+                status: 1
+            });
             
             // Respuesta HTTP
             return res.status(200).json({
                 ok: true,
-                message: 'Tu cuenta ha sido desactivada exitosamente'
+                pets
             });
         } catch (error) {
-            console.error('Error al desactivar cuenta:', error);
+            console.error('Error al obtener mascotas del usuario:', error);
             next(error);
         }
     }

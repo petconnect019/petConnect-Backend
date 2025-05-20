@@ -19,6 +19,10 @@ const userSchema = new mongoose.Schema({
     profile_picture: {
          type: String 
         },
+    bio: {
+        type: String,
+        default: ''
+    },
     role: {
         type: String,
         enum: ['user', 'admin'],
@@ -34,7 +38,7 @@ const userSchema = new mongoose.Schema({
         },
     show_contact: { 
         type: Boolean, 
-        default: false
+        default: true
      },
      gender : {
         type: String,
