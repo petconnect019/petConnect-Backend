@@ -12,22 +12,32 @@ require('./config/passport');
 
 const app = express();
 
-// Middlewares básicos y sesión
+// Configuración de CORS - debe ir antes de cualquier otro middleware
+const origins = [
+  'http://localhost:3000',
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'http://localhost:5175',
+  process.env.FRONTEND_URL,
+  // Permitir cualquier origen en desarrollo
+  ...(process.env.NODE_ENV === 'development' ? ['*'] : [])
+].filter(Boolean);
+
+app.use(cors({
+    origin: process.env.NODE_ENV === 'development' 
+      ? true // Permitir cualquier origen en desarrollo
+      : origins,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+// Middlewares básicos
 app.use(express.json());
 app.use(cookieParser());
 app.use(morgan('dev'));
 
-const origins = [
-  'http://localhost:3000',
-  'http://localhost:5175',
-  process.env.FRONTEND_URL
-].filter(Boolean);
-
-app.use(cors({
-    origin: origins,
-    credentials: true
-}));
-
+// Configuración de sesión
 app.use(session({
     secret: process.env.SESSION_SECRET || 'default_secret',
     resave: false,
@@ -44,13 +54,26 @@ app.use(session({
     }
 }));
 
+// Autenticación
 app.use(passport.initialize());
 app.use(passport.session());
 
+// Rate limiting - aplicar después de CORS pero antes de las rutas
 app.use(rateLimiter);
 
+// Rutas de la API
 app.use('/api', routes);
 
+// Ruta de estado
 app.get('/', (_, res) => res.send('🚀 PetConnect Backend funcionando!'));
+
+// Manejador de errores global
+app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(err.statusCode || 500).json({
+        ok: false,
+        message: err.message || 'Error interno del servidor'
+    });
+});
 
 module.exports = app;
