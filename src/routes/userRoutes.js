@@ -9,8 +9,8 @@ const {
 } = require('../middlewares/uploadMiddleware');
 
 // Rutas públicas (no requieren autenticación)
+router.get('/:id/pets', UserController.getUserPets); 
 router.get('/:id', UserController.getPublicUserProfile);
-router.get('/:id/pets', UserController.getUserPets);
 
 // Rutas protegidas (requieren autenticación)
 router.use(verifyToken);
@@ -36,10 +36,7 @@ router.put('/profile/picture',
     UserController.updateProfilePicture
 );
 
-router.delete('/profile/picture', 
-    verifyToken,
-    UserController.removeProfilePicture
-);
+router.delete('/profile/picture', UserController.removeProfilePicture);
 
 // Ruta para desactivar la cuenta del propio usuario
 router.delete('/profile', UserController.deactivateAccount);

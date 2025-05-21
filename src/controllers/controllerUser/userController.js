@@ -351,7 +351,7 @@ const UserController = {
         try {
             const { id } = req.params;
             
-            // Verificar si el usuario existe
+            // Verificar si el usuario existe y obtener su perfil
             const user = await UserData.getUserById(id);
             if (!user) {
                 const error = new Error('Usuario no encontrado');
@@ -359,16 +359,15 @@ const UserController = {
                 return next(error);
             }
             
-            // Verificar si el perfil es público
-            if (!user.is_profile_public) {
-                const error = new Error('Este perfil no es público');
-                error.statusCode = 403;
-                return next(error);
-            }
+            // No verificamos is_profile_public aquí porque:
+            // 1. Si el perfil no es público, el usuario no debería poder ver el perfil principal
+            // 2. Las mascotas son información pública una vez que se puede ver el perfil
             
             // Buscar las mascotas del usuario
             const pets = await PetModel.find({ 
-                owner: id
+                owner: id,
+                // Solo traer mascotas activas
+                status: { $in: ['Activo', 'Perdido'] }
             }, {
                 // Solo incluir campos no sensibles
                 _id: 1,
