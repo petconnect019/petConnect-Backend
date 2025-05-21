@@ -8,11 +8,11 @@ const {
     checkStorageLimit
 } = require('../middlewares/uploadMiddleware');
 
-// Rutas públicas (no requieren autenticación)
-router.get('/:id/pets', UserController.getUserPets); 
-router.get('/:id', UserController.getPublicUserProfile);
+// ============= Rutas públicas (no requieren autenticación) =============
+router.get('/public/:id', UserController.getPublicUserProfile);
+router.get('/public/:id/pets', UserController.getUserPets);
 
-// Rutas protegidas (requieren autenticación)
+// ============= Rutas protegidas (requieren autenticación) =============
 router.use(verifyToken);
 
 // Rutas de administrador
@@ -35,10 +35,7 @@ router.put('/profile/picture',
     handleUploadError,
     UserController.updateProfilePicture
 );
-
 router.delete('/profile/picture', UserController.removeProfilePicture);
-
-// Ruta para desactivar la cuenta del propio usuario
 router.delete('/profile', UserController.deactivateAccount);
 
 module.exports = router;
