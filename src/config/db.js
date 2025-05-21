@@ -5,7 +5,7 @@ const connectDB = async () => {
         await mongoose.connect(process.env.MONGODB_URI,{
             serverSelectionTimeoutMS: 60000,
             socketTimeoutMS: 60000,
-            maxPoolSize: 50,
+            maxPoolSize:100,
             maxIdleTimeMS: 60000,
             connectTimeoutMS: 60000,
             heartbeatFrequencyMS: 60000,
@@ -13,7 +13,6 @@ const connectDB = async () => {
             w: 'majority',
             wtimeoutMS : 10000,
         });
-        // El mensaje se mostrará desde server.js
         return true;
     } catch (error) {
         console.error(`❌ Error al conectar a MongoDB: ${error.message}`);
