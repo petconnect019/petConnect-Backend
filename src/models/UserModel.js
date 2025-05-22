@@ -34,7 +34,7 @@ const userSchema = new mongoose.Schema({
     },
     is_profile_public: {
          type: Boolean, 
-         default: false 
+         default: true 
         },
     show_contact: { 
         type: Boolean, 
