@@ -33,7 +33,7 @@ const qrData = {
                 console.log('QR guardado en DB con ID:', qrRecord._id);
                 
              
-                const qrURL = `${process.env.FRONTEND_URL}/public-pet-profile/${qrRecord._id}`;
+                const qrURL = `${process.env.FRONTEND_URL}/qr-landing/${qrRecord._id}`;
                 console.log('URL generada:', qrURL);
                 
                 // Generar el código QR como una imagen en base64
