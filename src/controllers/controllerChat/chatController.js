@@ -248,26 +248,9 @@ const chatController = {
       });
     } catch (error) {
       console.error('Error al iniciar chat con usuario:', error);
-      
-      // Manejar errores específicos
-      if (error.message.includes('contigo mismo')) {
-        return res.status(400).json({
-          success: false,
-          message: 'No puedes iniciar un chat contigo mismo'
-        });
-      }
-      
-      if (error.message.includes('no encontrado')) {
-        return res.status(404).json({
-          success: false,
-          message: 'Usuario no encontrado'
-        });
-      }
-
-      // Error general del servidor
       res.status(500).json({
         success: false,
-        message: 'Error al iniciar el chat. Por favor, intenta de nuevo más tarde.',
+        message: 'Error al iniciar el chat',
         error: error.message
       });
     }
