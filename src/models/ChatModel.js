@@ -31,7 +31,7 @@ const chatSchema = new mongoose.Schema({
   petId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Pet',
-    required: true
+    required: false
   },
   owner: {
     userId: {
