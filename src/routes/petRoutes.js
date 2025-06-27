@@ -16,7 +16,6 @@ router.get('/user/pets', verifyToken, PetController.getPetsByOwner); // Obtener 
 router.get('/', PetController.getAllPets); // Ver todas las mascotas
 router.get('/:id/profile-picture', ProfilePictureController.getProfilePicture);
 router.get('/:id/profile-picture/download', ProfilePictureController.downloadProfilePicture);
-router.get('/:id/photos', verifyToken, PhotoController.getPetPhotos); // Obtener fotos de una mascota
 router.get('/:id/photos/download', PhotoController.downloadAllPhotos);
 router.get('/:id', PetController.getPetById); // Ver detalles de una mascota específica
 router.get('/public/:petId', optionalAuth, PetController.getPublicProfile);
@@ -76,10 +75,6 @@ router.post('/:id/photos',
     handleUploadError,
     PhotoController.addPetPhotos
 ); 
-router.delete('/:id/photos/:photoId', 
-    verifyToken,
-    isPetOwnerOrAdmin,
-    PhotoController.deletePetPhoto
-); // Eliminar una foto específica
+router.delete('/:id/photos/:photoId', PhotoController.deletePetPhoto); // Eliminar una foto específica
 
 module.exports = router;

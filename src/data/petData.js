@@ -277,31 +277,6 @@ const PetData = {
     },
     
     /**
-     * Elimina una foto específica de una mascota por índice
-     */
-    deletePetPhotoByIndex: async (petId, photoIndex) => {
-        try {
-            const pet = await PetModel.findById(petId);
-            if (!pet) {
-                throw new Error('Mascota no encontrada');
-            }
-            
-            if (!pet.photos || photoIndex < 0 || photoIndex >= pet.photos.length) {
-                throw new Error('Índice de foto inválido');
-            }
-            
-            const photoUrl = pet.photos[photoIndex];
-            await deleteFromCloudinary(photoUrl);
-            pet.photos.splice(photoIndex, 1);
-            await pet.save();
-            
-            return true;
-        } catch (error) {
-            throw error;
-        }
-    },
-    
-    /**
      * Actualiza la ubicación de una mascota
      */
     updatePetLocation: async (petId, locationData) => {

@@ -5,34 +5,6 @@
 const PetData = require('../../data/petData');
 
 const PhotoController = {
-    // Obtener fotos de una mascota
-    getPetPhotos: async (req, res, next) => {
-        try {
-            const petId = req.params.id;
-            const pet = await PetData.getPetById(petId);
-            
-            if (!pet) {
-                const error = new Error('Mascota no encontrada');
-                error.statusCode = 404;
-                return next(error);
-            }
-            
-            // Formatear las fotos para el frontend
-            const formattedPhotos = (pet.photos || []).map((photoUrl, index) => ({
-                _id: `photo_${index}`,
-                url: photoUrl
-            }));
-            
-            res.status(200).json({
-                ok: true,
-                photos: formattedPhotos
-            });
-        } catch (error) {
-            console.error('Error al obtener fotos:', error);
-            next(error);
-        }
-    },
-
     addPetPhotos: async (req, res, next) => {
         try {
             const petId = req.params.id;
@@ -44,16 +16,10 @@ const PhotoController = {
             }
             const photoUrls = await PetData.addPetPhotos(petId, req.files);
     
-            // Formatear las fotos para el frontend
-            const formattedPhotos = photoUrls.map((photoUrl, index) => ({
-                _id: `photo_${Date.now()}_${index}`,
-                url: photoUrl
-            }));
-    
             res.status(200).json({
                 ok: true,
                 message: 'Fotos añadidas exitosamente',
-                photos: formattedPhotos
+                photos: photoUrls
             });
             
         } catch (error) {
@@ -65,22 +31,9 @@ const PhotoController = {
     deletePetPhoto: async (req, res, next) => {
         try {
             const petId = req.params.id;
-            const photoId = req.params.photoId;
+            const photoUrl = decodeURIComponent(req.params.photoId);
             
-            // Si el photoId es un índice (photo_0, photo_1, etc.), convertirlo a índice numérico
-            let photoIndex = null;
-            if (photoId.startsWith('photo_')) {
-                photoIndex = parseInt(photoId.replace('photo_', ''));
-            } else {
-                // Si es una URL, decodificarla
-                const photoUrl = decodeURIComponent(photoId);
-                await PetData.deletePetPhoto(petId, photoUrl);
-            }
-            
-            // Si es un índice, eliminar por posición
-            if (photoIndex !== null) {
-                await PetData.deletePetPhotoByIndex(petId, photoIndex);
-            }
+            await PetData.deletePetPhoto(petId, photoUrl);
             
             res.status(200).json({
                 ok: true,
