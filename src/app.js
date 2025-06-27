@@ -11,7 +11,6 @@ const rateLimiter = require('./middlewares/rateLimitMiddleware');
 require('./config/passport');
 
 const app = express();
-app.set('trust proxy', true);
 
 // Configuración de CORS - debe ir antes de cualquier otro middleware
 const origins = [
