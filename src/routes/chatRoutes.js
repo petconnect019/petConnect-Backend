@@ -6,6 +6,12 @@ const { verifyToken } = require('../middlewares/authMiddleware');
 // Todas las rutas de chat requieren autenticación
 router.use(verifyToken);
 
+// TEST ROUTE
+router.post('/test-start', (req, res) => {
+  console.log('--- TEST ROUTE /api/chat/test-start WAS HIT ---');
+  res.status(200).json({ success: true, message: 'Test route is working!' });
+});
+
 // Obtener todos los chats del usuario
 router.get('/', chatController.getUserChats);
 
