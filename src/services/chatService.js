@@ -193,6 +193,16 @@ class ChatService {
       // Poblar el nuevo chat antes de devolverlo
       await chat.populate('participants.userId', 'name email profilePicture');
 
+      // --- LOG DE DEBUGCIÓN EXTREMA ---
+      logger.info('🔬 [createChatDocument] Objeto chat ANTES de retornar:', {
+        _id: chat._id,
+        participants: chat.participants.map(p => ({ 
+          userId: p.userId?._id, 
+          name: p.userId?.name 
+        }))
+      });
+      // --- FIN LOG ---
+
       return chat; // Retornar documento directamente
 
     } catch (error) {
@@ -315,12 +325,32 @@ class ChatService {
       validateObjectId(chatId, 'chatId');
       validateObjectId(senderId, 'senderId');
 
+      // --- LOG DE DEBUGCIÓN EXTREMA ---
+      logger.info(`📩 [sendMessage] Inicio. ChatID: ${chatId}, SenderID: ${senderId}`);
+      // --- FIN LOG ---
+
       // Buscar el chat Y POBLAR PARTICIPANTES para la validación
       const chat = await ChatModel.findById(chatId).populate('participants.userId', 'name');
 
       if (!chat) {
+        logger.error(`❌ [sendMessage] Chat no encontrado con ID: ${chatId}`);
         throw new Error('Chat no encontrado');
       }
+
+      // --- LOG DE DEBUGCIÓN EXTREMA ---
+      logger.info('🔬 [sendMessage] Objeto chat encontrado y poblado:', {
+        _id: chat._id,
+        participants: chat.participants.map(p => ({
+          userId_id: p.userId?._id,
+          userId_name: p.userId?.name,
+          // Comprobar si el objeto userId es un ObjectId o un objeto
+          isObjectId: p.userId instanceof require('mongoose').Types.ObjectId,
+          isObject: typeof p.userId === 'object' && p.userId !== null
+        }))
+      });
+      logger.info(`🔬 [sendMessage] Verificando permiso para senderId: ${senderId}`);
+      logger.info(`   Tipo de senderId: ${typeof senderId}`);
+      // --- FIN LOG ---
 
       const { content, messageType = 'text', attachments, location } = messageData;
 
@@ -349,6 +379,11 @@ class ChatService {
       logger.info(`   ¿Es participante? ${isParticipant}`);
 
       if (!isParticipant) {
+        // --- LOG DE DEBUGCIÓN EXTREMA ---
+        logger.error(`❌ [sendMessage] FALLO DE PERMISO. El senderId '${senderId}' no está en la lista de participantes.`);
+        const participantIds = chat.participants.map(p => p.userId?._id?.toString());
+        logger.error(`   Participantes actuales: [${participantIds.join(', ')}]`);
+        // --- FIN LOG ---
         throw new Error('No tienes permisos para acceder a este chat');
       }
 

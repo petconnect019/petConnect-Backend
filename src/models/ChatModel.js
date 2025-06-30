@@ -346,27 +346,31 @@ chatSchema.methods.removeParticipant = function(userId) {
 
 // Método para verificar si un usuario es participante
 chatSchema.methods.isParticipant = function(userId) {
-  // Debug detallado para diagnosticar el problema
-  console.log('🔍 DEBUG isParticipant - Verificando permisos:');
-  console.log(`   UserID buscado: ${userId} (tipo: ${typeof userId})`);
-  console.log(`   Participantes en chat: ${JSON.stringify(this.participants.map(p => ({
-    userId: p.userId.toString(),
-    isActive: p.isActive,
-    role: p.role
-  })))}`);
+  // --- INICIO DE LÓGICA DE DEPURACIÓN Y CORRECCIÓN ---
+  const searchIdStr = userId.toString();
   
+  console.log(`[isParticipant] Buscando a -> ${searchIdStr}`);
+
   const found = this.participants.some(p => {
-    const participantId = p.userId.toString();
-    const searchId = userId.toString();
+    // Caso 1: p.userId es un documento poblado (tiene _id)
+    // Caso 2: p.userId es un ObjectId (no tiene _id, es el ID en sí)
+    if (!p.userId) {
+      console.log(`[isParticipant] Saltando participante con userId nulo.`);
+      return false;
+    }
+
+    const participantIdObj = p.userId._id || p.userId;
+    const participantIdStr = participantIdObj.toString();
     const isActive = p.isActive;
+
+    console.log(`[isParticipant]   Comparando: "${participantIdStr}" === "${searchIdStr}" | Activo: ${isActive}`);
     
-    console.log(`   Comparando: "${participantId}" === "${searchId}" && isActive: ${isActive}`);
-    
-    return participantId === searchId && isActive;
+    return participantIdStr === searchIdStr && isActive;
   });
   
-  console.log(`   🎯 Resultado: ${found}`);
+  console.log(`[isParticipant] Resultado de la búsqueda -> ${found}`);
   return found;
+  // --- FIN DE LÓGICA DE DEPURACIÓN Y CORRECCIÓN ---
 };
 
 // Método para agregar mensaje
