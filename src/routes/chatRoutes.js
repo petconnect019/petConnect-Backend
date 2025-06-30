@@ -85,6 +85,21 @@ router.post('/',
   chatController.createChat
 );
 
+// === RUTAS DE CHAT DIRECTO ENTRE USUARIOS (ANTES DE RUTAS GENÉRICAS) ===
+
+// Iniciar chat con un usuario específico y enviar mensaje inicial
+router.post('/user/:recipientId/start',
+  [
+    ...recipientIdValidation,
+    body('initialMessage')
+      .trim()
+      .isLength({ min: 1, max: 2000 })
+      .withMessage('El mensaje inicial debe tener entre 1 y 2000 caracteres')
+  ],
+  handleValidationErrors,
+  chatController.startChatWithUser
+);
+
 // === RUTAS DE CHAT ESPECÍFICO ===
 
 // Obtener un chat específico por ID
@@ -160,20 +175,7 @@ router.post('/pet/:petId/start',
   chatController.startChatWithPetOwner
 );
 
-// === RUTAS DE CHAT DIRECTO ENTRE USUARIOS ===
-
-// Iniciar chat con un usuario específico y enviar mensaje inicial
-router.post('/user/:recipientId/start',
-  [
-    ...recipientIdValidation,
-    body('initialMessage')
-      .trim()
-      .isLength({ min: 1, max: 2000 })
-      .withMessage('El mensaje inicial debe tener entre 1 y 2000 caracteres')
-  ],
-  handleValidationErrors,
-  chatController.startChatWithUser
-);
+// === RUTAS DE CHAT DIRECTO ENTRE USUARIOS (YA MOVIDA ARRIBA) ===
 
 // === RUTAS DE BÚSQUEDA Y FILTROS ===
 
