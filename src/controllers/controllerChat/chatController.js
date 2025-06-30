@@ -431,7 +431,7 @@ const chatController = {
       res.status(201).json({
         success: true,
         message: 'Chat iniciado y mensaje enviado exitosamente',
-        data: { chatId: chat._id }
+        chat: { _id: chat._id } // Frontend espera 'chat', no 'data'
       });
 
     } catch (error) {

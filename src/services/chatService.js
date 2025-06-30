@@ -615,12 +615,19 @@ class ChatService {
       .map(p => p.userId.toString());
 
     for (const participantId of otherParticipants) {
-      socketService.sendDirectMessage(participantId, eventType, {
-        chatId: chat._id,
-        chatType: chat.chatType,
-        title: chat.title,
-        petName: chat.petId?.name
-      });
+      // Para chat_created, enviar el chat completo formateado
+      if (eventType === 'chat_created') {
+        const formattedChat = this._formatChatResponse(chat, participantId);
+        socketService.sendDirectMessage(participantId, eventType, formattedChat);
+      } else {
+        // Para otros eventos, enviar datos básicos
+        socketService.sendDirectMessage(participantId, eventType, {
+          chatId: chat._id,
+          chatType: chat.chatType,
+          title: chat.title,
+          petName: chat.petId?.name
+        });
+      }
     }
   }
 
