@@ -1,6 +1,3 @@
-const cluster = require('cluster');
-const os = require('os');
-const numCPUs = os.cpus().length;
 const express = require('express');
 const http = require('http');
 const mongoose = require('mongoose');
@@ -9,82 +6,112 @@ const { setupAdminAccount } = require('./services/setupService');
 const socketIo = require('socket.io');
 const socketService = require('./services/socketService');
 
-const PORT = process.env.PORT || 5000;
-const isDevelopment = process.env.NODE_ENV !== 'production';
+const PORT = process.env.PORT || 3001;
+const isProduction = process.env.NODE_ENV === 'production';
 
-if (isDevelopment && cluster.isMaster) {
-    console.log('\n=== INICIANDO SERVIDOR EN MODO CLUSTER (DESARROLLO) ===');
-    console.log(`📌 Proceso Maestro (PID: ${process.pid})`);
-    console.log(`📌 Creando ${numCPUs} workers...\n`);
+console.log(`🚀 Iniciando PetConnect Backend...`);
+console.log(`🌍 Entorno: ${process.env.NODE_ENV || 'development'}`);
+console.log(`🔌 Puerto configurado: ${PORT}`);
 
-    for (let i = 0; i < numCPUs; i++) {
-        cluster.fork();
-    }
+const startServer = async () => {
+    try {
+        console.log('📦 Cargando aplicación Express...');
+        const app = require('./app'); 
+        
+        console.log('🌐 Creando servidor HTTP...');
+        const server = http.createServer(app);
+        
+        console.log('🔌 Configurando Socket.IO...');
+        const io = socketIo(server, {
+            cors: {
+                origin: process.env.FRONTEND_URL || "*",
+                methods: ["GET", "POST"],
+                credentials: true
+            },
+            pingTimeout: 60000,
+            pingInterval: 25000
+        });
 
-    cluster.on('exit', (worker, code, signal) => {
-        console.log(`❌ Worker ${worker.process.pid} se ha detenido. Iniciando nuevo worker...`);
-        cluster.fork();
-    });
-} else {
-    const startServer = async () => {
+        socketService.initialize(io);
+
+        console.log('🔗 Conectando a MongoDB...');
+        await connectDB();
+        console.log('✅ Conectado a MongoDB exitosamente');
+        
+        console.log('👤 Configurando cuenta administrador...');
         try {
-            const app = require('./app'); 
-            const server = http.createServer(app);
-            const io = socketIo(server, {
-                cors: {
-                    origin: process.env.FRONTEND_URL,
-                    methods: ["GET", "POST"],
-                    credentials: true
-                }
-            });
-
-            socketService.initialize(io);
-
-            await connectDB();
-            const processType = isDevelopment && !cluster.isMaster ? `Worker ${process.pid}` : 'Servidor';
-            console.log(`🔌 ${processType}: Conectado a MongoDB`);
-            
             const adminSetup = await setupAdminAccount();
             if (adminSetup.created) {
-                console.log(`👤 ${processType}: Nueva cuenta admin creada`);
+                console.log('👤 Nueva cuenta admin creada');
                 console.log(`📧 Email: ${adminSetup.email}`);
                 console.log(`🔑 Contraseña: ${adminSetup.password}`);
             } else {
-                console.log(`👤 ${processType}: Cuenta admin verificada`);
+                console.log('👤 Cuenta admin verificada');
             }
-
-            server.listen(PORT, () => {
-                console.log(`🚀 ${processType}: Servidor activo en puerto ${PORT}\n`);
-            });
-
-            // Cierre limpio
-            process.on('SIGTERM', () => gracefulShutdown(server));
-            process.on('SIGINT', () => gracefulShutdown(server));
-
-        } catch (error) {
-            const processType = isDevelopment && !cluster.isMaster ? `Worker ${process.pid}` : 'Servidor';
-            console.error(`❌ ${processType}: Error al iniciar:`, error);
-            process.exit(1);
+        } catch (adminError) {
+            console.warn('⚠️ Error al configurar admin (continuando):', adminError.message);
         }
-    };
 
-    startServer();
-}
+        console.log('🚀 Iniciando servidor HTTP...');
+        server.listen(PORT, '0.0.0.0', () => {
+            console.log(`✅ Servidor PetConnect activo en puerto ${PORT}`);
+            console.log(`🌐 Entorno: ${process.env.NODE_ENV || 'development'}`);
+            console.log(`📡 Health check disponible en: http://0.0.0.0:${PORT}/health`);
+            console.log('='.repeat(50));
+        });
+
+        // Cierre limpio
+        process.on('SIGTERM', () => gracefulShutdown(server));
+        process.on('SIGINT', () => gracefulShutdown(server));
+
+        // Capturar errores no manejados
+        process.on('unhandledRejection', (err) => {
+            console.error('❌ Unhandled Promise Rejection:', err);
+        });
+
+        process.on('uncaughtException', (err) => {
+            console.error('❌ Uncaught Exception:', err);
+            gracefulShutdown(server);
+        });
+
+    } catch (error) {
+        console.error('❌ Error crítico al iniciar servidor:', error);
+        console.error('Stack trace:', error.stack);
+        
+        // En lugar de salir inmediatamente, intentar proporcionar diagnóstico
+        if (error.message.includes('MONGODB_URI')) {
+            console.error('💡 Sugerencia: Verificar variable MONGODB_URI en Railway');
+        }
+        
+        setTimeout(() => {
+            console.error('💀 Terminando proceso debido a error crítico');
+            process.exit(1);
+        }, 5000);
+    }
+};
+
+startServer();
 
 // Función para cerrar el servidor y MongoDB
 const gracefulShutdown = async (server) => {
-    const processType = isDevelopment && !cluster.isMaster ? `Worker ${process.pid}` : 'Servidor';
-    console.log(`\n🛑 ${processType}: Iniciando cierre controlado...`);
+    console.log('\n🛑 Iniciando cierre controlado del servidor...');
     try {
-        await mongoose.connection.close();
-        console.log(`✔️ ${processType}: Conexión a MongoDB cerrada`);
+        if (mongoose.connection.readyState === 1) {
+            await mongoose.connection.close();
+            console.log('✔️ Conexión a MongoDB cerrada');
+        }
 
-        server.close(() => {
-            console.log(`✔️ ${processType}: Servidor HTTP cerrado`);
+        if (server) {
+            server.close(() => {
+                console.log('✔️ Servidor HTTP cerrado');
+                console.log('👋 PetConnect Backend terminado correctamente');
+                process.exit(0);
+            });
+        } else {
             process.exit(0);
-        });
+        }
     } catch (error) {
-        console.error(`❌ ${processType}: Error durante el cierre:`, error);
+        console.error('❌ Error durante el cierre:', error);
         process.exit(1);
     }
 };

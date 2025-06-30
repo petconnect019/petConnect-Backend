@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "main": "src/server.js",
   "scripts": {
-    "start": "node src/server.js",
+    "start": "node startup-check.js",
+    "start:direct": "node src/server.js",
+    "start:emergency": "node emergency-health.js",
     "dev": "nodemon src/server.js",
     "drop-qr-index": "node scripts/dropQrIndex.js",
     "test": "jest --setupFiles ./tests/setup.js",
