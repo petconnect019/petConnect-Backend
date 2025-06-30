@@ -379,6 +379,11 @@ const chatController = {
    */
   async startChatWithUser(req, res) {
     try {
+      console.log('🚀 DEBUG: startChatWithUser INICIO');
+      console.log('   req.user:', req.user);
+      console.log('   req.params:', req.params);
+      console.log('   req.body:', req.body);
+      
       const { recipientId } = req.params;
       const { initialMessage } = req.body;
       const senderId = req.user.id;
