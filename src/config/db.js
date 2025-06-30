@@ -11,26 +11,24 @@ const connectDB = async () => {
 
         const options = {
             // Timeouts optimizados para Railway/producción
-            serverSelectionTimeoutMS: 10000, // 10 segundos (reducido de 60s)
-            socketTimeoutMS: 20000,           // 20 segundos (reducido de 60s)
-            connectTimeoutMS: 10000,          // 10 segundos (reducido de 60s)
-            heartbeatFrequencyMS: 10000,      // 10 segundos (reducido de 60s)
+            serverSelectionTimeoutMS: 10000, // 10 segundos
+            socketTimeoutMS: 20000,           // 20 segundos
+            connectTimeoutMS: 10000,          // 10 segundos
+            heartbeatFrequencyMS: 10000,      // 10 segundos
             
             // Pool de conexiones optimizado
-            maxPoolSize: 10,                  // Reducido de 100
+            maxPoolSize: 10,                  // Reducido para Railway
             minPoolSize: 2,
-            maxIdleTimeMS: 30000,             // 30 segundos (reducido de 60s)
+            maxIdleTimeMS: 30000,             // 30 segundos
             
             // Configuraciones de escritura
             retryReads: true,
             retryWrites: true,
             w: 'majority',
-            wtimeoutMS: 5000,                 // 5 segundos (reducido de 10s)
+            wtimeoutMS: 5000                  // 5 segundos
             
-            // Configuraciones adicionales
-            bufferMaxEntries: 0,
-            useNewUrlParser: true,
-            useUnifiedTopology: true
+            // Nota: bufferMaxEntries, useNewUrlParser, useUnifiedTopology 
+            // son deprecated en Mongoose 8+ y se removieron
         };
 
         await mongoose.connect(process.env.MONGODB_URI, options);
