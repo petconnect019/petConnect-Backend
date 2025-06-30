@@ -17,11 +17,16 @@ const initialize = (socketIo) => {
 
     io.use(async (socket, next) => {
         try {
-            const token = socket.handshake.auth.token;
+            let token = socket.handshake.auth.token;
             
             if (!token) {
                 logger.warn('Intento de conexión sin token');
                 return next(new Error('Autenticación requerida'));
+            }
+
+            // Flexibilidad para manejar el prefijo 'Bearer'
+            if (token.startsWith('Bearer ')) {
+                token = token.slice(7, token.length);
             }
 
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
