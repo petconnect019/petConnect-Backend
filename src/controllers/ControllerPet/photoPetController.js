@@ -68,15 +68,12 @@ const PhotoController = {
                 return next(error);
             }
             
-            if (!pet.photos || pet.photos.length === 0) {
-                const error = new Error('La mascota no tiene fotos adicionales');
-                error.statusCode = 404;
-                return next(error);
-            }
+            // Si no hay fotos, devolver array vacío en lugar de error
+            const photos = pet.photos || [];
             
             res.status(200).json({
                 ok: true,
-                photos: pet.photos
+                photos: photos
             });
         } catch (error) {
             console.error('Error al descargar fotos:', error);

@@ -16,6 +16,7 @@ router.get('/user/pets', verifyToken, PetController.getPetsByOwner); // Obtener 
 router.get('/', PetController.getAllPets); // Ver todas las mascotas
 router.get('/:id/profile-picture', ProfilePictureController.getProfilePicture);
 router.get('/:id/profile-picture/download', ProfilePictureController.downloadProfilePicture);
+router.get('/:id/photos', PhotoController.downloadAllPhotos); // Obtener fotos de una mascota
 router.get('/:id/photos/download', PhotoController.downloadAllPhotos);
 router.get('/:id', PetController.getPetById); // Ver detalles de una mascota específica
 router.get('/public/:petId', optionalAuth, PetController.getPublicProfile);
