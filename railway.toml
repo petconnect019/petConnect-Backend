@@ -4,6 +4,6 @@ buildCommand = "npm install"
 
 [deploy]
 startCommand = "npm start"
-healthcheckPath = "/api/health"
-healthcheckTimeout = 15
+healthcheckPath = "/health"
+healthcheckTimeout = 30
 restartPolicyType = "ALWAYS" 

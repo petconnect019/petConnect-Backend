@@ -64,8 +64,31 @@ app.use(rateLimiter);
 // Rutas de la API
 app.use('/api', routes);
 
-// Ruta de estado
+// Rutas de estado (antes del manejo de errores)
 app.get('/', (_, res) => res.send('🚀 PetConnect Backend funcionando!'));
+
+// Healthcheck adicional sin middlewares
+app.get('/health', (req, res) => {
+    try {
+        const healthData = {
+            status: 'ok',
+            timestamp: new Date().toISOString(),
+            uptime: process.uptime(),
+            service: 'PetConnect Backend',
+            environment: process.env.NODE_ENV || 'development'
+        };
+        
+        console.log('🔍 Healthcheck solicitado:', healthData);
+        res.status(200).json(healthData);
+    } catch (error) {
+        console.error('❌ Error en healthcheck simple:', error);
+        res.status(200).json({ 
+            status: 'error',
+            error: error.message,
+            timestamp: new Date().toISOString()
+        });
+    }
+});
 
 // Manejador de errores global
 app.use((err, req, res, next) => {

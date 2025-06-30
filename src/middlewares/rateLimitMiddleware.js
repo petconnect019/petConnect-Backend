@@ -10,6 +10,17 @@ const limiter = rateLimit({
     },
     standardHeaders: true, // Devuelve los headers `RateLimit-*` para mostrar el límite
     legacyHeaders: false, // Deshabilita los headers `X-RateLimit-*`
+    
+    // Excluir rutas de healthcheck del rate limiting
+    skip: (req, res) => {
+        const excludedPaths = [
+            '/',
+            '/health',
+            '/api/health'
+        ];
+        
+        return excludedPaths.includes(req.path);
+    }
 });
 
 module.exports = limiter; 

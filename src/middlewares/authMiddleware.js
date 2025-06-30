@@ -11,7 +11,9 @@ const verifyToken = async (req, res, next) => {
             '/login',
             '/api/auth/register',
             '/api/auth/login',
-            '/api/auth/refresh-token'
+            '/api/auth/refresh-token',
+            '/health',
+            '/api/health'
         ];
 
         // Verificar si la ruta actual es pública
