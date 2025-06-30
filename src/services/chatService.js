@@ -53,17 +53,34 @@ class ChatService {
         }
       }
 
+      // Debug: Log de creación de chat
+      logger.info(`🏗️ Creando chat:`);
+      logger.info(`   Tipo: ${chatType}`);
+      logger.info(`   Creado por: ${createdBy}`);
+      logger.info(`   Participantes válidos: ${JSON.stringify(validParticipants.map(p => ({
+        _id: p._id.toString(),
+        name: p.name
+      })))}`);
+
       // Crear el chat
+      const participantsForChat = validParticipants.map(p => ({
+        userId: p._id,
+        role: p._id.toString() === createdBy.toString() ? 'owner' : 'participant',
+        joinedAt: new Date(),
+        isActive: true
+      }));
+
+      logger.info(`   Participantes del chat: ${JSON.stringify(participantsForChat.map(p => ({
+        userId: p.userId.toString(),
+        role: p.role,
+        isActive: p.isActive
+      })))}`);
+
       const chat = new ChatModel({
         chatType,
         petId: petId || null,
         title: title || this._generateChatTitle(chatType, validParticipants),
-        participants: validParticipants.map(p => ({
-          userId: p._id,
-          role: p._id.toString() === createdBy.toString() ? 'owner' : 'participant',
-          joinedAt: new Date(),
-          isActive: true
-        })),
+        participants: participantsForChat,
         metadata: {
           createdBy,
           source
@@ -74,6 +91,8 @@ class ChatService {
       });
 
       await chat.save();
+      
+      logger.info(`✅ Chat guardado con ID: ${chat._id}`);
 
       // Notificar a los participantes (excepto al creador)
       await this._notifyParticipants(chat, 'chat_created', createdBy);
@@ -220,8 +239,21 @@ class ChatService {
         throw new Error('Chat no encontrado');
       }
 
-      if (!chat.isParticipant(senderId)) {
-        throw new Error('No tienes permisos para enviar mensajes en este chat');
+      // Debug: Log detallado de participantes
+      logger.info(`🔍 Verificando permisos para enviar mensaje:`);
+      logger.info(`   Chat ID: ${chatId}`);
+      logger.info(`   Sender ID: ${senderId}`);
+      logger.info(`   Participantes en chat: ${JSON.stringify(chat.participants.map(p => ({
+        userId: p.userId.toString(),
+        isActive: p.isActive,
+        role: p.role
+      })))}`);
+      
+      const isParticipant = chat.isParticipant(senderId);
+      logger.info(`   ¿Es participante? ${isParticipant}`);
+
+      if (!isParticipant) {
+        throw new Error('No tienes permisos para acceder a este chat');
       }
 
       if (chat.status !== 'active') {

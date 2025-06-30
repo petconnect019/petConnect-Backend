@@ -383,6 +383,12 @@ const chatController = {
       const { initialMessage } = req.body;
       const senderId = req.user.id;
 
+      // Debug logging
+      logger.info(`📨 Iniciando chat entre usuarios:`);
+      logger.info(`   Sender ID: ${senderId}`);
+      logger.info(`   Recipient ID: ${recipientId}`);
+      logger.info(`   Mensaje inicial: "${initialMessage}"`);
+
       // Validar mensaje inicial
       if (!initialMessage || initialMessage.trim() === '') {
         return res.status(400).json({
@@ -399,7 +405,15 @@ const chatController = {
         source: 'direct_message'
       };
 
+      logger.info(`📋 Datos del chat a crear: ${JSON.stringify(chatData)}`);
+
       const chat = await chatService.createChat(chatData);
+      
+      logger.info(`✅ Chat creado exitosamente, enviando mensaje inicial...`);
+      logger.info(`   Chat ID obtenido: ${chat._id}`);
+
+      // Pequeño delay para asegurar consistencia de DB
+      await new Promise(resolve => setTimeout(resolve, 100));
 
       // Enviar mensaje inicial
       await chatService.sendMessage(chat._id, senderId, {
