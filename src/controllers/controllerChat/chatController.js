@@ -1,257 +1,436 @@
-const chatData = require('../../data/chatData');
-const socketService = require('../../services/socketService');
-const ChatModel = require('../../models/ChatModel');
-const UserModel = require('../../models/UserModel');
+const chatService = require('../../services/chatService');
+const logger = require('../../utils/logger');
+const { validatePagination, validateSearchQuery } = require('../../utils/validation');
 
+/**
+ * Controlador profesional para manejo de chats
+ * Utiliza el servicio de chat para la lógica de negocio
+ */
 const chatController = {
-  // Obtener todos los chats del usuario
-  getUserChats: async (req, res) => {
+
+  /**
+   * Obtener todos los chats del usuario con paginación y filtros
+   * GET /api/chat?page=1&limit=20&search=texto&chatType=direct
+   */
+  async getUserChats(req, res) {
     try {
       const userId = req.user.id;
-      const chats = await chatData.getUserChats(userId);
+      const { page, limit, search, chatType, status } = req.query;
       
-      // Si no hay chats, devolvemos un array vacío
-      if (!chats) {
-        return res.json({
-          success: true,
-          chats: [],
-          message: 'No hay conversaciones disponibles'
-        });
-      }
+      // Validar y sanitizar parámetros
+      const pagination = validatePagination({ page, limit });
+      const searchQuery = validateSearchQuery(search);
       
+      const options = {
+        ...pagination,
+        search: searchQuery,
+        chatType,
+        status: status || 'active'
+      };
+
+      const result = await chatService.getUserChats(userId, options);
+
+      logger.info(`Chats obtenidos para usuario ${userId}: ${result.chats.length} chats`);
+
       res.json({
         success: true,
-        chats
+        message: 'Chats obtenidos exitosamente',
+        data: result.chats,
+        pagination: result.pagination
       });
+
     } catch (error) {
-      console.error('Error al obtener chats del usuario:', error);
+      logger.error('Error al obtener chats del usuario:', error);
+      
       res.status(500).json({
         success: false,
         message: 'Error interno del servidor',
-        error: error.message
+        error: process.env.NODE_ENV === 'development' ? error.message : 'Error interno'
       });
     }
   },
-  
-  // Obtener mensajes de un chat
+
+  /**
+   * Obtener mensajes de un chat específico con paginación
+   * GET /api/chat/:chatId/messages?page=1&limit=50&before=2024-01-01T00:00:00.000Z
+   */
   async getChatMessages(req, res) {
     try {
       const { chatId } = req.params;
       const userId = req.user.id;
+      const { page, limit, before } = req.query;
 
-      const messages = await chatData.getMessagesForChat(userId, chatId);
+      // Validar paginación
+      const pagination = validatePagination({ page, limit });
+
+      const options = {
+        ...pagination,
+        before
+      };
+
+      const result = await chatService.getChatMessages(chatId, userId, options);
+
+      logger.info(`Mensajes obtenidos del chat ${chatId} para usuario ${userId}`);
 
       res.json({
         success: true,
-        messages: messages
+        message: 'Mensajes obtenidos exitosamente',
+        data: result.messages,
+        pagination: result.pagination
       });
+
     } catch (error) {
-      console.error('Error al obtener mensajes del chat:', error);
+      logger.error(`Error al obtener mensajes del chat ${req.params.chatId}:`, error);
       
       let statusCode = 500;
-      if (error.message.includes('permiso')) {
-        statusCode = 403;
-      } else if (error.message.includes('encontrado')) {
+      if (error.message.includes('no encontrado')) {
         statusCode = 404;
+      } else if (error.message.includes('permisos') || error.message.includes('acceder')) {
+        statusCode = 403;
+      } else if (error.message.includes('válido')) {
+        statusCode = 400;
       }
 
       res.status(statusCode).json({
         success: false,
-        message: 'Error al obtener mensajes',
-        error: error.message
-      });
-    }
-  },
-  
-  // Iniciar chat con el dueño de una mascota
-  startChatWithPetOwner: async (req, res) => {
-    try {
-      const { petId } = req.params;
-      const userId = req.user.id;
-      
-      const chatInfo = await chatData.startChatWithPetOwner(userId, petId);
-      
-      res.json({
-        success: true,
-        chat: chatInfo
-      });
-    } catch (error) {
-      console.error('Error al iniciar chat con dueño de mascota:', error);
-      
-      if (error.message === 'Mascota no encontrada') {
-        return res.status(404).json({
-          success: false,
-          message: 'Mascota no encontrada'
-        });
-      }
-      
-      if (error.message === 'No puedes iniciar un chat contigo mismo') {
-        return res.status(400).json({
-          success: false,
-          message: 'No puedes iniciar un chat contigo mismo'
-        });
-      }
-      
-      res.status(500).json({
-        success: false,
-        message: 'Error al iniciar el chat',
-        error: error.message
-      });
-    }
-  },
-  
-  // Enviar mensaje al dueño de una mascota
-  sendMessageToPetOwner: async (req, res) => {
-    try {
-      const { petId } = req.params;
-      const { content, location } = req.body;
-      const userId = req.user.id;
-      
-      const messageInfo = await chatData.sendMessageToPetOwner(userId, petId, content, location);
-      
-      res.json({
-        success: true,
-        message: messageInfo
-      });
-    } catch (error) {
-      console.error('Error al enviar mensaje al dueño de la mascota:', error);
-      
-      if (error.message === 'Mascota no encontrada') {
-        return res.status(404).json({
-          success: false,
-          message: 'Mascota no encontrada'
-        });
-      }
-      
-      if (error.message === 'No puedes iniciar un chat contigo mismo') {
-        return res.status(400).json({
-          success: false,
-          message: 'No puedes iniciar un chat contigo mismo'
-        });
-      }
-      
-      res.status(500).json({
-        success: false,
-        message: 'Error al enviar el mensaje',
-        error: error.message
-      });
-    }
-  },
-  
-  // Enviar mensaje a un usuario que encontró una mascota
-  sendMessageToPetFinder: async (req, res) => {
-    try {
-      const { finderId, petId } = req.params;
-      const { content } = req.body;
-      const ownerId = req.user.id;
-      
-      const messageInfo = await chatData.sendMessageToPetFinder(ownerId, finderId, petId, content);
-      
-      res.json({
-        success: true,
-        message: messageInfo
-      });
-    } catch (error) {
-      console.error('Error al enviar mensaje al usuario que encontró la mascota:', error);
-      
-      if (error.message === 'Mascota no encontrada o no eres el dueño') {
-        return res.status(403).json({
-          success: false,
-          message: 'Mascota no encontrada o no eres el dueño'
-        });
-      }
-      
-      res.status(500).json({
-        success: false,
-        message: 'Error al enviar el mensaje',
-        error: error.message
+        message: error.message,
+        error: process.env.NODE_ENV === 'development' ? error.stack : undefined
       });
     }
   },
 
+  /**
+   * Enviar mensaje en un chat
+   * POST /api/chat/:chatId/messages
+   */
   async sendMessage(req, res) {
     try {
       const { chatId } = req.params;
-      const { content } = req.body;
       const userId = req.user.id;
+      const messageData = req.body;
 
-      if (!content || content.trim() === '') {
-        return res.status(400).json({
-          success: false,
-          message: 'El contenido del mensaje no puede estar vacío.'
-        });
-      }
+      const sentMessage = await chatService.sendMessage(chatId, userId, messageData);
 
-      const sentMessage = await chatData.addMessageToChat(chatId, userId, content);
+      logger.info(`Mensaje enviado en chat ${chatId} por usuario ${userId}`);
 
       res.status(201).json({
         success: true,
         message: 'Mensaje enviado exitosamente',
         data: sentMessage
       });
+
     } catch (error) {
-      console.error('Error al enviar mensaje:', error);
-      res.status(error.message.includes('permiso') ? 403 : 500).json({
+      logger.error(`Error al enviar mensaje en chat ${req.params.chatId}:`, error);
+      
+      let statusCode = 500;
+      if (error.message.includes('no encontrado')) {
+        statusCode = 404;
+      } else if (error.message.includes('permisos') || error.message.includes('acceder')) {
+        statusCode = 403;
+      } else if (error.message.includes('vacío') || error.message.includes('inválido') || error.message.includes('largo')) {
+        statusCode = 400;
+      }
+
+      res.status(statusCode).json({
         success: false,
-        message: 'Error al enviar el mensaje',
-        error: error.message
+        message: error.message,
+        error: process.env.NODE_ENV === 'development' ? error.stack : undefined
       });
     }
   },
 
-  // Iniciar un chat con un usuario y enviar un mensaje inicial
+  /**
+   * Obtener un chat específico por ID
+   * GET /api/chat/:chatId
+   */
+  async getChatById(req, res) {
+    try {
+      const { chatId } = req.params;
+      const userId = req.user.id;
+
+      const chat = await chatService.getChatById(chatId, userId);
+
+      logger.info(`Chat ${chatId} obtenido por usuario ${userId}`);
+
+      res.json({
+        success: true,
+        message: 'Chat obtenido exitosamente',
+        data: chat
+      });
+
+    } catch (error) {
+      logger.error(`Error al obtener chat ${req.params.chatId}:`, error);
+      
+      let statusCode = 500;
+      if (error.message.includes('no encontrado')) {
+        statusCode = 404;
+      } else if (error.message.includes('permisos')) {
+        statusCode = 403;
+      } else if (error.message.includes('válido')) {
+        statusCode = 400;
+      }
+
+      res.status(statusCode).json({
+        success: false,
+        message: error.message,
+        error: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      });
+    }
+  },
+
+  /**
+   * Iniciar chat con el dueño de una mascota
+   * POST /api/chat/pet/:petId/start
+   */
+  async startChatWithPetOwner(req, res) {
+    try {
+      const { petId } = req.params;
+      const userId = req.user.id;
+
+      const chat = await chatService.startChatWithPetOwner(userId, petId);
+
+      logger.info(`Chat iniciado con dueño de mascota ${petId} por usuario ${userId}`);
+
+      res.status(201).json({
+        success: true,
+        message: 'Chat iniciado exitosamente',
+        data: chat
+      });
+
+    } catch (error) {
+      logger.error('Error al iniciar chat con dueño de mascota:', error);
+      
+      let statusCode = 500;
+      if (error.message.includes('no encontrada')) {
+        statusCode = 404;
+      } else if (error.message.includes('contigo mismo')) {
+        statusCode = 400;
+      } else if (error.message.includes('válido')) {
+        statusCode = 400;
+      }
+
+      res.status(statusCode).json({
+        success: false,
+        message: error.message,
+        error: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      });
+    }
+  },
+
+  /**
+   * Crear un nuevo chat
+   * POST /api/chat
+   */
+  async createChat(req, res) {
+    try {
+      const userId = req.user.id;
+      const chatData = {
+        ...req.body,
+        createdBy: userId
+      };
+
+      const chat = await chatService.createChat(chatData);
+
+      logger.info(`Chat creado: ${chat._id} por usuario ${userId}`);
+
+      res.status(201).json({
+        success: true,
+        message: 'Chat creado exitosamente',
+        data: chat
+      });
+
+    } catch (error) {
+      logger.error('Error al crear chat:', error);
+      
+      let statusCode = 500;
+      if (error.message.includes('requeridos') || error.message.includes('inválido')) {
+        statusCode = 400;
+      } else if (error.message.includes('no encontrado')) {
+        statusCode = 404;
+      }
+
+      res.status(statusCode).json({
+        success: false,
+        message: error.message,
+        error: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      });
+    }
+  },
+
+  /**
+   * Marcar mensajes como leídos
+   * POST /api/chat/:chatId/read
+   */
+  async markMessagesAsRead(req, res) {
+    try {
+      const { chatId } = req.params;
+      const userId = req.user.id;
+      const { messageIds } = req.body;
+
+      const result = await chatService.markMessagesAsRead(chatId, userId, messageIds);
+
+      logger.info(`Mensajes marcados como leídos en chat ${chatId} por usuario ${userId}`);
+
+      res.json({
+        success: true,
+        message: 'Mensajes marcados como leídos',
+        data: result
+      });
+
+    } catch (error) {
+      logger.error(`Error al marcar mensajes como leídos:`, error);
+      
+      let statusCode = 500;
+      if (error.message.includes('no encontrado')) {
+        statusCode = 404;
+      } else if (error.message.includes('permisos')) {
+        statusCode = 403;
+      } else if (error.message.includes('válido')) {
+        statusCode = 400;
+      }
+
+      res.status(statusCode).json({
+        success: false,
+        message: error.message,
+        error: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      });
+    }
+  },
+
+  /**
+   * Archivar un chat
+   * PUT /api/chat/:chatId/archive
+   */
+  async archiveChat(req, res) {
+    try {
+      const { chatId } = req.params;
+      const userId = req.user.id;
+
+      const result = await chatService.archiveChat(chatId, userId);
+
+      logger.info(`Chat ${chatId} archivado por usuario ${userId}`);
+
+      res.json({
+        success: true,
+        message: 'Chat archivado exitosamente',
+        data: result
+      });
+
+    } catch (error) {
+      logger.error(`Error al archivar chat ${req.params.chatId}:`, error);
+      
+      let statusCode = 500;
+      if (error.message.includes('no encontrado')) {
+        statusCode = 404;
+      } else if (error.message.includes('permisos')) {
+        statusCode = 403;
+      } else if (error.message.includes('válido')) {
+        statusCode = 400;
+      }
+
+      res.status(statusCode).json({
+        success: false,
+        message: error.message,
+        error: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      });
+    }
+  },
+
+  /**
+   * Obtener chats relacionados con una mascota
+   * GET /api/chat/pet/:petId
+   */
+  async getChatsByPet(req, res) {
+    try {
+      const { petId } = req.params;
+      const userId = req.user.id;
+
+      const chats = await chatService.getChatsByPet(petId, userId);
+
+      logger.info(`Chats obtenidos para mascota ${petId} por usuario ${userId}`);
+
+      res.json({
+        success: true,
+        message: 'Chats obtenidos exitosamente',
+        data: chats
+      });
+
+    } catch (error) {
+      logger.error(`Error al obtener chats por mascota ${req.params.petId}:`, error);
+      
+      let statusCode = 500;
+      if (error.message.includes('no encontrada')) {
+        statusCode = 404;
+      } else if (error.message.includes('válido')) {
+        statusCode = 400;
+      }
+
+      res.status(statusCode).json({
+        success: false,
+        message: error.message,
+        error: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      });
+    }
+  },
+
+  /**
+   * Iniciar chat con un usuario específico
+   * POST /api/chat/user/:recipientId/start
+   */
   async startChatWithUser(req, res) {
     try {
       const { recipientId } = req.params;
       const { initialMessage } = req.body;
       const senderId = req.user.id;
 
-      // Validación del mensaje inicial
+      // Validar mensaje inicial
       if (!initialMessage || initialMessage.trim() === '') {
         return res.status(400).json({
           success: false,
-          message: 'El mensaje no puede estar vacío'
+          message: 'El mensaje inicial es requerido'
         });
       }
 
-      // Validación del destinatario
-      if (!recipientId) {
-        return res.status(400).json({
-          success: false,
-          message: 'Se requiere un destinatario válido'
-        });
-      }
+      // Crear chat directo
+      const chatData = {
+        chatType: 'direct',
+        participants: [senderId, recipientId],
+        createdBy: senderId,
+        source: 'direct_message'
+      };
 
-      // Validar que el destinatario existe
-      const recipient = await UserModel.findById(recipientId);
-      if (!recipient) {
-        return res.status(404).json({
-          success: false,
-          message: 'El usuario destinatario no existe'
-        });
-      }
+      const chat = await chatService.createChat(chatData);
 
-      // Validar que no es un chat consigo mismo
-      if (senderId === recipientId) {
-        return res.status(400).json({
-          success: false,
-          message: 'No puedes iniciar un chat contigo mismo'
-        });
-      }
+      // Enviar mensaje inicial
+      await chatService.sendMessage(chat._id, senderId, {
+        content: initialMessage.trim(),
+        messageType: 'text'
+      });
 
-      const chatInfo = await chatData.startChatWithUser(senderId, recipientId, initialMessage);
+      logger.info(`Chat iniciado entre usuarios ${senderId} y ${recipientId}`);
 
       res.status(201).json({
         success: true,
         message: 'Chat iniciado y mensaje enviado exitosamente',
-        chat: chatInfo
+        data: { chatId: chat._id }
       });
+
     } catch (error) {
-      console.error('Error al iniciar chat con usuario:', error);
-      res.status(500).json({
+      logger.error('Error al iniciar chat con usuario:', error);
+      
+      let statusCode = 500;
+      if (error.message.includes('no existe')) {
+        statusCode = 404;
+      } else if (error.message.includes('contigo mismo') || error.message.includes('requerido')) {
+        statusCode = 400;
+      } else if (error.message.includes('válido')) {
+        statusCode = 400;
+      }
+
+      res.status(statusCode).json({
         success: false,
-        message: 'Error al iniciar el chat',
-        error: error.message
+        message: error.message,
+        error: process.env.NODE_ENV === 'development' ? error.stack : undefined
       });
     }
   }
