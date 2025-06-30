@@ -412,26 +412,26 @@ const chatController = {
 
       logger.info(`📋 Datos del chat a crear: ${JSON.stringify(chatData)}`);
 
-      const chat = await chatService.createChat(chatData);
+      const chatDocument = await chatService.createChatDocument(chatData);
       
       logger.info(`✅ Chat creado exitosamente, enviando mensaje inicial...`);
-      logger.info(`   Chat ID obtenido: ${chat._id}`);
+      logger.info(`   Chat ID obtenido: ${chatDocument._id}`);
 
-      // Pequeño delay para asegurar consistencia de DB
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      // Enviar mensaje inicial
-      await chatService.sendMessage(chat._id, senderId, {
+      // Enviar mensaje usando el documento directamente
+      await chatService.sendMessage(chatDocument._id, senderId, {
         content: initialMessage.trim(),
         messageType: 'text'
       });
+
+      // Obtener chat formateado para la respuesta
+      const formattedChat = await chatService.getChatById(chatDocument._id, senderId);
 
       logger.info(`Chat iniciado entre usuarios ${senderId} y ${recipientId}`);
 
       res.status(201).json({
         success: true,
         message: 'Chat iniciado y mensaje enviado exitosamente',
-        chat: { _id: chat._id } // Frontend espera 'chat', no 'data'
+        chat: formattedChat // Retornar chat completo formateado
       });
 
     } catch (error) {

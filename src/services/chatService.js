@@ -107,6 +107,79 @@ class ChatService {
   }
 
   /**
+   * Crear chat y retornar documento de MongoDB (para uso interno)
+   * @param {Object} chatData - Datos del chat a crear
+   * @returns {Promise<Object>} Documento de chat de MongoDB
+   */
+  async createChatDocument(chatData) {
+    try {
+      const {
+        chatType,
+        participants,
+        petId,
+        title,
+        createdBy,
+        source = 'direct_message'
+      } = chatData;
+
+      // Validaciones
+      if (!chatType || !participants || !createdBy) {
+        throw new Error('Datos requeridos faltantes para crear el chat');
+      }
+
+      if (!['pet_owner', 'pet_finder', 'direct', 'group'].includes(chatType)) {
+        throw new Error('Tipo de chat inválido');
+      }
+
+      // Verificar que los participantes existan
+      const validParticipants = await this._validateParticipants(participants);
+      
+      // Si hay petId, verificar que exista
+      if (petId) {
+        validateObjectId(petId, 'petId');
+        const pet = await PetModel.findById(petId);
+        if (!pet) {
+          throw new Error('Mascota no encontrada');
+        }
+      }
+
+      // Crear el chat
+      const participantsForChat = validParticipants.map(p => ({
+        userId: p._id,
+        role: p._id.toString() === createdBy.toString() ? 'owner' : 'participant',
+        joinedAt: new Date(),
+        isActive: true
+      }));
+
+      const chat = new ChatModel({
+        chatType,
+        petId: petId || null,
+        title: title || this._generateChatTitle(chatType, validParticipants),
+        participants: participantsForChat,
+        metadata: {
+          createdBy,
+          source
+        },
+        settings: {
+          maxParticipants: chatType === 'group' ? 100 : 2
+        }
+      });
+
+      await chat.save();
+      
+      // Notificar a los participantes (excepto al creador)
+      await this._notifyParticipants(chat, 'chat_created', createdBy);
+
+      logger.info(`Chat creado: ${chat._id} por usuario ${createdBy}`);
+      return chat; // Retornar documento directamente
+
+    } catch (error) {
+      logger.error('Error al crear chat document:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Obtener chat por ID con verificación de permisos
    * @param {string} chatId - ID del chat
    * @param {string} userId - ID del usuario que solicita
