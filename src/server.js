@@ -22,14 +22,42 @@ const startServer = async () => {
         const server = http.createServer(app);
         
         console.log('🔌 Configurando Socket.IO...');
+        
+        // Configuración automática de CORS para Railway
+        const allowedOrigins = [
+            'http://localhost:5173',
+            'http://localhost:3000',
+            'http://127.0.0.1:5173',
+            'https://pet-connect-front.vercel.app',
+            // Agregar otras URLs de tu frontend en producción aquí
+            process.env.FRONTEND_URL
+        ].filter(Boolean); // Eliminar valores undefined/null
+        
+        console.log('🔗 URLs permitidas para CORS:', allowedOrigins);
+        
         const io = socketIo(server, {
             cors: {
-                origin: process.env.FRONTEND_URL || "*",
-                methods: ["GET", "POST"],
-                credentials: true
+                origin: (origin, callback) => {
+                    // Permitir requests sin origin (aplicaciones móviles, Postman, etc.)
+                    if (!origin) return callback(null, true);
+                    
+                    // Verificar si el origin está en la lista permitida
+                    if (allowedOrigins.includes(origin)) {
+                        return callback(null, true);
+                    }
+                    
+                    console.log(`⚠️ Origin no permitido: ${origin}`);
+                    return callback(new Error('No permitido por CORS'), false);
+                },
+                methods: ["GET", "POST", "PUT", "DELETE"],
+                credentials: true,
+                allowedHeaders: ["Authorization", "Content-Type"]
             },
+            transports: ['websocket', 'polling'],
             pingTimeout: 60000,
-            pingInterval: 25000
+            pingInterval: 25000,
+            connectTimeout: 60000,
+            allowEIO3: true
         });
 
         socketService.initialize(io);
