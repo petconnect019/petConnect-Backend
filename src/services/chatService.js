@@ -716,22 +716,28 @@ class ChatService {
    * @private
    */
   async _notifyNewMessage(chat, message, senderId) {
-    const otherParticipants = chat.participants
-      .filter(p => p.userId.toString() !== senderId.toString() && p.isActive)
-      .map(p => p.userId.toString());
+    // Primero, obtener una versión fresca y poblada del chat
+    const freshChat = await ChatModel.findById(chat._id)
+      .populate('participants.userId', 'name email profilePicture')
+      .populate('lastMessage.senderId', 'name profilePicture');
+
+    const otherParticipants = freshChat.participants
+      .filter(p => p.userId._id.toString() !== senderId.toString() && p.isActive)
+      .map(p => p.userId._id.toString());
 
     for (const participantId of otherParticipants) {
+      // Formatear la conversación para este participante específico
+      const conversationForParticipant = this._formatChatResponse(freshChat, participantId);
+      
       socketService.sendDirectMessage(participantId, 'new_message', {
-        chatId: chat._id,
-        message: {
+        message: { // El mensaje se mantiene igual
           _id: message._id,
           senderId: message.senderId,
           content: message.content,
           messageType: message.messageType,
           timestamp: message.timestamp,
-          attachments: message.attachments,
-          location: message.location
-        }
+        },
+        conversation: conversationForParticipant, // Adjuntamos la conversación actualizada
       });
     }
   }
