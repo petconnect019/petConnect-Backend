@@ -346,9 +346,27 @@ chatSchema.methods.removeParticipant = function(userId) {
 
 // Método para verificar si un usuario es participante
 chatSchema.methods.isParticipant = function(userId) {
-  return this.participants.some(p => 
-    p.userId.toString() === userId.toString() && p.isActive
-  );
+  // Debug detallado para diagnosticar el problema
+  console.log('🔍 DEBUG isParticipant - Verificando permisos:');
+  console.log(`   UserID buscado: ${userId} (tipo: ${typeof userId})`);
+  console.log(`   Participantes en chat: ${JSON.stringify(this.participants.map(p => ({
+    userId: p.userId.toString(),
+    isActive: p.isActive,
+    role: p.role
+  })))}`);
+  
+  const found = this.participants.some(p => {
+    const participantId = p.userId.toString();
+    const searchId = userId.toString();
+    const isActive = p.isActive;
+    
+    console.log(`   Comparando: "${participantId}" === "${searchId}" && isActive: ${isActive}`);
+    
+    return participantId === searchId && isActive;
+  });
+  
+  console.log(`   🎯 Resultado: ${found}`);
+  return found;
 };
 
 // Método para agregar mensaje
