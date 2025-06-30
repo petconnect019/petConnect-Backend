@@ -272,21 +272,26 @@ const AuthController = {
                 photos: [{ value: req.user.profile_picture }]
             });
 
+            // Construir objeto JSON plano garantizado (sin documento Mongoose)
+            const userResponse = {
+                id: req.user._id || req.user.id,
+                email: req.user.email,
+                name: req.user.name,
+                role: req.user.role,
+                profile_picture: req.user.profile_picture,
+                is_profile_public: req.user.is_profile_public,
+                show_contact: req.user.show_contact,
+                phone: req.user.phone,
+                city: req.user.city,
+                gender: req.user.gender,
+                google_id: req.user.google_id
+            };
+
             const responseData = {
                 ok: true,
                 message: 'Login con Google exitoso',
                 accessToken,
-                user: {
-                    ...req.user,
-                    gender: req.user.gender,
-                    email: req.user.email,
-                    name: req.user.name,
-                    profile_picture: req.user.profile_picture,
-                    role: req.user.role,
-                    google_id: req.user.google_id,
-                    created_at: req.user.created_at,
-                    updated_at: req.user.updated_at
-                },
+                user: userResponse,
                 hasPets,
                 isNewUser
             };
