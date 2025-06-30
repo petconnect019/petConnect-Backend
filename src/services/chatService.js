@@ -122,6 +122,24 @@ class ChatService {
         source = 'direct_message'
       } = chatData;
 
+      // --- INICIO DE LÓGICA IDEMPOTENTE ---
+      // Si es un chat directo, buscar si ya existe
+      if (chatType === 'direct' && participants.length === 2) {
+        logger.info(`🔎 Buscando chat 'direct' existente entre: ${participants.join(' y ')}`);
+        const existingChat = await ChatModel.findOne({
+          chatType: 'direct',
+          'participants.userId': { $all: participants },
+          'participants': { $size: 2 }
+        });
+
+        if (existingChat) {
+          logger.info(`✅ Chat 'direct' existente encontrado: ${existingChat._id}`);
+          return existingChat; // Retornar el chat existente
+        }
+        logger.info(`🤷‍♂️ No se encontró chat 'direct' existente. Creando uno nuevo.`);
+      }
+      // --- FIN DE LÓGICA IDEMPOTENTE ---
+
       // Validaciones
       if (!chatType || !participants || !createdBy) {
         throw new Error('Datos requeridos faltantes para crear el chat');
