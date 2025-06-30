@@ -130,11 +130,11 @@ class ChatService {
           chatType: 'direct',
           'participants.userId': { $all: participants },
           'participants': { $size: 2 }
-        });
+        }).populate('participants.userId', 'name email profilePicture');
 
         if (existingChat) {
-          logger.info(`✅ Chat 'direct' existente encontrado: ${existingChat._id}`);
-          return existingChat; // Retornar el chat existente
+          logger.info(`✅ Chat 'direct' existente encontrado (y poblado): ${existingChat._id}`);
+          return existingChat; // Retornar el chat existente y poblado
         }
         logger.info(`🤷‍♂️ No se encontró chat 'direct' existente. Creando uno nuevo.`);
       }
@@ -189,6 +189,10 @@ class ChatService {
       await this._notifyParticipants(chat, 'chat_created', createdBy);
 
       logger.info(`Chat creado: ${chat._id} por usuario ${createdBy}`);
+      
+      // Poblar el nuevo chat antes de devolverlo
+      await chat.populate('participants.userId', 'name email profilePicture');
+
       return chat; // Retornar documento directamente
 
     } catch (error) {
@@ -311,6 +315,13 @@ class ChatService {
       validateObjectId(chatId, 'chatId');
       validateObjectId(senderId, 'senderId');
 
+      // Buscar el chat Y POBLAR PARTICIPANTES para la validación
+      const chat = await ChatModel.findById(chatId).populate('participants.userId', 'name');
+
+      if (!chat) {
+        throw new Error('Chat no encontrado');
+      }
+
       const { content, messageType = 'text', attachments, location } = messageData;
 
       // Validaciones
@@ -322,12 +333,6 @@ class ChatService {
       
       if (sanitizedContent.length > 2000) {
         throw new Error('El mensaje es demasiado largo');
-      }
-
-      // Obtener chat y verificar permisos
-      const chat = await ChatModel.findById(chatId);
-      if (!chat) {
-        throw new Error('Chat no encontrado');
       }
 
       // Debug: Log detallado de participantes
