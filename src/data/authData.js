@@ -103,10 +103,18 @@ const AuthData = {
             // Limpiar la contraseña del objeto usuario antes de devolverlo
             const userObject = user.toObject();
             delete userObject.password;
+            
+            // Debug: Verificar que userObject sea JSON plano
+            console.log('🔍 DEBUG AuthData - userObject generado:', {
+                type: typeof userObject,
+                constructor: userObject.constructor.name,
+                _id: userObject._id,
+                isPlainObject: userObject.constructor.name === 'Object'
+            });
 
             return {
                 user: userObject,
-                hasPets,
+                hasPets: !!hasPets,
                 isNewUser: false
             };
         } catch (error) {

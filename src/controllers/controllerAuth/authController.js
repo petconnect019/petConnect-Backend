@@ -68,8 +68,34 @@ const AuthController = {
                 return next(error);
             }
 
-            const { user, hasPets } = await AuthData.loginUser(email, password);
+            const { user, hasPets, isNewUser } = await AuthData.loginUser(email, password);
+            
+            // Debug: Log del user recibido de authData
+            console.log('🔍 DEBUG AuthController - user recibido de authData:', {
+                type: typeof user,
+                constructor: user.constructor.name,
+                keys: Object.keys(user),
+                _id: user._id,
+                isMongooseDoc: user.constructor.name === 'Document'
+            });
+            
             const tokens = await tokenService.generateTokens(user);
+
+            // Asegurar que el user sea un objeto plano JSON
+            const userResponse = {
+                id: user._id || user.id,
+                email: user.email,
+                name: user.name, // Usar name del modelo, no firstName/lastName que no existen
+                role: user.role,
+                profile_picture: user.profile_picture,
+                is_profile_public: user.is_profile_public,
+                show_contact: user.show_contact,
+                phone: user.phone,
+                city: user.city,
+                gender: user.gender
+            };
+            
+            console.log('✅ DEBUG AuthController - userResponse construido:', userResponse);
 
             // Establecer la cookie del refresh token
             res.cookie('refreshToken', tokens.refreshToken, {
@@ -82,13 +108,7 @@ const AuthController = {
             return res.status(200).json({
                 success: true,
                 accessToken: tokens.accessToken,
-                user: {
-                    id: user._id,
-                    email: user.email,
-                    firstName: user.firstName,
-                    lastName: user.lastName,
-                    role: user.role
-                },
+                user: userResponse,
                 hasPets,
                 isNewUser
             });
