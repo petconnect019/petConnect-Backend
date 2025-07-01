@@ -1,11 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const VetDocumentController = require('../controllers/controllerVet/vetDocumentController');
-const { requireAuth } = require('../middlewares/authMiddleware');
+const { verifyToken } = require('../middlewares/authMiddleware');
 const { upload, handleUploadError } = require('../middlewares/uploadMiddleware');
 
 // Middleware de autenticación para todas las rutas
-router.use(requireAuth);
+router.use(verifyToken);
 
 // === RUTAS DE DOCUMENTOS ===
 
