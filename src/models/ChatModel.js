@@ -346,31 +346,17 @@ chatSchema.methods.removeParticipant = function(userId) {
 
 // Método para verificar si un usuario es participante
 chatSchema.methods.isParticipant = function(userId) {
-  // --- INICIO DE LÓGICA DE DEPURACIÓN Y CORRECCIÓN ---
   const searchIdStr = userId.toString();
-  
-  console.log(`[isParticipant] Buscando a -> ${searchIdStr}`);
 
-  const found = this.participants.some(p => {
-    // Caso 1: p.userId es un documento poblado (tiene _id)
-    // Caso 2: p.userId es un ObjectId (no tiene _id, es el ID en sí)
-    if (!p.userId) {
-      console.log(`[isParticipant] Saltando participante con userId nulo.`);
-      return false;
-    }
+  return this.participants.some(p => {
+    if (!p.userId) return false;
 
+    // Maneja tanto documentos poblados como ObjectIds
     const participantIdObj = p.userId._id || p.userId;
     const participantIdStr = participantIdObj.toString();
-    const isActive = p.isActive;
-
-    console.log(`[isParticipant]   Comparando: "${participantIdStr}" === "${searchIdStr}" | Activo: ${isActive}`);
     
-    return participantIdStr === searchIdStr && isActive;
+    return participantIdStr === searchIdStr && p.isActive;
   });
-  
-  console.log(`[isParticipant] Resultado de la búsqueda -> ${found}`);
-  return found;
-  // --- FIN DE LÓGICA DE DEPURACIÓN Y CORRECCIÓN ---
 };
 
 // Método para agregar mensaje
