@@ -7,7 +7,7 @@ const tokenService = {
         // Generar access token con 15 minutos de expiración
         const accessToken = jwt.sign(
             { 
-                id: user._id,
+                id: user._id.toString(),
                 email: user.email,
                 name: user.name,
                 profile_picture: user.profile_picture,

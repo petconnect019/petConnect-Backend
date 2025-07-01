@@ -309,9 +309,19 @@ chatSchema.pre('save', function(next) {
 
 // Método para agregar participante
 chatSchema.methods.addParticipant = function(userId, role = 'participant') {
-  const existingParticipant = this.participants.find(p => 
-    p.userId.toString() === userId.toString()
-  );
+  const normalizedUserId = userId.toString().trim();
+  
+  const existingParticipant = this.participants.find(p => {
+    let participantId;
+    if (p.userId && typeof p.userId === 'object' && p.userId._id) {
+      participantId = p.userId._id.toString();
+    } else if (p.userId) {
+      participantId = p.userId.toString();
+    } else {
+      return false;
+    }
+    return participantId.trim() === normalizedUserId;
+  });
   
   if (existingParticipant) {
     existingParticipant.isActive = true;
@@ -332,9 +342,19 @@ chatSchema.methods.addParticipant = function(userId, role = 'participant') {
 
 // Método para remover participante
 chatSchema.methods.removeParticipant = function(userId) {
-  const participant = this.participants.find(p => 
-    p.userId.toString() === userId.toString()
-  );
+  const normalizedUserId = userId.toString().trim();
+  
+  const participant = this.participants.find(p => {
+    let participantId;
+    if (p.userId && typeof p.userId === 'object' && p.userId._id) {
+      participantId = p.userId._id.toString();
+    } else if (p.userId) {
+      participantId = p.userId.toString();
+    } else {
+      return false;
+    }
+    return participantId.trim() === normalizedUserId;
+  });
   
   if (participant) {
     participant.isActive = false;
@@ -346,17 +366,41 @@ chatSchema.methods.removeParticipant = function(userId) {
 
 // Método para verificar si un usuario es participante
 chatSchema.methods.isParticipant = function(userId) {
-  const searchIdStr = userId.toString();
-
-  return this.participants.some(p => {
-    if (!p.userId) return false;
-
-    // Maneja tanto documentos poblados como ObjectIds
-    const participantIdObj = p.userId._id || p.userId;
-    const participantIdStr = participantIdObj.toString();
+  // Debug detallado para diagnosticar el problema
+  console.log('🔍 DEBUG isParticipant - Verificando permisos:');
+  console.log(`   UserID buscado: ${userId} (tipo: ${typeof userId})`);
+  console.log(`   Participantes en chat: ${JSON.stringify(this.participants.map(p => ({
+    userId: p.userId.toString(),
+    isActive: p.isActive,
+    role: p.role
+  })))}`);
+  
+  // Normalizar el userId de búsqueda para evitar problemas de formato
+  const normalizedSearchId = userId.toString().trim();
+  
+  const found = this.participants.some(p => {
+    // Obtener el ID del participante de manera robusta
+    let participantId;
+    if (p.userId && typeof p.userId === 'object' && p.userId._id) {
+      // Si está poblado, usar el _id del documento
+      participantId = p.userId._id.toString();
+    } else if (p.userId) {
+      // Si no está poblado o es un ObjectId directo
+      participantId = p.userId.toString();
+    } else {
+      return false;
+    }
     
-    return participantIdStr === searchIdStr && p.isActive;
+    const normalizedParticipantId = participantId.trim();
+    const isActive = p.isActive;
+    
+    console.log(`   Comparando: "${normalizedParticipantId}" === "${normalizedSearchId}" && isActive: ${isActive}`);
+    
+    return normalizedParticipantId === normalizedSearchId && isActive;
   });
+  
+  console.log(`   🎯 Resultado: ${found}`);
+  return found;
 };
 
 // Método para agregar mensaje
@@ -373,14 +417,24 @@ chatSchema.methods.addMessage = function(messageData) {
 
 // Método para marcar mensajes como leídos
 chatSchema.methods.markAsRead = function(userId, messageIds = null) {
+  const normalizedUserId = userId.toString().trim();
+  
   const messages = messageIds 
     ? this.messages.filter(m => messageIds.includes(m._id.toString()))
     : this.messages;
   
   messages.forEach(message => {
-    const existingRead = message.readBy.find(r => 
-      r.userId.toString() === userId.toString()
-    );
+    const existingRead = message.readBy.find(r => {
+      let readByUserId;
+      if (r.userId && typeof r.userId === 'object' && r.userId._id) {
+        readByUserId = r.userId._id.toString();
+      } else if (r.userId) {
+        readByUserId = r.userId.toString();
+      } else {
+        return false;
+      }
+      return readByUserId.trim() === normalizedUserId;
+    });
     
     if (!existingRead) {
       message.readBy.push({
@@ -391,9 +445,17 @@ chatSchema.methods.markAsRead = function(userId, messageIds = null) {
   });
   
   // Actualizar lastRead del participante
-  const participant = this.participants.find(p => 
-    p.userId.toString() === userId.toString()
-  );
+  const participant = this.participants.find(p => {
+    let participantId;
+    if (p.userId && typeof p.userId === 'object' && p.userId._id) {
+      participantId = p.userId._id.toString();
+    } else if (p.userId) {
+      participantId = p.userId.toString();
+    } else {
+      return false;
+    }
+    return participantId.trim() === normalizedUserId;
+  });
   
   if (participant) {
     participant.lastRead = new Date();
