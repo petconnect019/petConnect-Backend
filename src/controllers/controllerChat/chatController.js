@@ -1,4 +1,4 @@
-const chatService = require('../../services/chatService');
+const chatService = require('../../services/chatServiceV2');
 const logger = require('../../utils/logger');
 const { validatePagination, validateSearchQuery } = require('../../utils/validation');
 
