@@ -53,7 +53,7 @@ const connectDB = async () => {
         // En lugar de salir inmediatamente, dar tiempo para diagnóstico
         console.error('💀 La aplicación se cerrará en 5 segundos...');
         setTimeout(() => {
-            process.exit(1);
+        process.exit(1); 
         }, 5000);
         
         throw error; // Re-lanzar el error para que el caller lo maneje

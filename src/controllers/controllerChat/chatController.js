@@ -31,7 +31,7 @@ const chatController = {
       const result = await chatService.getUserChats(userId, options);
 
       logger.info(`Chats obtenidos para usuario ${userId}: ${result.chats.length} chats`);
-
+      
       res.json({
         success: true,
         message: 'Chats obtenidos exitosamente',
@@ -49,7 +49,7 @@ const chatController = {
       });
     }
   },
-
+  
   /**
    * Obtener mensajes de un chat específico con paginación
    * GET /api/chat/:chatId/messages?page=1&limit=50&before=2024-01-01T00:00:00.000Z
@@ -138,7 +138,7 @@ const chatController = {
       });
     }
   },
-
+  
   /**
    * Obtener un chat específico por ID
    * GET /api/chat/:chatId
@@ -147,11 +147,11 @@ const chatController = {
     try {
       const { chatId } = req.params;
       const userId = req.user.id;
-
+      
       const chat = await chatService.getChatById(chatId, userId);
 
       logger.info(`Chat ${chatId} obtenido por usuario ${userId}`);
-
+      
       res.json({
         success: true,
         message: 'Chat obtenido exitosamente',
@@ -169,7 +169,7 @@ const chatController = {
       } else if (error.message.includes('válido')) {
         statusCode = 400;
       }
-
+      
       res.status(statusCode).json({
         success: false,
         message: error.message,
@@ -177,7 +177,7 @@ const chatController = {
       });
     }
   },
-
+  
   /**
    * Iniciar chat con el dueño de una mascota
    * POST /api/chat/pet/:petId/start
@@ -186,11 +186,11 @@ const chatController = {
     try {
       const { petId } = req.params;
       const userId = req.user.id;
-
+      
       const chat = await chatService.startChatWithPetOwner(userId, petId);
 
       logger.info(`Chat iniciado con dueño de mascota ${petId} por usuario ${userId}`);
-
+      
       res.status(201).json({
         success: true,
         message: 'Chat iniciado exitosamente',
@@ -210,7 +210,7 @@ const chatController = {
       }
 
       res.status(statusCode).json({
-        success: false,
+          success: false,
         message: error.message,
         error: process.env.NODE_ENV === 'development' ? error.stack : undefined
       });
@@ -248,7 +248,7 @@ const chatController = {
       } else if (error.message.includes('no encontrado')) {
         statusCode = 404;
       }
-
+      
       res.status(statusCode).json({
         success: false,
         message: error.message,
@@ -256,7 +256,7 @@ const chatController = {
       });
     }
   },
-
+  
   /**
    * Marcar mensajes como leídos
    * POST /api/chat/:chatId/read
@@ -266,11 +266,11 @@ const chatController = {
       const { chatId } = req.params;
       const userId = req.user.id;
       const { messageIds } = req.body;
-
+      
       const result = await chatService.markMessagesAsRead(chatId, userId, messageIds);
 
       logger.info(`Mensajes marcados como leídos en chat ${chatId} por usuario ${userId}`);
-
+      
       res.json({
         success: true,
         message: 'Mensajes marcados como leídos',
@@ -288,7 +288,7 @@ const chatController = {
       } else if (error.message.includes('válido')) {
         statusCode = 400;
       }
-
+      
       res.status(statusCode).json({
         success: false,
         message: error.message,
@@ -329,7 +329,7 @@ const chatController = {
       }
 
       res.status(statusCode).json({
-        success: false,
+          success: false,
         message: error.message,
         error: process.env.NODE_ENV === 'development' ? error.stack : undefined
       });
