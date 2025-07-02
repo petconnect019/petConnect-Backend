@@ -13,7 +13,7 @@ const vetDocumentSchema = new mongoose.Schema({
     },
     type: {
         type: String,
-        enum: ['vaccine', 'medical', 'certificate', 'prescription', 'lab', 'surgery'],
+        enum: ['vaccine', 'medical', 'passport', 'prescription', 'lab', 'surgery'],
         required: true
     },
     title: {
