@@ -31,25 +31,121 @@ const AuthController = {
                 return next(error);
             }
 
-            const userData = { ...req.body };
+            // Verificar si el usuario ya existe
+            const existingUser = await UserModel.findOne({ email });
+            if (existingUser) {
+                const error = new Error('El correo electrónico ya está registrado');
+                error.statusCode = 400;
+                return next(error);
+            }
 
-            const { user, isNewUser } = await AuthData.registerUser(userData);
-            const { accessToken, userResponse } = await handleAuthenticationSuccess(req, res, user);
-            
+            // Generar token de verificación
+            const verificationToken = crypto.randomBytes(32).toString('hex');
+
+            // Hashear la contraseña
+            const hashedPassword = await bcrypt.hash(password, 10);
+
+            // Crear nuevo usuario
+            const user = new UserModel({
+                ...req.body,
+                password: hashedPassword,
+                role: 'user',
+                emailVerificationToken: verificationToken,
+                isEmailVerified: false
+            });
+
+            await user.save();
+
+            // Enviar correo de verificación
+            const verificationLink = `${process.env.FRONTEND_URL}/verify-email/${verificationToken}`;
+            await sendEmail({
+                to: email,
+                subject: 'Verifica tu correo electrónico - PetConnect',
+                html: `
+                    <h1>¡Bienvenido a PetConnect!</h1>
+                    <p>Por favor, verifica tu correo electrónico haciendo clic en el siguiente enlace:</p>
+                    <a href="${verificationLink}">Verificar correo electrónico</a>
+                    <p>Si no creaste una cuenta en PetConnect, puedes ignorar este correo.</p>
+                `
+            });
+
             return res.status(201).json({
                 success: true,
-                message: 'Usuario registrado exitosamente',
-                accessToken,
-                user: {
-                    ...userResponse
-                },
-                isNewUser
+                message: 'Usuario registrado exitosamente. Por favor, verifica tu correo electrónico.',
+                isNewUser: true
             });
         } catch (error) {
             next(error);
         }
     },
 
+    verifyEmail: async (req, res, next) => {
+        try {
+            const { token } = req.params;
+
+            const user = await UserModel.findOne({ emailVerificationToken: token });
+            if (!user) {
+                const error = new Error('Token de verificación inválido o expirado');
+                error.statusCode = 400;
+                return next(error);
+            }
+
+            user.isEmailVerified = true;
+            user.emailVerificationToken = undefined;
+            await user.save();
+
+            return res.status(200).json({
+                success: true,
+                message: 'Correo electrónico verificado exitosamente'
+            });
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    resendVerification: async (req, res, next) => {
+        try {
+            const { email } = req.body;
+
+            const user = await UserModel.findOne({ email });
+            if (!user) {
+                const error = new Error('Usuario no encontrado');
+                error.statusCode = 404;
+                return next(error);
+            }
+
+            if (user.isEmailVerified) {
+                const error = new Error('El correo electrónico ya está verificado');
+                error.statusCode = 400;
+                return next(error);
+            }
+
+            // Generar nuevo token
+            const verificationToken = crypto.randomBytes(32).toString('hex');
+            user.emailVerificationToken = verificationToken;
+            await user.save();
+
+            // Enviar nuevo correo
+            const verificationLink = `${process.env.FRONTEND_URL}/verify-email/${verificationToken}`;
+            await sendEmail({
+                to: email,
+                subject: 'Verifica tu correo electrónico - PetConnect',
+                html: `
+                    <h1>¡Bienvenido a PetConnect!</h1>
+                    <p>Por favor, verifica tu correo electrónico haciendo clic en el siguiente enlace:</p>
+                    <a href="${verificationLink}">Verificar correo electrónico</a>
+                    <p>Si no creaste una cuenta en PetConnect, puedes ignorar este correo.</p>
+                `
+            });
+
+            return res.status(200).json({
+                success: true,
+                message: 'Correo de verificación reenviado exitosamente'
+            });
+        } catch (error) {
+            next(error);
+        }
+    },
 
     loginUser: async (req, res, next) => {
         try {
