@@ -4,7 +4,7 @@ const PetModel = require('../models/PetModel');
 
 // Constantes para límites
 const LIMITS = {
-    FILE_SIZE: 5 * 1024 * 1024,        // 5MB por archivo
+    FILE_SIZE: 10 * 1024 * 1024,        // 10MB por archivo
     TOTAL_USER_SIZE: 50 * 1024 * 1024, // 50MB por usuario
     MAX_FILES: 5                        // Máximo 5 archivos por solicitud
 };
@@ -14,14 +14,14 @@ const storage = multer.memoryStorage();
 
 // Validar tipo de archivo
 const validateFileType = (file) => {
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
     return allowedTypes.includes(file.mimetype);
 };
 
 // Filtrar archivos
 const fileFilter = (req, file, cb) => {
     if (!validateFileType(file)) {
-        return cb(new Error('Tipo de archivo no permitido. Solo se permiten imágenes (JPEG, PNG, GIF, WEBP)'), false);
+        return cb(new Error('Tipo de archivo no permitido. Solo se permiten imágenes (JPEG, PNG, GIF, WEBP) y PDFs'), false);
     }
     cb(null, true);
 };

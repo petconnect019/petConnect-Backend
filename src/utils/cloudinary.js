@@ -44,7 +44,8 @@ const deleteFromCloudinary = async (url) => {
 };
 
 // Función para subir un buffer a Cloudinary
-const uploadToCloudinary = (buffer, mimetype) => {
+// Se puede especificar 'folder' y las transformaciones se aplicarán solo a imágenes
+const uploadToCloudinary = (buffer, mimetype, folder = 'pet_profile_pictures') => {
     return new Promise((resolve, reject) => {
         console.log('Iniciando carga a Cloudinary desde buffer');
         
@@ -56,19 +57,26 @@ const uploadToCloudinary = (buffer, mimetype) => {
             return reject(new Error('Configuración de Cloudinary incompleta'));
         }
 
+        // Configuración base
+        const options = {
+            folder,
+            resource_type: 'auto'
+        };
+
+        // Solo aplicamos transformaciones a imágenes
+        if (mimetype && mimetype.startsWith('image/')) {
+            options.fetch_format = 'auto';
+            options.quality = 'auto';
+            options.transformation = [
+                { width: 1000, crop: 'limit' },
+                { quality: 'auto' },
+                { fetch_format: 'auto' }
+            ];
+        }
+
         // Crear un stream de carga
         const uploadStream = cloudinary.uploader.upload_stream(
-            {
-                folder: 'pet_profile_pictures',
-                resource_type: 'auto',
-                fetch_format: 'auto',
-                quality: 'auto',
-                transformation: [
-                    { width: 1000, crop: 'limit' }, // limita el ancho máximo
-                    { quality: 'auto' }, // optimización automática de calidad
-                    { fetch_format: 'auto' } // formato automático
-                ]
-            },
+            options,
             (error, result) => {
                 if (error) {
                     console.error('Error al subir a Cloudinary:', error);

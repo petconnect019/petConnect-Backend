@@ -35,7 +35,7 @@ const VetDocumentData = {
 
             // Subir archivo si existe
             if (fileBuffer && mimeType) {
-                const uploadResult = await uploadToCloudinary(fileBuffer, mimeType);
+                const uploadResult = await uploadToCloudinary(fileBuffer, mimeType, 'vet_documents');
                 newDocument.fileUrl = uploadResult.secure_url;
                 newDocument.fileName = fileName || 'documento.pdf';
                 newDocument.fileSize = fileBuffer.length;
