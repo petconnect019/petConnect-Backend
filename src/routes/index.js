@@ -11,6 +11,7 @@ const adminRoutes = require('./adminRoutes');
 const paymentRoutes = require('./paymentRoutes');
 const healthRoutes = require('./healthRoutes');
 const vetDocumentRoutes = require('./vetDocumentRoutes');
+const notificationRoutes = require('./notificationRoutes');
 const AdminData = require('../data/adminData');
 
 // Configuración de rutas
@@ -24,5 +25,6 @@ router.use('/admin', adminRoutes);
 router.use('/payments', paymentRoutes);
 router.use('/health', healthRoutes);
 router.use('/vet', vetDocumentRoutes);
+router.use('/notifications', notificationRoutes);
 
 module.exports = router; 

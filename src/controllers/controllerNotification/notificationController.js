@@ -9,13 +9,13 @@ class NotificationController {
         return res.status(400).json({ errors: errors.array() });
       }
 
-      const { page, limit, isRead, type, startDate, endDate } = req.query;
+      const { page, limit, includeRead, type, startDate, endDate } = req.query;
       const userId = req.user.id;
 
       const options = {
         page: parseInt(page) || 1,
         limit: parseInt(limit) || 20,
-        isRead: isRead === 'true' ? true : isRead === 'false' ? false : undefined,
+        isRead: includeRead === undefined ? undefined : includeRead !== 'true',
         type,
         startDate,
         endDate

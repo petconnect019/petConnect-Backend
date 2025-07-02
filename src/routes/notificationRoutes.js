@@ -11,14 +11,14 @@ router.use(authMiddleware);
 router.get('/', [
   check('page').optional().isInt({ min: 1 }).toInt(),
   check('limit').optional().isInt({ min: 1, max: 100 }).toInt(),
-  check('isRead').optional().isBoolean(),
+  check('includeRead').optional().isBoolean(),
   check('type').optional().isIn(['security', 'system', 'pet_scan', 'message', 'health', 'reminder']),
   check('startDate').optional().isISO8601(),
   check('endDate').optional().isISO8601()
 ], NotificationController.getNotifications);
 
 // Obtener conteo de notificaciones no leídas
-router.get('/unread/count', NotificationController.getUnreadCount);
+router.get('/unread-count', NotificationController.getUnreadCount);
 
 // Marcar una notificación como leída
 router.put('/:notificationId/read', [
