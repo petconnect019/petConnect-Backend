@@ -46,7 +46,7 @@ const VetDocumentData = {
 
             // Si es una vacuna con fecha de próxima dosis, crear recordatorio automático
             if (documentData.type === 'vaccine' && documentData.nextDue) {
-                await this.createAutoReminder(documentData.petId, documentData.ownerId, {
+                await VetDocumentData.createAutoReminder(documentData.petId, documentData.ownerId, {
                     type: 'vaccine',
                     title: `Refuerzo: ${documentData.title}`,
                     date: documentData.nextDue,
