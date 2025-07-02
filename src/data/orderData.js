@@ -35,7 +35,7 @@ const orderData = {
             // Validar los datos de la orden
             validateOrderData(orderInfo);
 
-            const unitPrice = 15000; // Precio unitario en COP
+            const unitPrice = 29900; // Precio unitario en COP
             const totalAmount = orderInfo.quantity * unitPrice;
 
             // Reestructurar los datos según el modelo

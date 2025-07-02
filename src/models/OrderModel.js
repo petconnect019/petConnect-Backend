@@ -82,7 +82,7 @@ orderSchema.index({ createdAt: -1 });
 // Middleware para validaciones
 orderSchema.pre('save', function(next) {
     // Validar que el monto sea correcto según la cantidad de QRs
-    const unitPrice = 15000; // Precio unitario en COP
+    const unitPrice = 29900; // Precio unitario en COP
     const expectedAmount = this.quantity * unitPrice;
     
     if (this.totalAmount !== expectedAmount) {
