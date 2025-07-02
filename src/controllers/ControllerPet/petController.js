@@ -16,6 +16,19 @@ const PetController = {
     
             // Crear la mascota en la base de datos
             const pet = await PetData.createPet(petData, photoBuffer, mimeType);
+
+            // Crear notificación de bienvenida
+            const NotificationModel = require('../../models/NotificationModel');
+            await NotificationModel.create({
+                userId: userId,
+                title: '¡Bienvenido a la familia PetConnect!',
+                message: `Has registrado exitosamente a ${pet.name}. ¡Protégelo agregando una etiqueta QR!`,
+                type: 'system',
+                actionUrl: '/check-protection',
+                data: {
+                    petId: pet._id
+                }
+            });
     
             res.status(201).json({
                 ok: true,

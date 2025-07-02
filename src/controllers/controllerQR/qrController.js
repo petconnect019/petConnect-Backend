@@ -100,6 +100,27 @@ const qrController = {
                         ciudad: locationDetails?.ciudad || location?.ciudad
                     }
                 });
+
+                // Crear notificación para el dueño de la mascota
+                const NotificationModel = require('../../models/NotificationModel');
+                const locationText = locationDetails?.direccion 
+                    ? `en ${locationDetails.direccion}` 
+                    : location?.address 
+                    ? `en ${location.address}`
+                    : 'en una ubicación no especificada';
+
+                await NotificationModel.create({
+                    userId: qr.userId,
+                    title: '¡Tu mascota ha sido encontrada!',
+                    message: `${qr.petId.name} ha sido escaneado ${locationText}`,
+                    type: 'pet_scan',
+                    actionUrl: `/check-protection`,
+                    data: {
+                        petId: qr.petId._id,
+                        scanId: scanRecord._id,
+                        location: scanRecord.location
+                    }
+                });
             }
 
             // Preparar respuesta
@@ -493,6 +514,64 @@ const qrController = {
         } catch (error) {
             console.error('Error al registrar escaneo manual:', error);
             next(error);
+        }
+    },
+
+    linkQRToPet: async (_id, petId, userId, userRole) => {
+        try {
+            console.log('Intentando vincular QR. ID recibido:', _id);          
+            // Asegurarnos de que el ID tenga el formato correcto
+            if (!_id || _id.length !== 24) {
+                throw new Error('ID de QR inválido - debe tener 24 caracteres');
+            }
+            
+            // Primero intentar encontrar el QR por qrId exacto
+            let qr = await QRModel.findOne({ _id: _id });
+            console.log('Búsqueda por qrId exacto:', qr);
+            
+            if (!qr) {
+                // Si no se encuentra, intentar con el ID en minúsculas
+                qr = await QRModel.findOne({ _id: _id.toLowerCase() });
+                console.log('Búsqueda por qrId en minúsculas:', qr);
+            }
+            
+            // Si no se encuentra, intentar buscar por _id de MongoDB
+            if (!qr && mongoose.Types.ObjectId.isValid(_id)) {
+                qr = await QRModel.findById(_id);
+            }
+            
+            // Verificar que el QR existe y está activo
+            if (!qr || !qr.isActive) {
+                throw new Error('QR no encontrado o ha sido eliminado');
+            }
+
+            // Actualizar el QR con la información de la mascota
+            qr.petId = petId;
+            qr.isLinked = true;
+            await qr.save();
+
+            // Obtener información de la mascota
+            const PetModel = require('../../models/PetModel');
+            const pet = await PetModel.findById(petId);
+
+            // Crear notificación de vinculación exitosa
+            const NotificationModel = require('../../models/NotificationModel');
+            await NotificationModel.create({
+                userId: userId,
+                title: 'QR vinculado exitosamente',
+                message: `Has vinculado un nuevo QR a ${pet.name}. ¡Ahora tu mascota está más protegida!`,
+                type: 'system',
+                actionUrl: '/check-protection',
+                data: {
+                    petId: petId,
+                    qrId: qr._id
+                }
+            });
+
+            return qr;
+        } catch (error) {
+            console.error('Error al vincular QR:', error);
+            throw error;
         }
     }
 };

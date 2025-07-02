@@ -175,6 +175,26 @@ const VetDocumentData = {
             });
 
             await reminder.save();
+
+            // Obtener información de la mascota
+            const pet = await PetModel.findById(petId);
+
+            // Crear notificación para el recordatorio
+            const NotificationModel = require('../models/NotificationModel');
+            await NotificationModel.create({
+                userId: ownerId,
+                title: 'Nuevo recordatorio veterinario',
+                message: `Se ha creado un recordatorio de ${reminderData.type} para ${pet.name} programado para ${new Date(reminderData.date).toLocaleDateString()}`,
+                type: 'reminder',
+                actionUrl: '/health-management',
+                data: {
+                    petId,
+                    reminderId: reminder._id,
+                    reminderType: reminderData.type,
+                    date: reminderData.date
+                }
+            });
+
             return reminder;
         } catch (error) {
             throw error;
@@ -243,6 +263,60 @@ const VetDocumentData = {
 
             return stats;
         } catch (error) {
+            throw error;
+        }
+    },
+
+    /**
+     * Verificar y enviar notificaciones de recordatorios próximos
+     */
+    checkUpcomingReminders: async () => {
+        try {
+            const today = new Date();
+            const threeDaysFromNow = new Date(today);
+            threeDaysFromNow.setDate(today.getDate() + 3);
+
+            // Buscar recordatorios próximos no completados
+            const upcomingReminders = await VetReminderModel.find({
+                date: { 
+                    $gte: today,
+                    $lte: threeDaysFromNow
+                },
+                completed: false,
+                reminderSent: false
+            }).populate('petId');
+
+            const NotificationModel = require('../models/NotificationModel');
+
+            // Enviar notificación para cada recordatorio
+            for (const reminder of upcomingReminders) {
+                if (!reminder.petId) continue;
+
+                const daysUntil = Math.ceil((reminder.date - today) / (1000 * 60 * 60 * 24));
+                const daysText = daysUntil === 1 ? 'mañana' : `en ${daysUntil} días`;
+
+                await NotificationModel.create({
+                    userId: reminder.ownerId,
+                    title: '¡Recordatorio próximo!',
+                    message: `${reminder.title} para ${reminder.petId.name} está programado para ${daysText}`,
+                    type: 'reminder',
+                    actionUrl: '/health-management',
+                    data: {
+                        petId: reminder.petId._id,
+                        reminderId: reminder._id,
+                        reminderType: reminder.type,
+                        date: reminder.date
+                    }
+                });
+
+                // Marcar recordatorio como notificado
+                reminder.reminderSent = true;
+                await reminder.save();
+            }
+
+            return upcomingReminders.length;
+        } catch (error) {
+            console.error('Error al verificar recordatorios próximos:', error);
             throw error;
         }
     }

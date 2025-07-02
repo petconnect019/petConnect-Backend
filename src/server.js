@@ -5,6 +5,7 @@ const { connectDB } = require('./config/db');
 const { setupAdminAccount } = require('./services/setupService');
 const socketIo = require('socket.io');
 const socketService = require('./services/socketService');
+const reminderService = require('./services/reminderService');
 
 const PORT = process.env.PORT || 3001;
 const isProduction = process.env.NODE_ENV === 'production';
@@ -100,6 +101,11 @@ const startServer = async () => {
         process.on('uncaughtException', (err) => {
             console.error('❌ Uncaught Exception:', err);
             gracefulShutdown(server);
+        });
+
+        // Iniciar el servicio de recordatorios cuando el servidor esté listo
+        app.on('ready', () => {
+            reminderService.start();
         });
 
     } catch (error) {
