@@ -54,64 +54,52 @@ const AuthController = {
     loginUser: async (req, res, next) => {
         try {
             const { email, password } = req.body;
+
+            // Validar datos de entrada
             const emailValidation = AuthData.validateEmail(email);
-            const passwordValidation = AuthData.validatePassword(password);
-            
             if (!emailValidation.isValid) {
                 const error = new Error(emailValidation.error);
                 error.statusCode = 400;
                 return next(error);
-            }            
-            if (!passwordValidation.isValid) {
-                const error = new Error(passwordValidation.error);
-                error.statusCode = 400;
+            }
+
+            // Buscar usuario por email
+            const user = await UserModel.findOne({ email });
+            if (!user) {
+                const error = new Error('Credenciales inválidas');
+                error.statusCode = 401;
                 return next(error);
             }
 
-            const { user, hasPets, isNewUser } = await AuthData.loginUser(email, password);
-            
-            // Debug: Log del user recibido de authData
-            console.log('🔍 DEBUG AuthController - user recibido de authData:', {
-                type: typeof user,
-                constructor: user.constructor.name,
-                keys: Object.keys(user),
-                _id: user._id,
-                isMongooseDoc: user.constructor.name === 'Document'
-            });
-            
-            const tokens = await tokenService.generateTokens(user);
+            // Verificar si el correo está verificado (excepto para usuarios de Google)
+            if (!user.google_id && !user.isEmailVerified) {
+                const error = new Error('Por favor, verifica tu correo electrónico antes de iniciar sesión');
+                error.statusCode = 401;
+                return next(error);
+            }
 
-            // Asegurar que el user sea un objeto plano JSON
-            const userResponse = {
-                id: user._id || user.id,
-                email: user.email,
-                name: user.name, // Usar name del modelo, no firstName/lastName que no existen
-                role: user.role,
-                profile_picture: user.profile_picture,
-                is_profile_public: user.is_profile_public,
-                show_contact: user.show_contact,
-                phone: user.phone,
-                city: user.city,
-                gender: user.gender
-            };
-            
-            console.log('✅ DEBUG AuthController - userResponse construido:', userResponse);
+            // Verificar contraseña
+            const isValidPassword = await bcrypt.compare(password, user.password);
+            if (!isValidPassword) {
+                const error = new Error('Credenciales inválidas');
+                error.statusCode = 401;
+                return next(error);
+            }
 
-            // Establecer la cookie del refresh token
-            res.cookie('refreshToken', tokens.refreshToken, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'lax',
-                maxAge: 20 * 24 * 60 * 60 * 1000 // 20 días
-            });
+            // Verificar si el usuario tiene mascotas
+            const hasPets = await PetModel.exists({ user_id: user._id });
+
+            const { accessToken, userResponse } = await handleAuthenticationSuccess(req, res, user);
 
             return res.status(200).json({
                 success: true,
-                accessToken: tokens.accessToken,
+                message: 'Inicio de sesión exitoso',
+                accessToken,
                 user: userResponse,
-                hasPets,
-                isNewUser
+                hasPets: !!hasPets,
+                isNewUser: false
             });
+
         } catch (error) {
             next(error);
         }
