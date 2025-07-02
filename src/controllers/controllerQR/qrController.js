@@ -6,6 +6,9 @@ const mongoose = require('mongoose');
 const QRModel = require('../../models/QRModel');
 const QRScanModel = require('../../models/QRScanModel');
 const axios = require('axios');
+const { sendEmail } = require('../../services/emailService');
+const PetModel = require('../../models/PetModel');
+const NotificationModel = require('../../models/NotificationModel');
 
 // Función auxiliar para obtener detalles de ubicación usando OpenStreetMap Nominatim
 async function getLocationDetails(latitude, longitude) {
@@ -461,8 +464,8 @@ const qrController = {
                 });
             }
 
-            // Verificar si el QR existe
-            const qr = await QRModel.findById(qrId);
+            // Verificar si el QR existe y obtener información de la mascota
+            const qr = await QRModel.findById(qrId).populate('petId').populate('userId', 'email name');
             if (!qr || !qr.isActive) {
                 return res.status(404).json({
                     success: false,
@@ -488,6 +491,7 @@ const qrController = {
 
             // Obtener detalles de ubicación
             const locationDetails = await getLocationDetails(latitude, longitude);
+            const locationText = locationDetails?.direccion || 'ubicación no especificada';
 
             // Crear el registro de escaneo
             const scanRecord = await QRScanModel.create({
@@ -501,6 +505,55 @@ const qrController = {
                     ciudad: locationDetails?.ciudad || 'No disponible'
                 }
             });
+
+            // Crear notificación para el dueño
+            await NotificationModel.create({
+                userId: qr.userId,
+                title: '¡Tu mascota ha sido encontrada!',
+                message: `${qr.petId.name} ha sido visto en ${locationText}`,
+                type: 'pet_scan',
+                actionUrl: `/check-protection`,
+                data: {
+                    petId: qr.petId._id,
+                    scanId: scanRecord._id,
+                    location: scanRecord.location
+                }
+            });
+
+            // Enviar correo electrónico al dueño
+            try {
+                const emailHtml = `
+                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                        <h2 style="color: #f97316;">¡${qr.petId.name} ha sido encontrado!</h2>
+                        <p>Hola ${qr.userId.name},</p>
+                        <p>Queremos informarte que alguien ha escaneado el código QR de ${qr.petId.name}.</p>
+                        <p><strong>Detalles del escaneo:</strong></p>
+                        <ul>
+                            <li>Fecha: ${scanRecord.formattedDate}</li>
+                            <li>Hora: ${scanRecord.formattedTime}</li>
+                            <li>Ubicación: ${locationText}</li>
+                        </ul>
+                        <p>Puedes ver más detalles iniciando sesión en tu cuenta de PetConnect.</p>
+                        <div style="margin-top: 20px; padding: 15px; background-color: #fff7ed; border-radius: 8px;">
+                            <p style="margin: 0; color: #9a3412;">Importante: Si tu mascota está perdida, te recomendamos revisar la ubicación proporcionada lo antes posible.</p>
+                        </div>
+                        <div style="margin-top: 20px; text-align: center;">
+                            <a href="${process.env.FRONTEND_URL}/check-protection" style="background-color: #f97316; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Ver detalles en PetConnect</a>
+                        </div>
+                    </div>
+                `;
+
+                await sendEmail({
+                    to: qr.userId.email,
+                    subject: `¡${qr.petId.name} ha sido encontrado! - PetConnect`,
+                    html: emailHtml
+                });
+
+                console.log('✅ Correo electrónico enviado exitosamente al dueño');
+            } catch (emailError) {
+                console.error('❌ Error al enviar correo electrónico:', emailError);
+                // No detenemos el flujo si falla el envío del correo
+            }
 
             res.status(201).json({
                 success: true,
