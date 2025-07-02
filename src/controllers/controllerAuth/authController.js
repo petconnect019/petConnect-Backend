@@ -159,8 +159,8 @@ const AuthController = {
                 return next(error);
             }
 
-            // Buscar usuario por email
-            const user = await UserModel.findOne({ email });
+            // Buscar usuario por email e incluir la contraseña para verificación
+            const user = await UserModel.findOne({ email }).select('+password');
             if (!user) {
                 const error = new Error('Credenciales inválidas');
                 error.statusCode = 401;
