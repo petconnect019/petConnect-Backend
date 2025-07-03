@@ -28,6 +28,19 @@ router.put('/:notificationId/read', [
 // Marcar todas las notificaciones como leídas
 router.put('/read/all', NotificationController.markAllAsRead);
 
+// Marcar una notificación como leída (PATCH alias)
+router.patch('/:notificationId/read', [
+  check('notificationId').isMongoId()
+], NotificationController.markAsRead);
+
+// Obtener estadísticas de notificaciones
+router.get('/stats', NotificationController.getStats);
+
+// Marcar todas las notificaciones como leídas (alias legacy) con PATCH
+router.patch('/read-all', NotificationController.markAllAsRead);
+// También soporta PUT para compatibilidad
+router.put('/read-all', NotificationController.markAllAsRead);
+
 // Eliminar una notificación
 router.delete('/:notificationId', [
   check('notificationId').isMongoId()

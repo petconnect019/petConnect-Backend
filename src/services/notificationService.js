@@ -132,6 +132,15 @@ class NotificationService {
       throw error;
     }
   }
+
+  static async getStats(userId) {
+    try {
+      return await NotificationData.getStats(userId);
+    } catch (error) {
+      logger.error('Error getting notification stats:', error);
+      throw error;
+    }
+  }
 }
 
 module.exports = NotificationService; 

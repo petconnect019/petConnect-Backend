@@ -1,4 +1,5 @@
 const NotificationModel = require('../models/NotificationModel');
+const mongoose = require('mongoose');
 
 class NotificationData {
   static async create(notificationData) {
@@ -88,6 +89,26 @@ class NotificationData {
     return await NotificationModel.deleteMany({
       expiresAt: { $lt: new Date() }
     });
+  }
+
+  static async getStats(userId) {
+    const userObjectId = new mongoose.Types.ObjectId(userId);
+
+    const [total, unread, unreadByTypeAgg] = await Promise.all([
+      NotificationModel.countDocuments({ userId: userObjectId }),
+      NotificationModel.countDocuments({ userId: userObjectId, isRead: false }),
+      NotificationModel.aggregate([
+        { $match: { userId: userObjectId, isRead: false } },
+        { $group: { _id: '$type', count: { $sum: 1 } } }
+      ])
+    ]);
+
+    const unreadByType = unreadByTypeAgg.reduce((acc, item) => {
+      acc[item._id] = item.count;
+      return acc;
+    }, {});
+
+    return { total, unread, unreadByType };
   }
 }
 

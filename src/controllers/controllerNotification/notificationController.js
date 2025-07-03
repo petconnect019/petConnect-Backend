@@ -32,7 +32,7 @@ class NotificationController {
     try {
       const userId = req.user.id;
       const count = await NotificationService.getUnreadCount(userId);
-      res.json({ count });
+      res.json({ unreadCount: count });
     } catch (error) {
       res.status(500).json({ message: 'Error al obtener conteo de notificaciones no leídas', error: error.message });
     }
@@ -101,6 +101,16 @@ class NotificationController {
       res.json({ message: 'Limpieza de notificaciones completada', result });
     } catch (error) {
       res.status(500).json({ message: 'Error al limpiar notificaciones expiradas', error: error.message });
+    }
+  }
+
+  static async getStats(req, res) {
+    try {
+      const userId = req.user.id;
+      const stats = await NotificationService.getStats(userId);
+      res.json({ stats });
+    } catch (error) {
+      res.status(500).json({ message: 'Error al obtener estadísticas', error: error.message });
     }
   }
 }
