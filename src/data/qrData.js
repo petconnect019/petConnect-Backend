@@ -174,12 +174,27 @@ const qrData = {
             // Verificar si la mascota existe
             const pet = await PetModel.findById(petId);
             
+            // LOGS DE DEBUGGING
+            console.log('=== DEBUGGING en qrData.linkQRToPet ===');
+            console.log('Pet encontrada:', pet ? 'SÍ' : 'NO');
+            if (pet) {
+                console.log('Pet ID:', pet._id);
+                console.log('Pet owner:', pet.owner);
+                console.log('Pet owner (string):', pet.owner.toString());
+                console.log('User ID recibido:', userId);
+                console.log('¿Son iguales?:', pet.owner.toString() === userId);
+                console.log('Pet name:', pet.name);
+            }
+            
             if (!pet) {
                 throw new Error('Mascota no encontrada');
             }
             
             // Verificar si el usuario es dueño de la mascota
-            if (pet.owner.toString() !== userId) {
+            if (pet.owner.toString() !== userId && userRole !== 'admin') {
+                console.log('ERROR: Usuario no es dueño de la mascota');
+                console.log('pet.owner.toString():', pet.owner.toString());
+                console.log('userId:', userId);
                 throw new Error('No tienes permiso para vincular este QR a esta mascota');
             }
             
