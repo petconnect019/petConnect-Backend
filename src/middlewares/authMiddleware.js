@@ -23,15 +23,15 @@ const verifyToken = async (req, res, next) => {
         }
 
         // DEBUGGING PARA VER SI LLEGA AQUÍ
-        console.log('=== DEBUGGING verifyToken ===');
-        console.log('Ruta actual:', currentPath);
-        console.log('Método:', req.method);
-        console.log('Headers authorization:', req.headers.authorization);
+        // console.log('=== DEBUGGING verifyToken ===');
+        // console.log('Ruta actual:', currentPath);
+        // console.log('Método:', req.method);
+        // console.log('Headers authorization:', req.headers.authorization);
 
         const token = req.headers.authorization?.split(' ')[1];
         
         if (!token) {
-            console.log('=== ERROR 401: Token no proporcionado ===');
+            // console.log('=== ERROR 401: Token no proporcionado ===');
             return res.status(401).json({ 
                 ok: false,
                 message: 'Token no proporcionado' 
@@ -43,8 +43,8 @@ const verifyToken = async (req, res, next) => {
         // Verificar si el usuario existe y está activo
         const user = await UserModel.findById(decoded.id);
         if (!user) {
-            console.log('=== ERROR 401: Usuario no encontrado ===');
-            console.log('Decoded ID:', decoded.id);
+            // console.log('=== ERROR 401: Usuario no encontrado ===');
+            // console.log('Decoded ID:', decoded.id);
             return res.status(401).json({ 
                 ok: false,
                 message: 'Usuario no encontrado' 
@@ -52,9 +52,9 @@ const verifyToken = async (req, res, next) => {
         }
 
         if (!user.is_active) {
-            console.log('=== ERROR 403: Usuario desactivado ===');
-            console.log('User ID:', decoded.id);
-            console.log('User is_active:', user.is_active);
+            // console.log('=== ERROR 403: Usuario desactivado ===');
+            // console.log('User ID:', decoded.id);
+            // console.log('User is_active:', user.is_active);
             return res.status(403).json({ 
                 ok: false,
                 message: 'Tu cuenta está desactivada. Por favor, contacta al administrador.' 
@@ -67,15 +67,15 @@ const verifyToken = async (req, res, next) => {
             is_active: user.is_active
         };
         
-        console.log('=== verifyToken EXITOSO ===');
-        console.log('Usuario autenticado:', decoded.id);
-        console.log('Rol:', decoded.role);
-        console.log('User activo:', user.is_active);
+        // console.log('=== verifyToken EXITOSO ===');
+        // console.log('Usuario autenticado:', decoded.id);
+        // console.log('Rol:', decoded.role);
+        // console.log('User activo:', user.is_active);
         
         next();
     } catch (error) {
-        console.log('=== ERROR 401: Token inválido ===');
-        console.error('Error en verificación de token:', error);
+        // console.log('=== ERROR 401: Token inválido ===');
+        // console.error('Error en verificación de token:', error);
         return res.status(401).json({ 
             ok: false,
             message: 'Token inválido' 
@@ -95,7 +95,7 @@ const isAdmin = async (req, res, next) => {
 
         next();
     } catch (error) {
-        console.error('Error al verificar rol de admin:', error);
+        // console.error('Error al verificar rol de admin:', error);
         res.status(500).json({ message: 'Error al verificar permisos' });
     }
 };
@@ -151,7 +151,7 @@ const isPetOwnerOrAdmin = async (req, res, next) => {
 
         next();
     } catch (error) {
-        console.error('Error al verificar permisos:', error);
+        // console.error('Error al verificar permisos:', error);
         res.status(500).json({ message: 'Error al verificar permisos' });
     }
 };
