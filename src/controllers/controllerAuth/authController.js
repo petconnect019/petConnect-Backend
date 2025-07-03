@@ -185,6 +185,12 @@ const AuthController = {
             // Verificar si el usuario tiene mascotas
             const hasPets = await PetModel.exists({ user_id: user._id });
 
+            // === NUEVA LÓGICA PARA DETERMINAR SI EL USUARIO ES NUEVO ===
+            // Se considera "nuevo" si aún no ha completado la información básica de su perfil.
+            // Por ahora revisamos que exista el nombre y el teléfono. Si faltan, se redirigirá al flujo
+            // de completar perfil en el frontend.
+            const isProfileIncomplete = !user.name || user.name.trim() === "" || !user.phone || user.phone.trim() === "";
+
             const { accessToken, userResponse } = await handleAuthenticationSuccess(req, res, user);
 
             return res.status(200).json({
@@ -193,7 +199,7 @@ const AuthController = {
                 accessToken,
                 user: userResponse,
                 hasPets: !!hasPets,
-                isNewUser: false
+                isNewUser: isProfileIncomplete
             });
 
         } catch (error) {

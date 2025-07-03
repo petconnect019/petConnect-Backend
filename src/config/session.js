@@ -41,8 +41,14 @@ const handleAuthenticationSuccess = async (req, res, user) => {
     const userResponse = {
         id: user._id,
         email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
+        name: user.name || '',
+        phone: user.phone || '',
+        profile_picture: user.profile_picture || '',
+        gender: user.gender || '',
+        country: user.country || '',
+        state: user.state || '',
+        city: user.city || '',
+        address: user.address || '',
         role: user.role
     };
 
