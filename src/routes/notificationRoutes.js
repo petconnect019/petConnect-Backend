@@ -2,10 +2,6 @@ const express = require('express');
 const router = express.Router();
 const NotificationController = require('../controllers/controllerNotification/notificationController');
 const { check } = require('express-validator');
-const { verifyToken } = require('../middlewares/authMiddleware');
-
-// Middleware de autenticación para todas las rutas
-router.use(verifyToken);
 
 // Obtener notificaciones del usuario con filtros y paginación
 router.get('/', [

@@ -13,6 +13,7 @@ const healthRoutes = require('./healthRoutes');
 const vetDocumentRoutes = require('./vetDocumentRoutes');
 const notificationRoutes = require('./notificationRoutes');
 const AdminData = require('../data/adminData');
+const { verifyToken } = require('../middlewares/authMiddleware');
 
 // Configuración de rutas
 router.use('/auth', authRoutes);
@@ -25,6 +26,6 @@ router.use('/admin', adminRoutes);
 router.use('/payments', paymentRoutes);
 router.use('/health', healthRoutes);
 router.use('/vet', vetDocumentRoutes);
-router.use('/notifications', notificationRoutes);
+router.use('/notifications', verifyToken, notificationRoutes);
 
 module.exports = router; 
