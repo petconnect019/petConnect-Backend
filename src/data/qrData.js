@@ -179,7 +179,7 @@ const qrData = {
             }
             
             // Verificar si el usuario es dueño de la mascota
-            if (pet.owner.toString() !== userId && userRole !== 'admin') {
+            if (pet.owner.toString() !== userId) {
                 throw new Error('No tienes permiso para vincular este QR a esta mascota');
             }
             
