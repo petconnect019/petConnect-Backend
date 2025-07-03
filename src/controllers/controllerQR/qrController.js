@@ -168,6 +168,16 @@ const qrController = {
             const userId = req.user.id;
             const userRole = req.user.role;
 
+            // Debug logs para entender el problema
+            console.log('=== DEBUG linkQRToPet ===');
+            console.log('QR ID:', _id);
+            console.log('Pet ID:', petId);
+            console.log('User ID:', userId);
+            console.log('User Role:', userRole);
+            console.log('Request body completo:', req.body);
+            console.log('Request query completo:', req.query);
+            console.log('User completo:', req.user);
+
             if (!_id || !petId) {
                 return res.status(400).json({
                     success: false,
