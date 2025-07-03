@@ -22,11 +22,10 @@ router.get('/user', QRController.getUserQRs);
 router.delete('/:qrId', QRController.deleteQR);
 
 // Rutas para administradores
-router.use(isAdmin);
-router.post('/generate-multiple', QRController.generateMultipleQRs);
-router.post('/user/:userId', QRController.generateUserQR);
-router.get('/', QRController.getAllQRs);
-router.delete('/admin/:qrId', QRController.deactivateQR);
+router.post('/generate-multiple', isAdmin, QRController.generateMultipleQRs);
+router.post('/user/:userId', isAdmin, QRController.generateUserQR);
+router.get('/', isAdmin, QRController.getAllQRs);
+router.delete('/admin/:qrId', isAdmin, QRController.deactivateQR);
 
 // Ruta de prueba para el email
 router.post('/test-email', async (req, res) => {
