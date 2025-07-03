@@ -12,6 +12,7 @@ const paymentRoutes = require('./paymentRoutes');
 const healthRoutes = require('./healthRoutes');
 const vetDocumentRoutes = require('./vetDocumentRoutes');
 const notificationRoutes = require('./notificationRoutes');
+const placesRoutes = require('./placesRoutes');
 const AdminData = require('../data/adminData');
 const { verifyToken } = require('../middlewares/authMiddleware');
 
@@ -27,5 +28,6 @@ router.use('/payments', paymentRoutes);
 router.use('/health', healthRoutes);
 router.use('/vet', vetDocumentRoutes);
 router.use('/notifications', verifyToken, notificationRoutes);
+router.use('/places', verifyToken, placesRoutes);
 
 module.exports = router; 
