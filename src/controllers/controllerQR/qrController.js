@@ -5,7 +5,6 @@ const UserModel = require('../../models/UserModel');
 const mongoose = require('mongoose');
 const QRModel = require('../../models/QRModel');
 const QRScanModel = require('../../models/QRScanModel');
-const axios = require('axios');
 const { sendEmail } = require('../../services/emailService');
 const PetModel = require('../../models/PetModel');
 const NotificationModel = require('../../models/NotificationModel');
@@ -16,29 +15,78 @@ async function getLocationDetails(latitude, longitude) {
         // Esperar 1 segundo para respetar el límite de rate de Nominatim
         await new Promise(resolve => setTimeout(resolve, 1000));
 
-        const response = await axios.get(`https://nominatim.openstreetmap.org/reverse`, {
-            params: {
-                format: 'json',
-                lat: latitude,
-                lon: longitude,
-                'accept-language': 'es'
-            },
+        const url = new URL(`https://nominatim.openstreetmap.org/reverse`);
+        url.searchParams.set('format', 'json');
+        url.searchParams.set('lat', latitude);
+        url.searchParams.set('lon', longitude);
+        url.searchParams.set('accept-language', 'es');
+
+        const response = await fetch(url.toString(), {
             headers: {
                 'User-Agent': 'PetConnect/1.0' // Identificador requerido por Nominatim
             }
         });
+        
+        if (!response.ok) {
+            // Lanza un error si la respuesta no es exitosa para ser capturado por el bloque catch
+            throw new Error(`Nominatim request failed with status ${response.status}`);
+        }
 
-        if (response.data) {
-            const address = response.data.address;
+        const data = await response.json();
+
+        if (data && data.address) {
+            const address = data.address;
             return {
                 departamento: address.state || address.county || 'No disponible',
                 ciudad: address.city || address.town || address.village || address.municipality || 'No disponible',
-                direccion: response.data.display_name
+                direccion: data.display_name
             };
         }
         return null;
     } catch (error) {
         console.error('Error al obtener detalles de ubicación:', error);
+        return null;
+    }
+}
+
+// Función auxiliar para geocodificar una dirección usando OpenStreetMap Nominatim
+async function geocodeAddress(address) {
+    try {
+        // Esperar 1 segundo para respetar el límite de rate de Nominatim
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        const url = new URL(`https://nominatim.openstreetmap.org/search`);
+        url.searchParams.set('q', address);
+        url.searchParams.set('format', 'json');
+        url.searchParams.set('accept-language', 'es');
+        url.searchParams.set('limit', '1');
+        
+        const response = await fetch(url.toString(), {
+            headers: {
+                'User-Agent': 'PetConnect/1.0' // Identificador requerido por Nominatim
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`Nominatim request failed with status ${response.status}`);
+        }
+        
+        const data = await response.json();
+
+        if (data && data.length > 0) {
+            const { lat, lon, display_name } = data[0];
+            const addressDetails = data[0].address;
+            return {
+                latitude: parseFloat(lat),
+                longitude: parseFloat(lon),
+                direccion: display_name,
+                departamento: addressDetails.state || addressDetails.county || 'No disponible',
+                ciudad: addressDetails.city || addressDetails.town || addressDetails.village || addressDetails.municipality || 'No disponible',
+            };
+        }
+        return null;
+    } catch (error) {
+        console.error('Error al geocodificar la dirección:', error);
         return null;
     }
 }
@@ -72,8 +120,39 @@ const qrController = {
         try {
             const { qrId } = req.params;
             const scannerUserId = req.user ? req.user.id : null;
-            const { location } = req.body;
-            
+            let { latitude, longitude, address } = req.body;
+            let locationDetails;
+            let locationText;
+
+            // Lógica de geolocalización mejorada
+            if (address) {
+                const geocodedLocation = await geocodeAddress(address);
+                if (geocodedLocation) {
+                    latitude = geocodedLocation.latitude;
+                    longitude = geocodedLocation.longitude;
+                    locationDetails = {
+                        direccion: geocodedLocation.direccion,
+                        departamento: geocodedLocation.departamento,
+                        ciudad: geocodedLocation.ciudad,
+                    };
+                    locationText = geocodedLocation.direccion;
+                } else {
+                    // Si la geocodificación falla, se guarda la dirección de texto
+                    locationDetails = { direccion: address, departamento: 'No disponible', ciudad: 'No disponible' };
+                    locationText = address;
+                    latitude = null;
+                    longitude = null;
+                }
+            } else if (latitude && longitude) {
+                locationDetails = await getLocationDetails(latitude, longitude);
+                locationText = locationDetails?.direccion || 'ubicación no especificada';
+            } else {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Se requiere una dirección o coordenadas (latitud y longitud) para registrar el escaneo.'
+                });
+            }
+
             // Verificar si el QR existe
             const qr = await QRModel.findById(qrId).populate('petId');
             if (!qr || !qr.isActive) {
@@ -83,12 +162,6 @@ const qrController = {
                 });
             }
 
-            // Si tenemos coordenadas, obtener detalles de ubicación
-            let locationDetails = null;
-            if (location?.latitude && location?.longitude) {
-                locationDetails = await getLocationDetails(location.latitude, location.longitude);
-            }
-
             // Solo crear registro de escaneo si el QR está vinculado a una mascota y no es escaneado por su dueño
             let scanRecord = null;
             if (qr.isLinked && qr.petId && (!scannerUserId || qr.userId.toString() !== scannerUserId)) {
@@ -96,22 +169,15 @@ const qrController = {
                     qrId: qr._id,
                     scannedBy: scannerUserId,
                     location: {
-                        latitude: location?.latitude,
-                        longitude: location?.longitude,
-                        address: locationDetails?.direccion || location?.address,
-                        departamento: locationDetails?.departamento || location?.departamento,
-                        ciudad: locationDetails?.ciudad || location?.ciudad
+                        latitude: latitude,
+                        longitude: longitude,
+                        address: locationDetails?.direccion || address || 'No disponible',
+                        departamento: locationDetails?.departamento || 'No disponible',
+                        ciudad: locationDetails?.ciudad || 'No disponible'
                     }
                 });
 
                 // Crear notificación para el dueño de la mascota
-                const NotificationModel = require('../../models/NotificationModel');
-                const locationText = locationDetails?.direccion 
-                    ? `en ${locationDetails.direccion}` 
-                    : location?.address 
-                    ? `en ${location.address}`
-                    : 'en una ubicación no especificada';
-
                 await NotificationModel.create({
                     userId: qr.userId,
                     title: '¡Tu mascota ha sido encontrada!',
@@ -468,13 +534,36 @@ const qrController = {
         try {
             const { qrId } = req.params;
             const scannerUserId = req.user ? req.user.id : null;
-            const { latitude, longitude } = req.body;
+            let { latitude, longitude, address } = req.body;
+            let locationDetails;
+            let locationText;
 
-            // Validate required coordinates
-            if (!latitude || !longitude) {
+            // Lógica de geolocalización mejorada
+            if (address) {
+                const geocodedLocation = await geocodeAddress(address);
+                if (geocodedLocation) {
+                    latitude = geocodedLocation.latitude;
+                    longitude = geocodedLocation.longitude;
+                    locationDetails = {
+                        direccion: geocodedLocation.direccion,
+                        departamento: geocodedLocation.departamento,
+                        ciudad: geocodedLocation.ciudad,
+                    };
+                    locationText = geocodedLocation.direccion;
+                } else {
+                    // Si la geocodificación falla, se guarda la dirección de texto
+                    locationDetails = { direccion: address, departamento: 'No disponible', ciudad: 'No disponible' };
+                    locationText = address;
+                    latitude = null;
+                    longitude = null;
+                }
+            } else if (latitude && longitude) {
+                locationDetails = await getLocationDetails(latitude, longitude);
+                locationText = locationDetails?.direccion || 'ubicación no especificada';
+            } else {
                 return res.status(400).json({
                     success: false,
-                    message: 'Se requieren latitud y longitud para registrar el escaneo'
+                    message: 'Se requiere una dirección o coordenadas (latitud y longitud) para registrar el escaneo.'
                 });
             }
 
@@ -503,10 +592,6 @@ const qrController = {
                 });
             }
 
-            // Obtener detalles de ubicación
-            const locationDetails = await getLocationDetails(latitude, longitude);
-            const locationText = locationDetails?.direccion || 'ubicación no especificada';
-
             // Crear el registro de escaneo
             const scanRecord = await QRScanModel.create({
                 qrId: qr._id,
@@ -514,7 +599,7 @@ const qrController = {
                 location: {
                     latitude,
                     longitude,
-                    address: locationDetails?.direccion || 'No disponible',
+                    address: locationDetails?.direccion || address || 'No disponible',
                     departamento: locationDetails?.departamento || 'No disponible',
                     ciudad: locationDetails?.ciudad || 'No disponible'
                 }
@@ -576,6 +661,13 @@ const qrController = {
                     fecha: scanRecord.formattedDate,
                     hora: scanRecord.formattedTime,
                     ubicacion: scanRecord.location
+                },
+                pet: {
+                    name: qr.petId.name
+                },
+                owner: {
+                    name: qr.userId.name,
+                    email: qr.userId.email
                 }
             });
         } catch (error) {
