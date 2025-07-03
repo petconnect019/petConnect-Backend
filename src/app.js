@@ -64,14 +64,6 @@ app.use(rateLimiter);
 // Rutas de la API
 app.use('/api', routes);
 
-// Respuesta JSON para rutas /api/* no encontradas
-app.use('/api/*', (req, res) => {
-    res.status(404).json({
-        ok: false,
-        message: 'Ruta no encontrada'
-    });
-});
-
 // Rutas de estado (antes del manejo de errores)
 app.get('/', (_, res) => res.send('🚀 PetConnect Backend funcionando!'));
 
