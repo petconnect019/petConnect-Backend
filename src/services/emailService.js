@@ -2,8 +2,38 @@ const nodemailer = require('nodemailer');
 
 // Configuración del transporter de nodemailer con soporte para OAuth2
 const createTransporter = () => {
-    // Primero intentamos con OAuth2 si están disponibles las credenciales
-    if (process.env.GMAIL_CLIENT_ID && process.env.GMAIL_CLIENT_SECRET && process.env.GMAIL_REFRESH_TOKEN) {
+    /*
+     * 1. SMTP genérico (MAILTRAP, SendGrid SMTP Relay, Outlook, etc.)
+     *    Variables requeridas: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS
+     */
+    if (
+        process.env.SMTP_HOST &&
+        process.env.SMTP_PORT &&
+        process.env.SMTP_USER &&
+        process.env.SMTP_PASS
+    ) {
+        console.log('📨 Usando configuración SMTP personalizada');
+        return nodemailer.createTransport({
+            host: process.env.SMTP_HOST,
+            port: Number(process.env.SMTP_PORT),
+            secure: Number(process.env.SMTP_PORT) === 465, // true para 465, false para otros
+            auth: {
+                user: process.env.SMTP_USER,
+                pass: process.env.SMTP_PASS
+            }
+        });
+    }
+
+    /*
+     * 2. Gmail con OAuth2 (requiere credenciales)
+     */
+    if (
+        process.env.GMAIL_CLIENT_ID &&
+        process.env.GMAIL_CLIENT_SECRET &&
+        process.env.GMAIL_REFRESH_TOKEN &&
+        process.env.EMAIL_USER
+    ) {
+        console.log('📨 Usando Gmail OAuth2');
         return nodemailer.createTransport({
             service: 'gmail',
             auth: {
@@ -15,11 +45,16 @@ const createTransporter = () => {
             }
         });
     }
-    
-    // Si no hay credenciales OAuth2, intentamos con contraseña de aplicación
+
+    /*
+     * 3. Gmail con contraseña de aplicación (EMAIL_USER + EMAIL_PASS)
+     */
     if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+        console.log('📨 Usando Gmail con contraseña de aplicación');
         return nodemailer.createTransport({
-            service: 'gmail',
+            host: 'smtp.gmail.com',
+            port: 465,
+            secure: true, // SSL
             auth: {
                 user: process.env.EMAIL_USER,
                 pass: process.env.EMAIL_PASS
@@ -65,7 +100,7 @@ const sendEmail = async ({ to, subject, html }) => {
         await verifyTransporter();
 
         const mailOptions = {
-            from: process.env.EMAIL_USER || 'PetConnect <noreply@petconnect.com>',
+            from: process.env.EMAIL_USER ? `PetConnect <${process.env.EMAIL_USER}>` : 'PetConnect <noreply@petconnect.com>',
             to,
             subject,
             html
