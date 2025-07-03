@@ -1,4 +1,4 @@
-import { placesService } from '../../services/placesService.js';
+const { placesService } = require('../../services/placesService.js');
 
 /**
  * Handles the request to get nearby places.
@@ -29,6 +29,8 @@ const getNearbyPlaces = async (req, res, next) => {
   }
 };
 
-export const placesController = {
-  getNearbyPlaces,
+module.exports = {
+  placesController: {
+    getNearbyPlaces,
+  }
 }; 

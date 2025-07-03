@@ -1,5 +1,5 @@
-import axios from 'axios';
-import dotenv from 'dotenv';
+// const axios = require('axios');
+const dotenv = require('dotenv');
 
 dotenv.config();
 
@@ -41,14 +41,29 @@ const findNearbyPlaces = async (latitude, longitude, includedTypes = ['veterinar
   };
 
   try {
-    const response = await axios.post(PLACES_API_ENDPOINT, requestBody, { headers });
-    return response.data;
+    const response = await fetch(PLACES_API_ENDPOINT, {
+      method: 'POST',
+      body: JSON.stringify(requestBody),
+      headers: headers,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ message: 'Could not parse error response from Google API.' }));
+      console.error('Error from Google Places API:', { status: response.status, data: errorData });
+      throw new Error(`Failed to fetch nearby places. Status: ${response.status}`);
+    }
+
+    return await response.json();
   } catch (error) {
-    console.error('Error fetching from Google Places API:', error.response ? error.response.data : error.message);
+    console.error('Error making fetch request to Google Places API:', error.message);
     throw new Error('Failed to fetch nearby places from Google API.');
   }
 };
 
-export const placesService = {
+const placesService = {
   findNearbyPlaces,
+};
+
+module.exports = {
+  placesService
 }; 

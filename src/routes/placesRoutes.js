@@ -1,5 +1,5 @@
-import express from 'express';
-import { placesController } from '../controllers/controllerPlaces/placesController.js';
+const express = require('express');
+const { placesController } = require('../controllers/controllerPlaces/placesController.js');
 
 const router = express.Router();
 
@@ -30,4 +30,4 @@ const router = express.Router();
  */
 router.get('/nearby', placesController.getNearbyPlaces);
 
-export default router; 
+module.exports = router; 
