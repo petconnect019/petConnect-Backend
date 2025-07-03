@@ -237,11 +237,25 @@ const AuthData = {
      */
     findOrCreateGoogleUser: async (googleProfile) => {
         try {
-            // Buscar usuario existente
+            // 1. Buscar por google_id
             let user = await UserModel.findOne({ google_id: googleProfile.id });
 
+            // 2. Si no existe con google_id, buscar por email
             if (!user) {
-                // Crear nuevo usuario si no existe
+                user = await UserModel.findOne({ email: googleProfile.emails[0].value });
+
+                // Si existe por email, vincular la cuenta de Google
+                if (user) {
+                    user.google_id = googleProfile.id;
+                    // Actualizar opcionalmente nombre y foto si están vacíos
+                    if (!user.name) user.name = googleProfile.displayName;
+                    if (!user.profile_picture) user.profile_picture = googleProfile.photos[0].value;
+                    await user.save();
+                }
+            }
+
+            // 3. Si todavía no existe, crearlo
+            if (!user) {
                 user = await UserModel.create({
                     google_id: googleProfile.id,
                     email: googleProfile.emails[0].value,
@@ -253,9 +267,8 @@ const AuthData = {
             // Verificar si el usuario tiene mascotas
             const hasPets = await PetModel.exists({ owner: user._id });
 
-            // Verificar si es un usuario nuevo 
-            const isNewUser = user.createdAt && 
-                            (new Date() - new Date(user.createdAt)) < 1000; // menos de 1 segundo
+            // Determinar si es nuevo (creado hace menos de 1 segundo)
+            const isNewUser = user.createdAt && (new Date() - new Date(user.createdAt)) < 1000;
 
             return {
                 user,

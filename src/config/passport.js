@@ -16,11 +16,24 @@ passport.use(new GoogleStrategy({
     passReqToCallback: true
 }, async (req, accessToken, refreshToken, profile, done) => {
     try {
-        // Buscar usuario existente
+        // Buscar usuario existente por google_id
         let user = await UserModel.findOne({ google_id: profile.id });
 
         if (!user) {
-            // Crear nuevo usuario si no existe
+            // Si no existe, intentar encontrar por email
+            user = await UserModel.findOne({ email: profile.emails[0].value });
+
+            if (user) {
+                // Vincular google_id a la cuenta existente
+                user.google_id = profile.id;
+                if (!user.name) user.name = profile.displayName;
+                if (!user.profile_picture) user.profile_picture = profile.photos[0].value;
+                await user.save();
+            }
+        }
+
+        if (!user) {
+            // Crear nuevo usuario si no existe por google_id ni email
             user = await UserModel.create({
                 google_id: profile.id,
                 email: profile.emails[0].value,
