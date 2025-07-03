@@ -5,7 +5,7 @@ const PetModel = require('../models/PetModel');
 // Constantes para límites
 const LIMITS = {
     FILE_SIZE: 5 * 1024 * 1024,        // 5MB por archivo
-    TOTAL_USER_SIZE: 50 * 1024 * 1024, // 50MB por usuario
+    TOTAL_USER_SIZE: 120 * 1024 * 1024, // 125.8MB por usuario
     MAX_FILES: 5                        // Máximo 5 archivos por solicitud
 };
 
@@ -67,7 +67,7 @@ const checkStorageLimit = async (req, res, next) => {
         if (currentSize + newFileSize > LIMITS.TOTAL_USER_SIZE) {
             return res.status(400).json({
                 ok: false,
-                message: `Has excedido el límite de almacenamiento (${LIMITS.TOTAL_USER_SIZE / (1024 * 1024)}MB)`
+                message: `Has excedido el límite de fotos`
             });
         }
         next();
