@@ -168,8 +168,6 @@ const qrController = {
             const userId = req.user.id;
             const userRole = req.user.role;
 
-
-
             if (!_id || !petId) {
                 return res.status(400).json({
                     success: false,
