@@ -483,26 +483,10 @@ const qrController = {
                 }
             });
 
-            /* Enviar correo al dueño notificando el escaneo */
-            try {
-                const pet = await PetModel.findById(qr.petId).populate('owner', 'name email');
-                if (pet && pet.owner && pet.owner.email) {
-                    const htmlBody = `
-                        <h1>¡Hola ${pet.owner.name}!</h1>
-                        <p>Hemos detectado un nuevo escaneo del QR de <strong>${pet.name}</strong>.</p>
-                        <p>Ubicación aproximada: <br/>
-                        Latitud: ${latitude}, Longitud: ${longitude}</p>
-                        <p>Revisa la sección de protección en PetConnect para más detalles.</p>`;
-
-                    await sendEmail({
-                        to: pet.owner.email,
-                        subject: `Nuevo escaneo de ${pet.name}`,
-                        html: htmlBody
-                    });
-                }
-            } catch (mailErr) {
-                console.error('Error al enviar email de escaneo:', mailErr);
-            }
+            /*
+             * El envío de correos ahora se gestiona desde el frontend mediante EmailJS.
+             * Se deja este bloque comentado para referencia futura.
+             */
 
             res.status(201).json({
                 success: true,
