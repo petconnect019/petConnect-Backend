@@ -12,7 +12,7 @@
     "test:watch": "jest --watch --setupFiles ./tests/setup.js",
     "test:coverage": "jest --coverage --setupFiles ./tests/setup.js",
     "test:health": "node test-health.js",
-    "test:health:prod": "node test-health.js https://petconnect-backend-production.up.railway.app/health"
+    "test:health:prod": "node test-health.js https://petconnect-backend-1.onrender.com/health"
   },
   "keywords": [],
   "author": "",
